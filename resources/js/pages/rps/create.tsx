@@ -16,6 +16,7 @@ export default function CreateRps({ curriculums, courses, defaultAcademicYear }:
     const [search, setSearch] = useState('');
     const [semester, setSemester] = useState('all');
     const [status, setStatus] = useState('all');
+    const [isDelaying, setIsDelaying] = useState(false);
     const form = useForm({ course_id: '', academic_year: defaultAcademicYear, academic_semester: 'Ganjil' });
 
     const filtered = useMemo(() => courses.filter((c) => {
@@ -29,13 +30,24 @@ export default function CreateRps({ curriculums, courses, defaultAcademicYear }:
 
     const selected = courses.find((c) => c.id === form.data.course_id);
 
+    const submitDraft = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (isDelaying || form.processing) return;
+
+        setIsDelaying(true);
+        window.setTimeout(() => {
+            setIsDelaying(false);
+            form.post('/rps');
+        }, 800);
+    };
+
     return <>
         <Head title="Buat RPS" />
         <div className="p-4 md:p-6">
             <h1 className="text-2xl font-bold">Buat RPS</h1>
             <p className="mt-1 text-sm text-slate-500">Cari mata kuliah dengan cepat berdasarkan nama, kode, semester, atau status.</p>
 
-            <form onSubmit={(e) => { e.preventDefault(); form.post('/rps'); }} className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
+            <form onSubmit={submitDraft} className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
                 <section className="sim-surface rounded-2xl p-5">
                     <div className="flex items-center gap-3"><div className="rounded-xl bg-teal-50 p-3 text-teal-700"><Search className="size-5" /></div><div><h2 className="font-bold">Cari Mata Kuliah</h2><p className="text-sm text-slate-500"></p></div></div>
                     <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -60,7 +72,7 @@ export default function CreateRps({ curriculums, courses, defaultAcademicYear }:
                     {selected ? <>
                         <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50/35 p-5"><div className="text-xs font-semibold text-slate-500">{selected.official_code || selected.system_code}</div><h3 className="mt-1 text-xl font-bold">{selected.name}</h3><div className="mt-4 grid grid-cols-2 gap-3">{[['SKS',selected.credits],['Semester',selected.semester_recommended??'-'],['CPMK',selected.official_cpmk_count],['Praktikum',selected.has_practicum?'Ya':'Tidak']].map(([a,b])=><div key={a} className="rounded-xl bg-white/75 p-3"><div className="text-xs text-slate-500">{a}</div><div className="mt-1 font-bold">{b}</div></div>)}</div><div className="mt-4 flex flex-wrap gap-2">{selected.official_cpl_codes.map((code)=><span key={code} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-teal-700">{code}</span>)}</div>{selected.generator_readiness==='ready_with_master_cpmk'?<div className="mt-4 flex gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800"><CheckCircle2 className="size-4" />Siap dibuat menjadi draft.</div>:<div className="mt-4 flex gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800"><CircleAlert className="size-4" />{selected.generator_readiness==='ai_cpmk_required'?'Draft dapat dibuat, CPMK ditentukan tahap berikutnya.':'Harus direview Admin.'}</div>}</div>
                         <div className="mt-5 space-y-4"><select value={curriculumId} onChange={(e)=>{setCurriculumId(e.target.value);form.setData('course_id','')}} className="w-full rounded-xl border border-slate-200 bg-white/70 px-3 py-3 text-sm">{curriculums.map((c)=><option key={c.id} value={c.id}>{c.name}</option>)}</select><input value={form.data.academic_year} onChange={(e)=>form.setData('academic_year',e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white/70 px-3 py-3 text-sm" /><select value={form.data.academic_semester} onChange={(e)=>form.setData('academic_semester',e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white/70 px-3 py-3 text-sm"><option>Ganjil</option><option>Genap</option><option>Pendek</option></select></div>
-                        <button type="submit" disabled={selected.generator_readiness==='needs_admin_review' || form.processing} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-45"><BookOpenCheck className="size-4" />Buat Draft RPS</button>
+                        <button type="submit" disabled={selected.generator_readiness==='needs_admin_review' || form.processing || isDelaying} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-45"><BookOpenCheck className="size-4" />{isDelaying || form.processing ? 'Menyiapkan Draft…' : 'Buat Draft RPS'}</button>
                     </> : <div className="mt-5 flex min-h-[430px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 p-8 text-center"><Search className="size-9 text-slate-300" /><p className="mt-4 font-semibold">Belum memilih mata kuliah</p><p className="mt-1 text-sm text-slate-500">Cari dan klik mata kuliah di panel kiri.</p></div>}
                 </section>
             </form>
