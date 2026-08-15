@@ -41,6 +41,26 @@ export function AppSidebarHeader({
             cleanupActions.push(() => element.removeAttribute('data-rps-print-hidden'));
         };
 
+        const setPrintStyle = (
+            element: HTMLElement | null | undefined,
+            property: string,
+            value: string,
+        ) => {
+            if (!(element instanceof HTMLElement)) return;
+
+            const previousValue = element.style.getPropertyValue(property);
+            const previousPriority = element.style.getPropertyPriority(property);
+
+            element.style.setProperty(property, value, 'important');
+            cleanupActions.push(() => {
+                if (previousValue) {
+                    element.style.setProperty(property, previousValue, previousPriority);
+                } else {
+                    element.style.removeProperty(property);
+                }
+            });
+        };
+
         const relabelForPrint = (
             selector: string,
             currentText: string,
@@ -52,12 +72,44 @@ export function AppSidebarHeader({
 
             const selected = all ? matches : matches.slice(0, 1);
             selected.forEach((element) => {
-                element.classList.add('rps-print-label');
-                element.setAttribute('data-rps-print-label', printText);
+                const originalHtml = element.innerHTML;
+                const originalStyle = element.getAttribute('style');
+
+                element.textContent = printText;
+                element.style.setProperty('white-space', 'pre-line', 'important');
+
                 cleanupActions.push(() => {
-                    element.classList.remove('rps-print-label');
-                    element.removeAttribute('data-rps-print-label');
+                    element.innerHTML = originalHtml;
+                    if (originalStyle === null) {
+                        element.removeAttribute('style');
+                    } else {
+                        element.setAttribute('style', originalStyle);
+                    }
                 });
+            });
+        };
+
+        const normalizeDocumentTable = (table: HTMLTableElement | undefined) => {
+            if (!table) return;
+
+            setPrintStyle(table, 'border-collapse', 'collapse');
+            setPrintStyle(table, 'border-spacing', '0');
+            setPrintStyle(table, 'border', '1.2px solid #111827');
+            setPrintStyle(table, 'font-family', "'Instrument Sans', Arial, sans-serif");
+            setPrintStyle(table, 'font-size', '10pt');
+            setPrintStyle(table, 'line-height', '1.22');
+
+            table.querySelectorAll<HTMLElement>('th, td').forEach((cell) => {
+                setPrintStyle(cell, 'border', '1.2px solid #111827');
+                setPrintStyle(cell, 'font-family', "'Instrument Sans', Arial, sans-serif");
+                setPrintStyle(cell, 'font-size', '10pt');
+                setPrintStyle(cell, 'line-height', '1.22');
+            });
+
+            table.querySelectorAll<HTMLElement>('th *, td *').forEach((child) => {
+                setPrintStyle(child, 'font-family', 'inherit');
+                setPrintStyle(child, 'font-size', 'inherit');
+                setPrintStyle(child, 'line-height', 'inherit');
             });
         };
 
@@ -377,6 +429,28 @@ export function AppSidebarHeader({
         addClass(mainRpsTable, 'rps-print-main-table');
         addClass(weeklyTable, 'rps-print-weekly');
 
+        normalizeDocumentTable(mainRpsTable);
+        normalizeDocumentTable(weeklyTable);
+
+        const mainTitleCell = mainRpsTable?.querySelector<HTMLElement>(
+            'tbody > tr:nth-child(2) th',
+        );
+        setPrintStyle(mainTitleCell, 'font-size', '12pt');
+        setPrintStyle(mainTitleCell, 'line-height', '1.15');
+
+        const weeklyWrapper = weeklyTable?.closest<HTMLElement>('div.overflow-x-auto');
+        if (weeklyWrapper?.parentElement) {
+            const spacer = document.createElement('div');
+            spacer.setAttribute('data-rps-print-weekly-spacer', 'true');
+            spacer.setAttribute('aria-hidden', 'true');
+            spacer.style.setProperty('display', 'block', 'important');
+            spacer.style.setProperty('width', '100%', 'important');
+            spacer.style.setProperty('height', '8mm', 'important');
+            spacer.style.setProperty('min-height', '8mm', 'important');
+            weeklyWrapper.parentElement.insertBefore(spacer, weeklyWrapper);
+            cleanupActions.push(() => spacer.remove());
+        }
+
         const assessmentContainer = assessmentTable?.closest('div.border-x');
         addClass(assessmentContainer, 'rps-print-landscape');
         addClass(assessmentContainer, 'rps-print-evaluation');
@@ -429,7 +503,7 @@ export function AppSidebarHeader({
         addClass(materialList, 'rps-print-decimal-list');
 
         relabelForPrint('td', 'Capaian Pembelajaran', 'Capaian Pembelajaran\n(CP)');
-        relabelForPrint('td', 'Deskripsi Singkat MK', 'Diskripsi Singkat\nMata Kuliah');
+        relabelForPrint('td', 'Deskripsi Singkat MK', 'Deskripsi Singkat\nMata Kuliah');
         relabelForPrint('td', 'Bahan Kajian: Materi Pembelajaran', 'Bahan Kajian /\nMateri Pembelajaran');
         relabelForPrint('td', 'Pustaka', 'Daftar Referensi');
         relabelForPrint('td', 'Matakuliah Syarat', 'MK prasyarat');
