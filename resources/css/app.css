@@ -188,13 +188,31 @@ body {
     background: #F4FBFD;
 }
 
-/* Admin RPS print/PDF preview */
+/*
+ * RPS print/PDF preview.
+ * The official reference uses A4 landscape for the RPS + weekly plan,
+ * then A4 portrait for evaluation, grading scale and RTM.
+ */
+@page rpsLandscape {
+    size: A4 landscape;
+    margin: 10mm 9mm;
+}
+
+@page rpsPortrait {
+    size: A4 portrait;
+    margin: 12mm 11mm;
+}
+
 @media print {
     html.rps-print-mode,
     html.rps-print-mode body {
         background: #FFFFFF !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    html.rps-print-mode body {
+        margin: 0 !important;
     }
 
     html.rps-print-mode [data-slot='sidebar'] {
@@ -224,6 +242,37 @@ body {
         padding: 0 !important;
     }
 
+    html.rps-print-mode [data-rps-print-hidden='true'] {
+        display: none !important;
+    }
+
+    html.rps-print-mode .rps-print-landscape {
+        page: rpsLandscape;
+    }
+
+    html.rps-print-mode .rps-print-portrait {
+        page: rpsPortrait;
+    }
+
+    html.rps-print-mode .rps-print-page-break {
+        break-before: page !important;
+        page-break-before: always !important;
+    }
+
+    html.rps-print-mode .rps-print-label {
+        font-size: 0 !important;
+        line-height: 1 !important;
+    }
+
+    html.rps-print-mode .rps-print-label::after {
+        content: attr(data-rps-print-label);
+        display: inline-block;
+        white-space: pre-line;
+        font-size: 10px;
+        line-height: 1.15;
+        font-weight: inherit;
+    }
+
     html.rps-print-mode .overflow-x-auto {
         overflow: visible !important;
     }
@@ -231,15 +280,228 @@ body {
     html.rps-print-mode table {
         width: 100% !important;
         min-width: 0 !important;
+        border-collapse: collapse !important;
+        border-spacing: 0 !important;
     }
 
-    html.rps-print-mode tr,
     html.rps-print-mode td,
     html.rps-print-mode th {
-        break-inside: avoid;
+        border-color: #111827 !important;
     }
 
     html.rps-print-mode img {
         max-width: 100%;
+    }
+
+    /* Institutional header: logo cell + institution title, as in the reference. */
+    html.rps-print-mode .rps-print-institution-grid {
+        display: grid !important;
+        grid-template-columns: 100px 1fr !important;
+        min-height: 84px !important;
+        padding: 0 !important;
+        align-items: stretch !important;
+    }
+
+    html.rps-print-mode .rps-print-institution-grid > div:first-child {
+        display: flex !important;
+        height: 100% !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-right: 1px solid #111827 !important;
+        padding: 4px !important;
+    }
+
+    html.rps-print-mode .rps-print-institution-grid > div:nth-child(2) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 5px 8px !important;
+    }
+
+    html.rps-print-mode .rps-print-institution-grid > div:last-child {
+        display: none !important;
+    }
+
+    html.rps-print-mode .rps-print-institution-grid img {
+        width: 64px !important;
+        height: 64px !important;
+        object-fit: contain !important;
+    }
+
+    /* Main RPS identity + CPL/CPMK/Sub-CPMK table. */
+    html.rps-print-mode .rps-print-main-table {
+        table-layout: auto !important;
+        font-size: 9.5px !important;
+        line-height: 1.22 !important;
+        color: #111827 !important;
+    }
+
+    html.rps-print-mode .rps-print-main-table th,
+    html.rps-print-mode .rps-print-main-table td {
+        padding: 2.5px 5px !important;
+        vertical-align: top !important;
+    }
+
+    html.rps-print-mode .rps-print-main-table > tbody > tr:first-child > td {
+        padding: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-main-table > tbody > tr:first-child + tr th {
+        font-size: 12px !important;
+        line-height: 1.1 !important;
+        padding: 3px !important;
+    }
+
+    html.rps-print-mode .rps-print-main-table ol.rps-print-decimal-list,
+    html.rps-print-mode .rps-print-decimal-list {
+        list-style-type: decimal !important;
+        padding-left: 20px !important;
+        margin: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-main-table .sticky {
+        position: static !important;
+    }
+
+    /* Weekly table - same 8-column logical structure as reference pages 3-9. */
+    html.rps-print-mode .rps-print-weekly {
+        table-layout: fixed !important;
+        font-size: 8.2px !important;
+        line-height: 1.18 !important;
+        color: #111827 !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly thead {
+        display: table-header-group !important;
+        position: static !important;
+        box-shadow: none !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly thead th {
+        text-align: center !important;
+        vertical-align: middle !important;
+        font-weight: 700 !important;
+        padding: 3px 3px !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly tbody td {
+        padding: 4px 4px !important;
+        vertical-align: top !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly th:nth-child(1),
+    html.rps-print-mode .rps-print-weekly td:nth-child(1) {
+        width: 5% !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly th:nth-child(2),
+    html.rps-print-mode .rps-print-weekly td:nth-child(2) {
+        width: 17% !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly tbody tr {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly tbody td {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    /* Evaluation and simulation: portrait page, visually compact like reference page 10. */
+    html.rps-print-mode .rps-print-evaluation,
+    html.rps-print-mode .rps-print-grade-scale,
+    html.rps-print-mode .rps-print-rtm {
+        max-width: 188mm !important;
+        width: 100% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        background: #FFFFFF !important;
+    }
+
+    html.rps-print-mode .rps-print-evaluation > div {
+        border: 0 !important;
+        padding: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-assessment-table,
+    html.rps-print-mode .rps-print-simulation-table {
+        table-layout: auto !important;
+        font-size: 8.5px !important;
+        line-height: 1.17 !important;
+    }
+
+    html.rps-print-mode .rps-print-assessment-table th,
+    html.rps-print-mode .rps-print-assessment-table td,
+    html.rps-print-mode .rps-print-simulation-table th,
+    html.rps-print-mode .rps-print-simulation-table td {
+        padding: 3px 4px !important;
+        vertical-align: middle !important;
+    }
+
+    html.rps-print-mode .rps-print-assessment-table thead,
+    html.rps-print-mode .rps-print-simulation-table thead {
+        display: table-header-group !important;
+    }
+
+    html.rps-print-mode .rps-print-grade-scale {
+        padding: 0 !important;
+        font-size: 10px !important;
+    }
+
+    html.rps-print-mode .rps-print-grade-scale table {
+        width: auto !important;
+        min-width: 95mm !important;
+        margin-left: 0 !important;
+        font-size: 10px !important;
+    }
+
+    /* RTM: portrait, keeping the on-screen editor untouched. */
+    html.rps-print-mode .rps-print-rtm {
+        padding: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm > div {
+        border: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-table {
+        table-layout: auto !important;
+        font-size: 9px !important;
+        line-height: 1.22 !important;
+        margin: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-table th,
+    html.rps-print-mode .rps-print-rtm-table td {
+        padding: 3px 5px !important;
+        vertical-align: top !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-table > tbody > tr:first-child > td {
+        padding: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-table + .rps-print-rtm-table {
+        break-before: page !important;
+        page-break-before: always !important;
+    }
+
+    /* Let long official tables continue naturally across pages. */
+    html.rps-print-mode .rps-print-main-table tr,
+    html.rps-print-mode .rps-print-main-table td,
+    html.rps-print-mode .rps-print-weekly tr,
+    html.rps-print-mode .rps-print-weekly td,
+    html.rps-print-mode .rps-print-rtm-table tr,
+    html.rps-print-mode .rps-print-rtm-table td {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
     }
 }
