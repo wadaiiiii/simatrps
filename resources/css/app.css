@@ -93,7 +93,7 @@
     --sidebar-primary: oklch(0.205 0 0);
     --sidebar-primary-foreground: oklch(0.985 0 0);
     --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-accent-foreground: oklch(0.269 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
 }
@@ -188,3 +188,58 @@ body {
     background: #F4FBFD;
 }
 
+/* Admin RPS print/PDF preview */
+@media print {
+    html.rps-print-mode,
+    html.rps-print-mode body {
+        background: #FFFFFF !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    html.rps-print-mode [data-slot='sidebar'] {
+        display: none !important;
+    }
+
+    html.rps-print-mode [data-slot='sidebar-wrapper'] {
+        display: block !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        background: #FFFFFF !important;
+    }
+
+    html.rps-print-mode [data-slot='sidebar-inset'] {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        background: #FFFFFF !important;
+    }
+
+    html.rps-print-mode [data-slot='sidebar-inset'] > div {
+        padding: 0 !important;
+    }
+
+    html.rps-print-mode .overflow-x-auto {
+        overflow: visible !important;
+    }
+
+    html.rps-print-mode table {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    html.rps-print-mode tr,
+    html.rps-print-mode td,
+    html.rps-print-mode th {
+        break-inside: avoid;
+    }
+
+    html.rps-print-mode img {
+        max-width: 100%;
+    }
+}
