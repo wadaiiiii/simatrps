@@ -12,6 +12,10 @@ type SimatRpsHeaderPageProps = {
     };
 };
 
+function normalizedText(value: string | null | undefined) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
 export function AppSidebarHeader({
     breadcrumbs = [],
 }: {
@@ -23,16 +27,128 @@ export function AppSidebarHeader({
 
     const printRps = () => {
         const root = document.documentElement;
-        const style = document.createElement('style');
+        const cleanupActions: Array<() => void> = [];
+
+        const addClass = (element: Element | null | undefined, className: string) => {
+            if (!(element instanceof HTMLElement)) return;
+            element.classList.add(className);
+            cleanupActions.push(() => element.classList.remove(className));
+        };
+
+        const hideForPrint = (element: Element | null | undefined) => {
+            if (!(element instanceof HTMLElement)) return;
+            element.setAttribute('data-rps-print-hidden', 'true');
+            cleanupActions.push(() => element.removeAttribute('data-rps-print-hidden'));
+        };
+
+        const relabelForPrint = (
+            selector: string,
+            currentText: string,
+            printText: string,
+            all = false,
+        ) => {
+            const matches = Array.from(document.querySelectorAll<HTMLElement>(selector))
+                .filter((element) => normalizedText(element.textContent) === currentText);
+
+            const selected = all ? matches : matches.slice(0, 1);
+            selected.forEach((element) => {
+                element.classList.add('rps-print-label');
+                element.setAttribute('data-rps-print-label', printText);
+                cleanupActions.push(() => {
+                    element.classList.remove('rps-print-label');
+                    element.removeAttribute('data-rps-print-label');
+                });
+            });
+        };
+
+        const tables = Array.from(document.querySelectorAll<HTMLTableElement>('table'));
+        const findTable = (needle: string) => tables.find((table) =>
+            normalizedText(table.textContent).includes(needle),
+        );
 
         root.classList.add('rps-print-mode');
-        style.setAttribute('data-rps-print-page', 'true');
-        style.textContent = '@page { size: A4 landscape; margin: 7mm; }';
-        document.head.appendChild(style);
+
+        const mainRpsTable = findTable('RENCANA PEMBELAJARAN SEMESTER (RPS)');
+        const weeklyTable = tables.find((table) => {
+            const text = normalizedText(table.textContent);
+            return text.includes('Sub-CPMK')
+                && text.includes('Bentuk Pembelajaran; Metode Pembelajaran; Penugasan;')
+                && text.includes('Bobot Penilaian');
+        });
+        const assessmentTable = findTable('Bobot per Bentuk Penilaian');
+        const simulationTable = tables.find((table) => {
+            const text = normalizedText(table.textContent);
+            return text.includes('Nilai Mhs') && text.includes('TOTAL NILAI AKHIR');
+        });
+        const gradingTable = tables.find((table) => {
+            const text = normalizedText(table.textContent);
+            return text.includes('Nilai Angka') && text.includes('Nilai Huruf') && text.includes('Nilai Mutu');
+        });
+        const rtmTables = tables.filter((table) =>
+            normalizedText(table.textContent).includes('RENCANA TUGAS MAHASISWA'),
+        );
+
+        const printableSection = mainRpsTable?.closest('section');
+        addClass(printableSection, 'rps-print-landscape');
+        addClass(mainRpsTable, 'rps-print-main-table');
+        addClass(weeklyTable, 'rps-print-weekly');
+
+        const assessmentContainer = assessmentTable?.closest('div.border-x');
+        addClass(assessmentContainer, 'rps-print-portrait');
+        addClass(assessmentContainer, 'rps-print-evaluation');
+        addClass(assessmentContainer, 'rps-print-page-break');
+        addClass(assessmentTable, 'rps-print-assessment-table');
+        addClass(simulationTable, 'rps-print-simulation-table');
+
+        const gradingContainer = gradingTable?.closest('div.mt-5');
+        addClass(gradingContainer, 'rps-print-portrait');
+        addClass(gradingContainer, 'rps-print-grade-scale');
+        addClass(gradingContainer, 'rps-print-page-break');
+
+        const rtmContainer = rtmTables[0]?.closest('div.border-x');
+        addClass(rtmContainer, 'rps-print-portrait');
+        addClass(rtmContainer, 'rps-print-rtm');
+        addClass(rtmContainer, 'rps-print-page-break');
+        rtmTables.forEach((table) => addClass(table, 'rps-print-rtm-table'));
+
+        const institutionTables = [mainRpsTable, ...rtmTables].filter(Boolean) as HTMLTableElement[];
+        institutionTables.forEach((table) => {
+            const firstGrid = table.querySelector<HTMLElement>('tbody > tr:first-child td > div.grid');
+            addClass(firstGrid, 'rps-print-institution-grid');
+        });
+
+        Array.from(document.querySelectorAll<HTMLElement>('div'))
+            .filter((element) => normalizedText(element.textContent) === 'JURUSAN MATEMATIKA')
+            .forEach(hideForPrint);
+
+        const mediaCell = Array.from(document.querySelectorAll<HTMLTableCellElement>('td'))
+            .find((cell) => normalizedText(cell.textContent) === 'Media Pembelajaran');
+        hideForPrint(mediaCell?.closest('tr'));
+
+        const materialCell = Array.from(document.querySelectorAll<HTMLTableCellElement>('td'))
+            .find((cell) => normalizedText(cell.textContent) === 'Bahan Kajian: Materi Pembelajaran');
+        const materialList = materialCell?.nextElementSibling?.querySelector('ol');
+        addClass(materialList, 'rps-print-decimal-list');
+
+        relabelForPrint('td', 'Capaian Pembelajaran', 'Capaian Pembelajaran\n(CP)');
+        relabelForPrint('td', 'Deskripsi Singkat MK', 'Diskripsi Singkat\nMata Kuliah');
+        relabelForPrint('td', 'Bahan Kajian: Materi Pembelajaran', 'Bahan Kajian /\nMateri Pembelajaran');
+        relabelForPrint('td', 'Pustaka', 'Daftar Referensi');
+        relabelForPrint('td', 'Matakuliah Syarat', 'MK prasyarat');
+
+        relabelForPrint('th', 'Pekan Ke-', 'Mg\nKe-');
+        relabelForPrint('th', 'Kriteria & Bentuk', 'Kriteria &\nTeknik');
+        relabelForPrint('th', 'Tatap muka / Luring', 'Luring (5)');
+        relabelForPrint('th', 'Daring', 'Daring (6)');
+        relabelForPrint(
+            'th',
+            'Bentuk Pembelajaran; Metode Pembelajaran; Penugasan; [Estimasi Waktu]',
+            'Bentuk Pembelajaran;\nMetode Pembelajaran;\nPenugasan Mahasiswa;\n[Estimasi Waktu]',
+        );
 
         const cleanup = () => {
+            [...cleanupActions].reverse().forEach((action) => action());
             root.classList.remove('rps-print-mode');
-            style.remove();
             window.removeEventListener('afterprint', cleanup);
         };
 
