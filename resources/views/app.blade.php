@@ -98,6 +98,30 @@
                     break-inside: auto !important;
                     page-break-inside: auto !important;
                 }
+
+                /*
+                 * Uniform preview typography:
+                 * all printable RPS content uses 11pt; only document/table
+                 * titles use 12pt. Repeated class selectors intentionally beat
+                 * the runtime preview overrides without changing the editor UI.
+                 */
+                html.rps-print-mode.rps-print-mode body table.rps-print-main-table.rps-print-main-table *,
+                html.rps-print-mode.rps-print-mode body table.rps-print-weekly.rps-print-weekly *,
+                html.rps-print-mode.rps-print-mode body .rps-print-evaluation.rps-print-evaluation *,
+                html.rps-print-mode.rps-print-mode body .rps-print-grade-scale.rps-print-grade-scale *,
+                html.rps-print-mode.rps-print-mode body .rps-print-rtm.rps-print-rtm * {
+                    font-size: 11pt !important;
+                    line-height: 1.22 !important;
+                }
+
+                html.rps-print-mode.rps-print-mode body table.rps-print-main-table.rps-print-main-table > tbody > tr:nth-child(2) th,
+                html.rps-print-mode.rps-print-mode body .rps-print-evaluation.rps-print-evaluation > div > div:first-child > div:first-child > div:first-child,
+                html.rps-print-mode.rps-print-mode body .rps-print-simulation-title.rps-print-simulation-title,
+                html.rps-print-mode.rps-print-mode body .rps-print-rtm.rps-print-rtm > div > div:first-child,
+                html.rps-print-mode.rps-print-mode body table.rps-print-rtm-table.rps-print-rtm-table > tbody > tr:nth-child(2) th {
+                    font-size: 12pt !important;
+                    line-height: 1.18 !important;
+                }
             }
         </style>
 
