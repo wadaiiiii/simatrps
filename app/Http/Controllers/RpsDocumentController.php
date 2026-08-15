@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Rps\AiRpsProviderService;
+use App\Services\Rps\RpsAiContextService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Services\Rps\AiRpsProviderService;
-use App\Services\Rps\RpsAiContextService;
 
 class RpsDocumentController extends Controller
 {
@@ -68,7 +67,6 @@ class RpsDocumentController extends Controller
 
         return back()->with('success', 'Informasi dokumen RPS berhasil disimpan.');
     }
-
 
     public function generateAiReferences(
         Request $request,
@@ -160,92 +158,11 @@ class RpsDocumentController extends Controller
         string $rps,
         int $week
     ): RedirectResponse {
-        [, $version] = $this->context($request, $rps);
+        $this->context($request, $rps);
 
-        $data = $request->validate([
-            'weight' => ['required', 'numeric', 'min:0', 'max:100'],
+        throw ValidationException::withMessages([
+            'weight' => 'Bobot penilaian tidak diedit dari tabel RPS atau simulasi. Ubah bobot melalui Edit Detail Asesmen; tabel RPS, Tabel Penilaian dan Evaluasi CPL, serta Simulasi akan tersinkron otomatis.',
         ]);
-
-        $row = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $version->id)
-            ->where('week_number', $week)
-            ->first();
-
-        abort_unless($row, 404);
-
-        $newWeight = round((float) $data['weight'], 2);
-
-        $otherTotal = round(
-            (float) DB::table('rps_weekly_plans')
-                ->where('rps_version_id', $version->id)
-                ->where('week_number', '!=', $week)
-                ->sum(DB::raw('COALESCE(assessment_weight, 0)')),
-            2
-        );
-
-        $newTotal = round($otherTotal + $newWeight, 2);
-
-        if ($newTotal > 100.0) {
-            throw ValidationException::withMessages([
-                'weight' => "Total bobot penilaian akan menjadi {$newTotal}%. Total tidak boleh melebihi 100%.",
-            ]);
-        }
-
-        DB::transaction(function () use ($version, $row, $week, $newWeight): void {
-            DB::table('rps_weekly_plans')
-                ->where('id', $row->id)
-                ->update([
-                    'assessment_weight' => $newWeight,
-                    'updated_at' => now(),
-                ]);
-
-            if (! Schema::hasTable('assessments')) {
-                return;
-            }
-
-            $assessments = DB::table('assessments')
-                ->where('rps_version_id', $version->id)
-                ->where('week_number', $week)
-                ->get();
-
-            // UTS/UAS wajib tersinkron dengan asesmen sistem.
-            if (in_array($week, [8, 16], true)) {
-                $code = $week === 8 ? 'UTS' : 'UAS';
-
-                $query = DB::table('assessments')
-                    ->where('rps_version_id', $version->id);
-
-                if (Schema::hasColumn('assessments', 'code')) {
-                    $query->where('code', $code);
-                } elseif (Schema::hasColumn('assessments', 'type')) {
-                    $query->where('type', strtolower($code));
-                }
-
-                $query->update([
-                    'weight' => $newWeight,
-                    'updated_at' => now(),
-                ]);
-
-                return;
-            }
-
-            // Bila minggu hanya mempunyai satu asesmen detail, bobot dapat
-            // disinkronkan tanpa ambiguitas. Jika beberapa asesmen berada di
-            // minggu yang sama, bobot tabel tetap menjadi sumber cetak.
-            if ($assessments->count() === 1) {
-                DB::table('assessments')
-                    ->where('id', $assessments->first()->id)
-                    ->update([
-                        'weight' => $newWeight,
-                        'updated_at' => now(),
-                    ]);
-            }
-        });
-
-        return back()->with(
-            'success',
-            "Bobot minggu {$week} disimpan. Total bobot saat ini {$newTotal}%."
-        );
     }
 
     public function updateSimulationScore(
