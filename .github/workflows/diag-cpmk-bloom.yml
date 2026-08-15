@@ -1,0 +1,21 @@
+name: Diagnose CPMK Bloom Flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diag-cpmk-bloom.yml'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show CPMK/Bloom related code
+        run: |
+          echo '--- show.tsx buttons/functions ---'
+          grep -n -C 8 -E 'Telaah CPMK|Pemetaan CPMK|Bloom|cpmk.*ai|ai.*cpmk' resources/js/pages/rps/show.tsx | head -n 500 || true
+          echo '--- routes ---'
+          grep -n -C 5 -E 'cpmk|bloom|ai' routes/web.php | head -n 400 || true
+          echo '--- RpsController ---'
+          grep -n -C 8 -E 'cpmk|bloom|review|mapping' app/Http/Controllers/RpsController.php | head -n 700 || true
