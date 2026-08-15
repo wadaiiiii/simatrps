@@ -210,3 +210,79 @@ section > details.group > summary > span > span:last-child {
 [data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"][data-active="true"] svg {
     color: #FFFFFF !important;
 }
+
+/*
+ * RPS print-preview consistency patch.
+ * Keep one readable type scale inside each official table, preserve hierarchy
+ * only for the document title, add two blank text lines before the weekly plan,
+ * and force every weekly/main table rule to use one uniform border weight.
+ */
+@media print {
+    html.rps-print-mode body .rps-print-main-table {
+        font-size: 10pt !important;
+        line-height: 1.22 !important;
+        border-collapse: collapse !important;
+        border-spacing: 0 !important;
+    }
+
+    html.rps-print-mode body .rps-print-main-table th,
+    html.rps-print-mode body .rps-print-main-table td {
+        font-size: 10pt !important;
+        line-height: 1.22 !important;
+        border: 1.2px solid #111827 !important;
+    }
+
+    html.rps-print-mode body .rps-print-main-table th > *,
+    html.rps-print-mode body .rps-print-main-table td > * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    /* Prevent the original label and its print alias from appearing together. */
+    html.rps-print-mode body .rps-print-main-table .rps-print-label {
+        font-size: 0 !important;
+        line-height: 1 !important;
+    }
+
+    html.rps-print-mode body .rps-print-main-table .rps-print-label > * {
+        font-size: 0 !important;
+        line-height: 1 !important;
+    }
+
+    html.rps-print-mode body .rps-print-main-table .rps-print-label::after {
+        display: inline-block !important;
+        white-space: pre-line !important;
+        font-size: 10pt !important;
+        line-height: 1.22 !important;
+        font-weight: inherit !important;
+    }
+
+    /* Keep the RPS title as the only intentional larger row in the main table. */
+    html.rps-print-mode body .rps-print-main-table > tbody > tr:first-child + tr th {
+        font-size: 12pt !important;
+        line-height: 1.15 !important;
+    }
+
+    html.rps-print-mode body .rps-print-weekly {
+        margin-top: 20pt !important;
+        font-size: 10pt !important;
+        line-height: 1.22 !important;
+        border-collapse: collapse !important;
+        border-spacing: 0 !important;
+    }
+
+    html.rps-print-mode body .rps-print-weekly thead th,
+    html.rps-print-mode body .rps-print-weekly tbody td,
+    html.rps-print-mode body .rps-print-weekly tfoot th,
+    html.rps-print-mode body .rps-print-weekly tfoot td {
+        font-size: 10pt !important;
+        line-height: 1.22 !important;
+        border: 1.2px solid #111827 !important;
+    }
+
+    html.rps-print-mode body .rps-print-weekly th > *,
+    html.rps-print-mode body .rps-print-weekly td > * {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+}
