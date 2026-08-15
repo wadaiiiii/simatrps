@@ -1,0 +1,167 @@
+name: Patch RPS Preview V4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-rps-preview-v4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-rps-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch preview behavior
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('resources/js/components/app-sidebar-header.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          pattern = re.compile(
+              r"        const relabelForPrint = \(.*?\n        \};\n\n        const tables =",
+              re.S,
+          )
+
+          replacement = r'''        const setPrintStyle = (
+            element: HTMLElement | null | undefined,
+            property: string,
+            value: string,
+        ) => {
+            if (!(element instanceof HTMLElement)) return;
+
+            const previousValue = element.style.getPropertyValue(property);
+            const previousPriority = element.style.getPropertyPriority(property);
+
+            element.style.setProperty(property, value, 'important');
+            cleanupActions.push(() => {
+                if (previousValue) {
+                    element.style.setProperty(property, previousValue, previousPriority);
+                } else {
+                    element.style.removeProperty(property);
+                }
+            });
+        };
+
+        const relabelForPrint = (
+            selector: string,
+            currentText: string,
+            printText: string,
+            all = false,
+        ) => {
+            const matches = Array.from(document.querySelectorAll<HTMLElement>(selector))
+                .filter((element) => normalizedText(element.textContent) === currentText);
+
+            const selected = all ? matches : matches.slice(0, 1);
+            selected.forEach((element) => {
+                const originalHtml = element.innerHTML;
+                const originalStyle = element.getAttribute('style');
+
+                element.textContent = printText;
+                element.style.setProperty('white-space', 'pre-line', 'important');
+
+                cleanupActions.push(() => {
+                    element.innerHTML = originalHtml;
+                    if (originalStyle === null) {
+                        element.removeAttribute('style');
+                    } else {
+                        element.setAttribute('style', originalStyle);
+                    }
+                });
+            });
+        };
+
+        const normalizeDocumentTable = (table: HTMLTableElement | undefined) => {
+            if (!table) return;
+
+            setPrintStyle(table, 'border-collapse', 'collapse');
+            setPrintStyle(table, 'border-spacing', '0');
+            setPrintStyle(table, 'border', '1.2px solid #111827');
+            setPrintStyle(table, 'font-family', "'Instrument Sans', Arial, sans-serif");
+            setPrintStyle(table, 'font-size', '10pt');
+            setPrintStyle(table, 'line-height', '1.22');
+
+            table.querySelectorAll<HTMLElement>('th, td').forEach((cell) => {
+                setPrintStyle(cell, 'border', '1.2px solid #111827');
+                setPrintStyle(cell, 'font-family', "'Instrument Sans', Arial, sans-serif");
+                setPrintStyle(cell, 'font-size', '10pt');
+                setPrintStyle(cell, 'line-height', '1.22');
+            });
+
+            table.querySelectorAll<HTMLElement>('th *, td *').forEach((child) => {
+                setPrintStyle(child, 'font-family', 'inherit');
+                setPrintStyle(child, 'font-size', 'inherit');
+                setPrintStyle(child, 'line-height', 'inherit');
+            });
+        };
+
+        const tables ='''
+
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Failed replacing preview helper block: {count}')
+
+          anchor = "        addClass(weeklyTable, 'rps-print-weekly');\n"
+          insertion = r'''        addClass(weeklyTable, 'rps-print-weekly');
+
+        normalizeDocumentTable(mainRpsTable);
+        normalizeDocumentTable(weeklyTable);
+
+        const mainTitleCell = mainRpsTable?.querySelector<HTMLElement>(
+            'tbody > tr:nth-child(2) th',
+        );
+        setPrintStyle(mainTitleCell, 'font-size', '12pt');
+        setPrintStyle(mainTitleCell, 'line-height', '1.15');
+
+        const weeklyWrapper = weeklyTable?.closest<HTMLElement>('div.overflow-x-auto');
+        if (weeklyWrapper?.parentElement) {
+            const spacer = document.createElement('div');
+            spacer.setAttribute('data-rps-print-weekly-spacer', 'true');
+            spacer.setAttribute('aria-hidden', 'true');
+            spacer.style.setProperty('display', 'block', 'important');
+            spacer.style.setProperty('width', '100%', 'important');
+            spacer.style.setProperty('height', '8mm', 'important');
+            spacer.style.setProperty('min-height', '8mm', 'important');
+            weeklyWrapper.parentElement.insertBefore(spacer, weeklyWrapper);
+            cleanupActions.push(() => spacer.remove());
+        }
+'''
+          if text.count(anchor) != 1:
+              raise SystemExit(f'Expected weekly class anchor once, found {text.count(anchor)}')
+          text = text.replace(anchor, insertion, 1)
+
+          text = text.replace(
+              "relabelForPrint('td', 'Deskripsi Singkat MK', 'Diskripsi Singkat\\nMata Kuliah');",
+              "relabelForPrint('td', 'Deskripsi Singkat MK', 'Deskripsi Singkat\\nMata Kuliah');",
+              1,
+          )
+
+          # Preserve the original two-level Bahan Kajian label. Its child text will
+          # inherit the same 10pt size through normalizeDocumentTable().
+          text = text.replace(
+              "        relabelForPrint('td', 'Bahan Kajian: Materi Pembelajaran', 'Bahan Kajian /\\nMateri Pembelajaran');\n",
+              "",
+              1,
+          )
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- resources/js/components/app-sidebar-header.tsx; then
+            echo "No change required"
+            exit 0
+          fi
+          git config user.name "SiMatRPS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add resources/js/components/app-sidebar-header.tsx
+          git commit -m "Make RPS preview typography spacing and borders deterministic"
+          git push origin HEAD:main
