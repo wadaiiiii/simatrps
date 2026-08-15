@@ -9,14 +9,11 @@
     }
   },
   "buildCommand": "npm run build",
+  "outputDirectory": "public/build",
   "routes": [
     {
       "src": "/build/(.*)",
-      "dest": "/public/build/$1"
-    },
-    {
-      "src": "/(.*\\.(?:css|js|mjs|map|png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|otf|pdf|txt|xml|webmanifest))",
-      "dest": "/public/$1"
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
