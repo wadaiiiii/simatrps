@@ -1,0 +1,109 @@
+/* SiMatRPS UI/UX Premium Theme
+   Brand anchor: Teal #008080
+   Supporting palette: cyan, sky, amber, slate
+*/
+
+:root {
+    --sim-primary: #008080;
+    --sim-primary-700: #006D6D;
+    --sim-primary-800: #075D5D;
+    --sim-primary-soft: #E8F7F6;
+    --sim-primary-soft-2: #D7F1EF;
+
+    --sim-cyan: #06B6D4;
+    --sim-sky: #0EA5E9;
+    --sim-amber: #F59E0B;
+    --sim-emerald: #10B981;
+    --sim-rose: #F43F5E;
+
+    --sim-ink: #0F172A;
+    --sim-muted: #64748B;
+    --sim-bg: #F6FAFB;
+    --sim-card: #FFFFFF;
+    --sim-border: #DCE9EB;
+}
+
+:root,
+.dark {
+    --background: #F6FAFB;
+    --foreground: #0F172A;
+
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+
+    --primary: #008080;
+    --primary-foreground: #FFFFFF;
+
+    --secondary: #E8F7F6;
+    --secondary-foreground: #075D5D;
+
+    --muted: #F0F6F7;
+    --muted-foreground: #64748B;
+
+    --accent: #DDF4F2;
+    --accent-foreground: #075D5D;
+
+    --destructive: #E11D48;
+    --destructive-foreground: #FFFFFF;
+
+    --border: #DCE9EB;
+    --input: #DCE9EB;
+    --ring: #0EA5A4;
+
+    --sidebar: #F1F9F9;
+    --sidebar-foreground: #0F172A;
+    --sidebar-primary: #008080;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #DDF4F2;
+    --sidebar-accent-foreground: #075D5D;
+    --sidebar-border: #D7E9EA;
+    --sidebar-ring: #0EA5A4;
+}
+
+body {
+    background:
+        radial-gradient(circle at 15% 10%, rgba(0,128,128,.08), transparent 24rem),
+        radial-gradient(circle at 85% 0%, rgba(14,165,233,.07), transparent 22rem),
+        #F6FAFB;
+    color: #0F172A;
+}
+
+::selection {
+    background: rgba(0,128,128,.20);
+}
+
+.sim-surface {
+    background: rgba(255,255,255,.92);
+    border: 1px solid #DCE9EB;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .05);
+    backdrop-filter: blur(10px);
+}
+
+.sim-card-hover {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.sim-card-hover:hover {
+    transform: translateY(-2px);
+    border-color: #B8DADB;
+    box-shadow: 0 14px 34px rgba(0,128,128,.08);
+}
+
+.sim-gradient-brand {
+    background:
+        radial-gradient(circle at 85% 20%, rgba(255,255,255,.19), transparent 15rem),
+        linear-gradient(135deg, #006D6D 0%, #008080 48%, #0EA5A4 100%);
+}
+
+.sim-badge {
+    border: 1px solid rgba(0,128,128,.16);
+    background: rgba(232,247,246,.88);
+    color: #075D5D;
+}
+
+.sim-accent-line {
+    background: linear-gradient(90deg, #008080, #06B6D4, #F59E0B);
+}

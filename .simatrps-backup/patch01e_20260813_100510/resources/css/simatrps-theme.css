@@ -1,0 +1,129 @@
+/* SiMatRPS Patch 01D - Elegant Blue Theme */
+
+:root {
+    --sim-ink: #0f172a;
+    --sim-muted: #64748b;
+    --sim-bg: #edf4fb;
+    --sim-bg-2: #e6eef8;
+    --sim-surface: rgba(235, 244, 253, 0.88);
+    --sim-surface-strong: #f4f8fd;
+    --sim-border: #cfdbeb;
+
+    --sim-blue-950: #0b132b;
+    --sim-blue-900: #102542;
+    --sim-blue-800: #163a63;
+    --sim-blue-700: #1f5d99;
+    --sim-blue-600: #2a7bc7;
+    --sim-blue-500: #55a6f2;
+    --sim-blue-soft: #dcecff;
+    --sim-blue-soft-2: #cfe4fb;
+    --sim-accent: #8fd0ff;
+}
+
+:root,
+.dark {
+    --background: #edf4fb;
+    --foreground: #0f172a;
+
+    --card: #f6f9fd;
+    --card-foreground: #0f172a;
+
+    --popover: #f8fbff;
+    --popover-foreground: #0f172a;
+
+    --primary: #1f5d99;
+    --primary-foreground: #ffffff;
+
+    --secondary: #ddeaf8;
+    --secondary-foreground: #163a63;
+
+    --muted: #eaf1f8;
+    --muted-foreground: #64748b;
+
+    --accent: #d7e8fa;
+    --accent-foreground: #163a63;
+
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+
+    --border: #cfdbeb;
+    --input: #cfdbeb;
+    --ring: #55a6f2;
+
+    --sidebar: #e8f0fa;
+    --sidebar-foreground: #102542;
+    --sidebar-primary: #163a63;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #d8e8f8;
+    --sidebar-accent-foreground: #163a63;
+    --sidebar-border: #cfdbeb;
+    --sidebar-ring: #55a6f2;
+}
+
+body {
+    background:
+        radial-gradient(circle at 10% 0%, rgba(85, 166, 242, .16), transparent 24rem),
+        radial-gradient(circle at 100% 0%, rgba(31, 93, 153, .10), transparent 24rem),
+        linear-gradient(180deg, #eef5fc 0%, #eaf2fb 55%, #e6eef8 100%);
+    color: #0f172a;
+}
+
+::selection {
+    background: rgba(42, 123, 199, .18);
+}
+
+.sim-surface {
+    background: rgba(240, 246, 253, .74);
+    border: 1px solid #cfdbeb;
+    box-shadow: 0 14px 40px rgba(16, 37, 66, .07);
+    backdrop-filter: blur(14px);
+}
+
+.sim-card-hover {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.sim-card-hover:hover {
+    transform: translateY(-2px);
+    border-color: #bfd2e8;
+    box-shadow: 0 18px 42px rgba(31, 93, 153, .12);
+}
+
+.sim-gradient-brand {
+    background:
+        radial-gradient(circle at 82% 20%, rgba(255,255,255,.16), transparent 14rem),
+        radial-gradient(circle at 18% 90%, rgba(143,208,255,.16), transparent 14rem),
+        linear-gradient(135deg, #0B132B 0%, #102542 20%, #163A63 52%, #1F5D99 78%, #55A6F2 100%);
+}
+
+.sim-gradient-chip {
+    background: linear-gradient(135deg, rgba(31,93,153,.08), rgba(85,166,242,.12));
+    border: 1px solid rgba(31,93,153,.12);
+    color: #163a63;
+}
+
+.sim-gradient-line {
+    background: linear-gradient(90deg, #0B132B 0%, #163A63 30%, #1F5D99 70%, #55A6F2 100%);
+}
+
+.sim-button-primary {
+    background: linear-gradient(135deg, #163A63 0%, #1F5D99 65%, #55A6F2 100%);
+    color: white;
+    box-shadow: 0 12px 26px rgba(31, 93, 153, .22);
+}
+
+.sim-button-primary:hover {
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+}
+
+.sim-step-card {
+    background: rgba(246, 250, 255, .86);
+    border: 1px solid #d8e3f1;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, .045);
+}
+
+.sim-step-number {
+    background: linear-gradient(135deg, rgba(31,93,153,.08), rgba(85,166,242,.16));
+    color: #1f5d99;
+}

@@ -1,0 +1,1556 @@
+[
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 1,
+    "title": "Kontrak Perkuliahan"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 2,
+    "title": "Agama dan Pedoman Hidup"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 3,
+    "title": "Pengertian Agama"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 4,
+    "title": "Fungsi agama"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 5,
+    "title": "Al-qur’an sebagai ajaran islam yang utama"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 6,
+    "title": "Ijtihad"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 7,
+    "title": "Syariat"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "source_entry_no": 1,
+    "sequence_no": 8,
+    "title": "Akhlak."
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 1,
+    "title": "Sejarah perkembangan bahasa Indonesia, kedudukan, dan fungsi bahasa Indonesia"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 2,
+    "title": "Ragam Bahasa"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 3,
+    "title": "Bahasa Indonesia yang baik dan benar"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 4,
+    "title": "Ejaan yang Disempurnakan"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 5,
+    "title": "Diksi"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 6,
+    "title": "Kalimat"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 7,
+    "title": "Paragraph"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 8,
+    "title": "Kutipan dan daftar pustaka"
+  },
+  {
+    "system_code": "USB071224",
+    "source_entry_no": 2,
+    "sequence_no": 9,
+    "title": "Karya tulis ilmiah"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 1,
+    "title": "Pengantar Pendidikan Pancasila"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 2,
+    "title": "Pancasila dalam kajian sejarah bangsa Indonesia"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 3,
+    "title": "Pancasila sebagai dasar negara"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 4,
+    "title": "Pancasila sebagai ideologi nasional"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 5,
+    "title": "Pancasila sebagai sistem filsafat"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 6,
+    "title": "Pancasila sebagai sistem etika, dan"
+  },
+  {
+    "system_code": "USB081224",
+    "source_entry_no": 3,
+    "sequence_no": 7,
+    "title": "Pancasila sebagai dasar nilai pengembangan ilmu."
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 1,
+    "title": "Pancasila: Sejarah, Nilai-nilai Dasar, dan Tujuan Nasional"
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 2,
+    "title": "Konstitusi Negara Republik Indonesia Tahun 1945 dan Amandemennya"
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 3,
+    "title": "Demokrasi Pancasila"
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 4,
+    "title": "Hak dan Kewajiban Warga Negara"
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 5,
+    "title": "Bela Negara dan Pengabdian kepada Masyarakat"
+  },
+  {
+    "system_code": "USB091224",
+    "source_entry_no": 4,
+    "sequence_no": 6,
+    "title": "Isu dan Permasalahan Aktual yang Dihadapi Bangsa dan Negara."
+  },
+  {
+    "system_code": "USB101224",
+    "source_entry_no": 5,
+    "sequence_no": 1,
+    "title": "Wawasan Sosial Budaya mencakup : Manusia dan kebudayaan, budaya lokal dan budaya nasional, unsur-unsur kebudayaan, wujud kebudayaan, pranata kebudayaan, persebaran kebudayaan, akulturasi kebudayaan,"
+  },
+  {
+    "system_code": "USB101224",
+    "source_entry_no": 5,
+    "sequence_no": 2,
+    "title": "Wawasan IPTEK mencakup hakikat sumber iptek, ilmu pengetahuan dan iptek, dampak perkembangan iptek serta integritas dan etika dalam iptek."
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 1,
+    "title": "Pengenalan diri dalam bahasa Inggris"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 2,
+    "title": "Jenis parts of speech"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 3,
+    "title": "Frase"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 4,
+    "title": "Klause"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 5,
+    "title": "Kalimat"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 6,
+    "title": "Tenses"
+  },
+  {
+    "system_code": "USB111224",
+    "source_entry_no": 6,
+    "sequence_no": 7,
+    "title": "Teks Bacaan"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 1,
+    "title": "Persamaan Linear;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 2,
+    "title": "Persamaan Kuadrat;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 3,
+    "title": "Fungsi Kuadrat;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 4,
+    "title": "Suku Banyak;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 5,
+    "title": "Fungsi Rasional;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 6,
+    "title": "Persamaan dan Pertidaksamaan Eksponensial;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 7,
+    "title": "Grafik Eksponensial;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 8,
+    "title": "Persamaan dan Pertidaksamaan Logaritma;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 9,
+    "title": "Grafik Logaritma;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 10,
+    "title": "Barisan dan Deret Aritmatika;"
+  },
+  {
+    "system_code": "FMI011325",
+    "source_entry_no": 7,
+    "sequence_no": 11,
+    "title": "Barisan dan Deret Geometri."
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 1,
+    "title": "Hakikat Ilmu Alamiah Dasar, metode ilmiah, perkembangan sains dan teknologi"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 2,
+    "title": "Konsep dasar biologi, organisasi kehidupan, sel dan jaringan"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 3,
+    "title": "Keanekaragaman hayati, genetika dasar, evolusi dan ekologi"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 4,
+    "title": "Energi dalam sistem biologis dan keterkaitannya dengan pemodelan matematika"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 5,
+    "title": "Besaran, satuan, pengukuran, dan analisis dimensi"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 6,
+    "title": "Gerak, gaya, hukum Newton, dan aplikasinya"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 7,
+    "title": "Energi, usaha, momentum, serta hukum kekekalan energi"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 8,
+    "title": "Struktur atom dan sistem periodik unsur"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 9,
+    "title": "Ikatan kimia dan struktur molekul"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 10,
+    "title": "Reaksi kimia, stoikiometri, dan hukum dasar kimia"
+  },
+  {
+    "system_code": "FMI021325",
+    "source_entry_no": 8,
+    "sequence_no": 11,
+    "title": "Larutan, asam-basa, dan kesetimbangan kimia"
+  },
+  {
+    "system_code": "MAT011225",
+    "source_entry_no": 9,
+    "sequence_no": 1,
+    "title": "Logika Matematika: Kalimat Deklaratif; Kata Penghubung Kalimat. Kalimat Majemuk (konjungsi, disjungsi, implikasi, biimplikasi), Tabel Nilai Kebenaran, Ingkaran kalimat, Konvers, Invers, Kontraposisi; Tautologi, Metode Pembuktian: langsung, tak langsung, Kuantor Universal dan Eksistensial)."
+  },
+  {
+    "system_code": "MAT011225",
+    "source_entry_no": 9,
+    "sequence_no": 2,
+    "title": "Himpunan: Operasi Himpunan dan Sifat-sifatnya."
+  },
+  {
+    "system_code": "MAT011225",
+    "source_entry_no": 9,
+    "sequence_no": 3,
+    "title": "Relasi dan Fungsi: hasil kali Cartesius, relasi ekuivalensi, poset, fungsi injektif, surjektif, dan bijektif."
+  },
+  {
+    "system_code": "MAT011225",
+    "source_entry_no": 9,
+    "sequence_no": 4,
+    "title": "Himpunan Tak hingga: Kardinalitas suatu himpunan, Aleph Null, Aleph, Aritmatika Kardinalitas, Urutan Kardinalitas."
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 1,
+    "title": "Sistem bilangan real beserta sifat-sifatnya, nilai mutlak dan pertidaksamaan;"
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 2,
+    "title": "Fungsi beserta sifat-sifatnya, system koordinat kartesius dan grafik fungsi;"
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 3,
+    "title": "Limit: Definisi dan sifat-sifatnya;"
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 4,
+    "title": "Kekontinuan: Definisi dan sifat-sifatnya;"
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 5,
+    "title": "Turunan: Definisi dan sifat-sifatnya, turunan fungsi implisit, turunan fungsi trigonometri, turunan fungsi eksponensial, turunan fungsi logaritma dan hiperbolik;"
+  },
+  {
+    "system_code": "MAT021325",
+    "source_entry_no": 10,
+    "sequence_no": 6,
+    "title": "Aplikasi Turunan: menentukan nilai maksimum/minimum, naik/turun, cembung/cekung, titik stasioner, dan masalah nilai ekstrem dalam kehidupan nyata."
+  },
+  {
+    "system_code": "MAT052325",
+    "source_entry_no": 11,
+    "sequence_no": 1,
+    "title": "Integral tak Tentu: pengertian, sifat-sifat, dan teknik pengintegralan;"
+  },
+  {
+    "system_code": "MAT052325",
+    "source_entry_no": 11,
+    "sequence_no": 2,
+    "title": "Integral Tentu: Definisi, Teorema Fundamental Kalkulus dan sifat-sifatnya;"
+  },
+  {
+    "system_code": "MAT052325",
+    "source_entry_no": 11,
+    "sequence_no": 3,
+    "title": "Penerapan Integral:Luas bidang datar, volume benda putar, panjang busur, dan pusat massa;"
+  },
+  {
+    "system_code": "MAT052325",
+    "source_entry_no": 11,
+    "sequence_no": 4,
+    "title": "Fungsi Transenden: Fungsi Logaritma Natural, Fungsi Eksponensial, Fungsi trigonometri, dan Fungsi Hiperbolik;"
+  },
+  {
+    "system_code": "MAT052325",
+    "source_entry_no": 11,
+    "sequence_no": 5,
+    "title": "Bentuk Tak Tentu dan Integral Tak wajar."
+  },
+  {
+    "system_code": "MAT083325",
+    "source_entry_no": 12,
+    "sequence_no": 1,
+    "title": "Barisan dan Deret Tak-Terhingga: Definis barisan dan deret, Uji kekonvergenan deret, Deret pangkat, Deret Taylor dan Deret Maclaurin;"
+  },
+  {
+    "system_code": "MAT083325",
+    "source_entry_no": 12,
+    "sequence_no": 2,
+    "title": "Limit dan kekontinuan fungsi dua variable atau lebih;"
+  },
+  {
+    "system_code": "MAT083325",
+    "source_entry_no": 12,
+    "sequence_no": 3,
+    "title": "Turunan Fungsi Dua Variabel atau Lebih: definsi dan sifat-sifatnya, dan Turunan parsial;"
+  },
+  {
+    "system_code": "MAT083325",
+    "source_entry_no": 12,
+    "sequence_no": 4,
+    "title": "Penggunaan turunan parsial untuk menyelesaikan masalah dalam matematika yang meliputi masalah optimasi dan deret Taylor."
+  },
+  {
+    "system_code": "MAT164325",
+    "source_entry_no": 13,
+    "sequence_no": 1,
+    "title": "Integral Lipat: Integral Lipat Dua, Integral lipat tiga, serta aplikasinya;"
+  },
+  {
+    "system_code": "MAT164325",
+    "source_entry_no": 13,
+    "sequence_no": 2,
+    "title": "Kalkulus Vektor: parameterisasi lintasan, integral garis, parameterisasi permukaan, integral permukaan, teorema Green, Teorema Divergensi, dan Teorema Stokes."
+  },
+  {
+    "system_code": "MAT113325",
+    "source_entry_no": 14,
+    "sequence_no": 1,
+    "title": "Geometri bidang: Sistem koordinat Cartesius dan polar (kutub), tempat kedudukan titik, persamaan garis, pengertian dua garis sejajar dan tegak lurus, sudut antara dua garis, jarak titik ke garis, persamaan irisan kerucut (elips, parabol, dan hiperbol), fungsi parameter, transformasi koordinat, vektor pada bidang;"
+  },
+  {
+    "system_code": "MAT113325",
+    "source_entry_no": 14,
+    "sequence_no": 2,
+    "title": "Geometri ruang: persamaan bidang, pengertian sejajar dan tegak lurus, jarak titik ke bidang, persamaan garis, persamaan luasan, irisan dua luasan, sistem koordinat (meliputi Cartesius, tabung, bola)."
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 1,
+    "title": "Sistem bilangan kompleks: aljabar dan geometri bilangan kompleks, akar bilangan kompleks, daerah di bidang komplek;"
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 2,
+    "title": "Fungsi Analitik: Fungsi Kompleks, limit, kekontinuan, diferensial, persamaan Cauchy-Riemann, fungsi analitik, fungsi harmonic;"
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 3,
+    "title": "Fungsi Elementer: Fungsi pangkat, fungsi logaritma dan eksponen kompleks, fungsi trigonometi dan hiperbolik kompleks beserta sifat-sifatnya;"
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 4,
+    "title": "Integral Kompleks: : lintasan di bidang kompleks, daerah terhubung sederhana, integral garis, kebergantungan terhadap lintasan, sifat-sifat integral kompleks; teorema Integral Cauchy; teorema integral Cauchy, teorema annulus;"
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 5,
+    "title": "Barisan dan Deret: deret pangkat, daerah kekonvergenan, deret Taylor, deret Laurent"
+  },
+  {
+    "system_code": "MAT174325",
+    "source_entry_no": 15,
+    "sequence_no": 6,
+    "title": "Residu dan Kutub: residu, Teorema residu, residu di kutub, nilai nol dan kutub tingkat m, integral real tak wajar, integral tertentu terkait fungsi sinus/cosinus."
+  },
+  {
+    "system_code": "MAT204325",
+    "source_entry_no": 16,
+    "sequence_no": 1,
+    "title": "Sistem bilangan real: sifat lapangan, sifat urutan, nilai mutlak, sifat kelengkapan ℝ;"
+  },
+  {
+    "system_code": "MAT204325",
+    "source_entry_no": 16,
+    "sequence_no": 2,
+    "title": "Topologi pada ℝ: Himpunan buka, bimpunan tertutup, selang/interval susut, himpunan kompak;"
+  },
+  {
+    "system_code": "MAT204325",
+    "source_entry_no": 16,
+    "sequence_no": 3,
+    "title": "Barisan: Kekonvergenan, Barisan Cauchy dan hubungannya dengan barisan konvergen;"
+  },
+  {
+    "system_code": "MAT204325",
+    "source_entry_no": 16,
+    "sequence_no": 4,
+    "title": "Limit fungsi: limit fungsi dan sifat-sifatnya;"
+  },
+  {
+    "system_code": "MAT204325",
+    "source_entry_no": 16,
+    "sequence_no": 5,
+    "title": "Kekontinuan fungsi: kekontinuan suatu fungsi dan sifat-sifatnya, utamanya pada suatu interval, fungsi kontinu seragam, fungsi monoton, fungsi invers, aproksimasi."
+  },
+  {
+    "system_code": "MAT245225",
+    "source_entry_no": 17,
+    "sequence_no": 1,
+    "title": "Derivatif: pengertian dan sifat-sifatnya, Teorema Rolle, Teorema Nilai Rata- Rata, dan Teorema Taylor;"
+  },
+  {
+    "system_code": "MAT245225",
+    "source_entry_no": 17,
+    "sequence_no": 2,
+    "title": "Integral: Integral Riemann, integral Riemann-Stieltjes dan sifat-sifatnya, Teorema Fundamental Kalkulus;"
+  },
+  {
+    "system_code": "MAT245225",
+    "source_entry_no": 17,
+    "sequence_no": 3,
+    "title": "Barisan dan deret fungsi: kekonvergenan dan sifat-sifatnya, kekonvergenan seragam dan pemakaiannya."
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 1,
+    "title": "Pengertian topologi dan ruang topologi;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 2,
+    "title": "impunan terbuka di ruang topologi: titik interior, titik eksterior, dan sifat- sifatnya;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 3,
+    "title": "himpunan tertutup di ruang topologi: titik limit, titik batas, Closure;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 4,
+    "title": "ruang bagian topologi, topologi relatif, himpunan tertutup di ruang bagian;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 5,
+    "title": "Basis dan subbasis dari suatu ruang topologi;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 6,
+    "title": "pemetaan kontinu di ruang topologi, homeomorfisma dan ruang berhingga;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 7,
+    "title": "kekompakan di ruang topologi;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 8,
+    "title": "keterhubungan dan himpunan terhubung;"
+  },
+  {
+    "system_code": "MAT425325",
+    "source_entry_no": 18,
+    "sequence_no": 9,
+    "title": "Jenis-jenis ruang topologi, khususnya ruang Hausdorff."
+  },
+  {
+    "system_code": "MAT466225",
+    "source_entry_no": 19,
+    "sequence_no": 1,
+    "title": "Ruang bernorma, ruang Banach dan operator linear"
+  },
+  {
+    "system_code": "MAT466225",
+    "source_entry_no": 19,
+    "sequence_no": 2,
+    "title": "Ruang hasil kali dalam dan ruang Hilbert"
+  },
+  {
+    "system_code": "MAT466225",
+    "source_entry_no": 19,
+    "sequence_no": 3,
+    "title": "Himpunan dan barisan ortogonal"
+  },
+  {
+    "system_code": "MAT466225",
+    "source_entry_no": 19,
+    "sequence_no": 4,
+    "title": "Himpunan dan barisan ortonormal"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 1,
+    "title": "Sistem persamaa linear"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 2,
+    "title": "Matriks dan Operasinya"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 3,
+    "title": "Vektor di ℝ! , ℝ\""
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 4,
+    "title": "Perumuman vector di ℝ#"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 5,
+    "title": "Hasil kali dalam pada ℝ! , ℝ\" dan ℝ#"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 6,
+    "title": "Nilai eigen dan vector eigen"
+  },
+  {
+    "system_code": "MAT062325",
+    "source_entry_no": 20,
+    "sequence_no": 7,
+    "title": "Transformasi linear"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 1,
+    "title": "Ruang vector atas ℝ"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 2,
+    "title": "Basis, dimensi, rank"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 3,
+    "title": "Ruang baris/kolom"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 4,
+    "title": "Ruang hasil kali dalam"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 5,
+    "title": "Norm"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 6,
+    "title": "ortogonalitas"
+  },
+  {
+    "system_code": "MAT123325",
+    "source_entry_no": 21,
+    "sequence_no": 7,
+    "title": "Proses Gramm-Scmidth"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 1,
+    "title": "Operasi Biner"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 2,
+    "title": "Grup"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 3,
+    "title": "Grup Siklik"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 4,
+    "title": "Grup Permutasi dan Grup Dehidral"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 5,
+    "title": "Subgrup"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 6,
+    "title": "Subgrup Normal"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 7,
+    "title": "Teorema Lagrange"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 8,
+    "title": "Grup Kuosien"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 9,
+    "title": "Grup Homomorfisma"
+  },
+  {
+    "system_code": "MAT193325",
+    "source_entry_no": 22,
+    "sequence_no": 10,
+    "title": "Teorema Isomorfisma Grup"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 1,
+    "title": "Ring"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 2,
+    "title": "Homomorfisma Ring"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 3,
+    "title": "Ring Kuosien"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 4,
+    "title": "Daerah Integral"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 5,
+    "title": "Lapangan"
+  },
+  {
+    "system_code": "MAT235325",
+    "source_entry_no": 23,
+    "sequence_no": 6,
+    "title": "Ring Polinomial"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 1,
+    "title": "Permutasi dan Kombinasi"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 2,
+    "title": "Teorema Binomial"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 3,
+    "title": "Prinsip Inklusi dan Eksklusi"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 4,
+    "title": "Prinsip satang merpati"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 5,
+    "title": "Fungsi pembangkit"
+  },
+  {
+    "system_code": "MAT102325",
+    "source_entry_no": 24,
+    "sequence_no": 6,
+    "title": "Relasi rekurensi"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 1,
+    "title": "Sifat-sifat Bilangan Bulat"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 2,
+    "title": "Induksi Matematika"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 3,
+    "title": "Keterbagian"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 4,
+    "title": "FPB dan KPK"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 5,
+    "title": "Algoritma Euclid"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 6,
+    "title": "Bilangan prima dan faktorisasi prima"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 7,
+    "title": "Representasi Bilangan Buat"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 8,
+    "title": "Kekongruenan modulo m"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 9,
+    "title": "Persamaan Diophantine dan Pell"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 10,
+    "title": "Perkongruenan dan aplikasinya"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 11,
+    "title": "Teorema Ferma dan Wilson"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 12,
+    "title": "Fungsi τ dan σ"
+  },
+  {
+    "system_code": "MAT273324",
+    "source_entry_no": 25,
+    "sequence_no": 13,
+    "title": "Teorema Euler dan Akar Primitif"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 1,
+    "title": "Definisi Graf"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 2,
+    "title": "Sifat-Sifat Graf"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 3,
+    "title": "Jenis-Jenis Graf"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 4,
+    "title": "Graf hamiltonian dan eulerian"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 5,
+    "title": "Lemma jabat tangan"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 6,
+    "title": "Teorema kuratowski"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 7,
+    "title": "Graf Pohon"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 8,
+    "title": "Graf Planar"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 9,
+    "title": "Algoritma Greedy"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 10,
+    "title": "Jalur terpendek"
+  },
+  {
+    "system_code": "MAT334325",
+    "source_entry_no": 26,
+    "sequence_no": 11,
+    "title": "Pelabelan total tak reguler sisi"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 1,
+    "title": "Penentuan Persamaan Kurva yang Melewati Beberapa Titik"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 2,
+    "title": "Rantai Markov"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 3,
+    "title": "Pendekatan Kuadrat Terkecil"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 4,
+    "title": "Jaringan Listrik"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 5,
+    "title": "Interpolasi Splin Kubus"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 6,
+    "title": "Model Ekonomi Leontief"
+  },
+  {
+    "system_code": "MAT364325",
+    "source_entry_no": 27,
+    "sequence_no": 7,
+    "title": "Pengelolaan Hutan"
+  },
+  {
+    "system_code": "MAT486325",
+    "source_entry_no": 28,
+    "sequence_no": 1,
+    "title": "Kriptografi dan aplikasinya di kehidupan sehari-hari"
+  },
+  {
+    "system_code": "MAT486325",
+    "source_entry_no": 28,
+    "sequence_no": 2,
+    "title": "Beberapa jenis algoritma kriptografi klasik"
+  },
+  {
+    "system_code": "MAT486325",
+    "source_entry_no": 28,
+    "sequence_no": 3,
+    "title": "Cipher yang tak dapat dipecahkan"
+  },
+  {
+    "system_code": "MAT486325",
+    "source_entry_no": 28,
+    "sequence_no": 4,
+    "title": "Steganografi dan watermarking"
+  },
+  {
+    "system_code": "MAT486325",
+    "source_entry_no": 28,
+    "sequence_no": 5,
+    "title": "Beberapa jenis algoritma kriptografi modern: RSA dan Knapsack"
+  },
+  {
+    "system_code": "MAT446325",
+    "source_entry_no": 29,
+    "sequence_no": 1,
+    "title": "Pengertian Modul, Submodul, Generator, Hasil tambah langsung, Modul Faktor, Homomorfisma modul. Teorema Utama Homomorfisma Modul. Modul yang dibangun secara berhingga. Modul atas Daerah Ideal Utama. Annihilator. Modul Torsi, Modul bebas torsi, Modul Bebas, dan Modul Proyektif. Pengenalan Barisan Eksak. Manfred Droste, Laszio Fuchs, Brendan Goldsmith, Lutz Strungmann, 2017, Groups, Modules, and Model TheorySurvey and Recent Developments, Springer International Publishing AG."
+  },
+  {
+    "system_code": "MAT072225",
+    "source_entry_no": 30,
+    "sequence_no": 1,
+    "title": "Pengantar masalah pemrograman linear, Metode grafik, Metode simpleks, Analisis sensitivitas, Dualitas"
+  },
+  {
+    "system_code": "MAT133325",
+    "source_entry_no": 31,
+    "sequence_no": 1,
+    "title": "Pengenalan PD, PDB Orde 1, PDB Orde 2 dan Tinggi, PDB Tak Homogen dan Penggungaan PDB."
+  },
+  {
+    "system_code": "MAT184325",
+    "source_entry_no": 32,
+    "sequence_no": 1,
+    "title": "Pengantar Persamaan Diferensial Parsial, PD Transport, PD Gelombang, Metode d’Alembert, PD Difusi, Transformasi Fourier, Metode Pemisahan Variabel, Masalah Syarat Batas, dan Metode Beda Hingga."
+  },
+  {
+    "system_code": "MAT314225",
+    "source_entry_no": 33,
+    "sequence_no": 1,
+    "title": "Definisi syarat batas dan solusi masalah syarat batas persamaan diferensial biasa, Solusi deret pangkat, Titik singular dan titik biasa, Masalah syarat batas Sturm- Liouville, Metode Shooting, Transformasi Laplace."
+  },
+  {
+    "system_code": "MAT153325",
+    "source_entry_no": 34,
+    "sequence_no": 1,
+    "title": "Galat, Solusi numerik persamaan tak linier, Solusi numerik sistem persamaan tak linier, Solusi numerik sistem persamaan linier, Pendekatan fungsi dengan interpolasi, Turunan numerik, Integral numerik, Solusi numerik masalah nilai awal persamaan diferensial biasa."
+  },
+  {
+    "system_code": "MAT215325",
+    "source_entry_no": 35,
+    "sequence_no": 1,
+    "title": "Teori dasar pemodelan matematika, Pemodelan matematika dengan menggunakan persamaan beda, Pemodelan matematika dengan menggunakan persamaan diferensial biasa"
+  },
+  {
+    "system_code": "MAT496225",
+    "source_entry_no": 36,
+    "sequence_no": 1,
+    "title": "Pada matakuliah ini dibahas pengertian/konsep epidemiologi dan pengukurannya, model dasar susceptible infectious removed (SIR) dan pengembangannya. Model yang dibahas meliputi model penyakit menular seksual seperti HIV-AIDS, gonore, dan sifilis; model penyakit tular vektor seperti demam berdarah, filariasis, dan malaria; model penyakit tular lingkungan seperti schistosomiasis, disentri, dan leptospirosis; model penyakit tak menular seperti obesitas, diabetes, dan kanker; dan model epidemi masalah sosial seperti masalah penyalahgunaan narkoba, perundungan, dan penyebaran informasi hoax. Simulasi komputer dilakukan untuk mendapatkan solusi numerik dan grafis untuk model-model ini."
+  },
+  {
+    "system_code": "MAT324225",
+    "source_entry_no": 37,
+    "sequence_no": 1,
+    "title": "Pendahuluan tentang matematika komputasi, Sintaks dasar MATLAB, Pendefinisian data MATLAB, Operasi matematika, Data matriks, Teknik manipulasi data matriks, Mengakses data matriks, Fungsi matematika, Teknik visualisasi data, Visualisasi data dengan grafik fungsi, Visualisasi data 2 Dimensi, Visualisasi data 3 Dimensi, Teknik input data, Teknik dasar komputasi, Struktur pengambilan keputusan, Membuat algoritma dan program untuk menyelesaikan masalah faktorial, permutasi, deret fibonachi, Struktur pengulangan dengan If dan For, Struktur pengulangan dengan While, Penyelesaian SPL simultan, Penyelesaian persamaan non-linear, Integrasi, dan Interpolasi.."
+  },
+  {
+    "system_code": "MAT436225",
+    "source_entry_no": 38,
+    "sequence_no": 1,
+    "title": "Pengantar kuliah dinamika populasi, Model interaksi spesies."
+  },
+  {
+    "system_code": "MAT456325",
+    "source_entry_no": 39,
+    "sequence_no": 1,
+    "title": "Definisi dan terminologi dasar sistem dinamik, Sistem dinamik linear, Sistem dinamik tak linear, Kestabilan titik kesetimbangan, Kriteria Routh-Huwitz, Bifurkasi"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 1,
+    "title": "Pengantar Optimasi (Definisi dan konsep dasar optimasi, Klasifikasi masalah optimasi (linier, non-linier, integer, constraint, dll.), Aplikasi optimasi dalam dunia nyata);"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 2,
+    "title": "Optimasi Tanpa Kendala (Metode pencarian garis (line search), Metode Newton, Metode kuadrat terkecil (least squares));"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 3,
+    "title": "Optimasi dengan Kendala ( Metode Lagrange multiplier, Program linear, Metode Simplex, KKT conditions);"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 4,
+    "title": "Optimasi Non-Linier ( Metode gradien turun (gradient descent), Metode Newton untuk fungsi non-linier, Algoritma evolusioner (genetic algorithm, particle swarm optimization));"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 5,
+    "title": "Optimasi Kombinatorial (Masalah knapsack, Travelling salesman problem, Branch and bound);"
+  },
+  {
+    "system_code": "MAT354325",
+    "source_entry_no": 40,
+    "sequence_no": 6,
+    "title": "Optimasi Stokastik (Stochastic gradient descent, Reinforcement learning)"
+  },
+  {
+    "system_code": "MAT375325",
+    "source_entry_no": 41,
+    "sequence_no": 1,
+    "title": "Model Deterministik: Program Linier, Transportasi dan Penugasan, Teori Graf, Network Flow"
+  },
+  {
+    "system_code": "MAT375325",
+    "source_entry_no": 41,
+    "sequence_no": 2,
+    "title": "Model Stokastik: Teori Antrian, Simulasi"
+  },
+  {
+    "system_code": "MAT375325",
+    "source_entry_no": 41,
+    "sequence_no": 3,
+    "title": "Metode Optimasi: Heuristik dan Metaheuristik, Algoritma Genetika, Simulated Annealing"
+  },
+  {
+    "system_code": "MAT375325",
+    "source_entry_no": 41,
+    "sequence_no": 4,
+    "title": "Aplikasi Riset Operasi: Manajemen Produksi, Manajemen Proyek, Manajemen Logistik, Keuangan, Kesehatan"
+  },
+  {
+    "system_code": "MAT476325",
+    "source_entry_no": 42,
+    "sequence_no": 1,
+    "title": "Materi yang dibahas pada mata kuliah ini meliputi persamaan Bernoulli; analisis volume control; konservasi massa dan konservasi momentum untuk fluida yang bergerak; aliran fluida kental, aliran melalui pipa; analisis dimensi."
+  },
+  {
+    "system_code": "MAT041325",
+    "source_entry_no": 43,
+    "sequence_no": 1,
+    "title": "Rinaldi Munir, 2018. Algoritma dan Pemrograman I. Informatika Bandung."
+  },
+  {
+    "system_code": "MAT041325",
+    "source_entry_no": 43,
+    "sequence_no": 2,
+    "title": "Wenty Dwi Yuniarti, 2020. Dasar-dasar Pemrograman Python. Deepublish."
+  },
+  {
+    "system_code": "MAT041325",
+    "source_entry_no": 43,
+    "sequence_no": 3,
+    "title": "Sianipar, R.H., Wadi, Hamzan, 2015. Pemrograman Python (Teori dan Implementasi)."
+  },
+  {
+    "system_code": "MAT041325",
+    "source_entry_no": 43,
+    "sequence_no": 4,
+    "title": "John Zelle. Python Programming: An Introduction to Computer Science."
+  },
+  {
+    "system_code": "MAT041325",
+    "source_entry_no": 43,
+    "sequence_no": 5,
+    "title": "Michael H. Goldwasser, David Letscher. 2020. Algorithm Design and Analysis in Python. MIT Press."
+  },
+  {
+    "system_code": "MAT293324",
+    "source_entry_no": 44,
+    "sequence_no": 1,
+    "title": "Review Dasar-Dasar Pemrograman dan PBO, Struktur Data Kompleks (Stack, queue, linked list, hash table), Algoritma pengurutan lanjutan: quicksort, mergesort, Algoritma graf: BFS, DFS, shortest path (Dijkstra, A*), Rekursi dan Dynamic Programming, Pemrograman Berbasis Jaringan, Pemrograman Berbasis Database, Pengantar basis data SQL dan NoSQL."
+  },
+  {
+    "system_code": "MAT344225",
+    "source_entry_no": 45,
+    "sequence_no": 1,
+    "title": "Pengantar Data Sains, Sumber data dan metode pengumpulan, Eksplorasi Data (EDA), Prinsip-prinsip visualisasi data, Pengantar Machine Learning, Algoritma regresi linier dan regresi logistic, Algoritma k-nearest neighbors (KNN), Feature Engineering, Pengantar neural networks"
+  },
+  {
+    "system_code": "MAT415225",
+    "source_entry_no": 46,
+    "sequence_no": 1,
+    "title": "Pengantar Jaringan Syaraf Tiruan, Perceptron dan Algoritma Dasar, Multilayer Perceptron (MLP), Radial Basis Function (RBF) Network, Support Vector Machines (SVM), Hopfield Network dan Associative Network, Stochastic Network dan Kohonen Network, Implementasi dan Evaluasi Jaringan Syaraf Tiruan"
+  },
+  {
+    "system_code": "MAT506225",
+    "source_entry_no": 47,
+    "sequence_no": 1,
+    "title": "Pengantar Pemrograman Web, Struktur dasar aplikasi web, HTML dan CSS, JavaScript untuk Interaktivitas, Pengantar Backend dengan Node.js dan Express, Desain Responsif, Integrasi frontend dan backend dasar, Pengujian dan deployment aplikasi"
+  },
+  {
+    "system_code": "MAT031325",
+    "source_entry_no": 48,
+    "sequence_no": 1,
+    "title": "Distribusi Frekuensi dan Teknik Menyajikan Data, Ukuran Pemusatan dan Ukuran Penyebaran, Konsep Dasar Probabilitas dan Pencacahan Ruang Sampel, Konsep Dasar Probabilitas, Distribusi Diskrit dan Kontinu, Distribusi Hipergeometrik, Analisis Distribusi Binomial, Analisis Distribusi Poisson, Distribusi Normal, Distribusi sampling, Pengujian hipótesis."
+  },
+  {
+    "system_code": "MAT093325",
+    "source_entry_no": 49,
+    "sequence_no": 1,
+    "title": "Konsep permutasi dan jenis-jenis permutasi, konsep kombinatorik dan jenis-jenis kombinatorik, konsep dasar peluang, peluang bersyarat, kejadian bebas dan teorema bayes, peubah acak diskrit dan kontinu pada peluang, fungsi distribusi, fungsi distribusi peluang marginal, fungsi distribusi peluang gabungan, fungsi padat peluang, nilai harapan dan sifat-sifatnya, distribusi peluang batas, distribusi peluang bersyarat. kebebasan stokastik serta dapat menerapkannya dalam menyelesaikan masalah-masalah yang relevan, distribusi order statistic, distribusi limit dan hukum bilangan besar."
+  },
+  {
+    "system_code": "MAT304225",
+    "source_entry_no": 50,
+    "sequence_no": 1,
+    "title": "Dalam perkuliahan ini dibaas mengenai macam metode peramalan, konsep dasar runtun waktu, metode liniear khusus untuk proses stasoner, model runtun waktu non stasioner, identifikasi model ARMA dan ARIMA, estimasi parameter dan verifikasi model"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 1,
+    "title": "Terapan konsep peluang (peluang bersyarat) dalam proses stokastik, mendefinisikan peubah acak dan state space permasalahan real sebagai suatu proses stokastik."
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 2,
+    "title": "Spesifikasi proses stokastik."
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 3,
+    "title": "Pengertian rantai Markov"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 4,
+    "title": "Matriks peluang transisi dan distribusi awal"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 5,
+    "title": "Model-model Rantai Markov dan klasifikasi keadaan Rantai Markov"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 6,
+    "title": "Analisis teori keputusan Markov"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 7,
+    "title": "Proses-proses Poisson (Poisson Homogen dan Poisson Non Homogen)"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 8,
+    "title": "Proses-proses kelahiran dan kematian / input- output (birth-death processes"
+  },
+  {
+    "system_code": "MAT395225",
+    "source_entry_no": 51,
+    "sequence_no": 9,
+    "title": "Penomena pembaharuan (renewal phenomena) Model-model stokastik"
+  },
+  {
+    "system_code": "MAT405325",
+    "source_entry_no": 52,
+    "sequence_no": 1,
+    "title": "Model survival meliputi fungsi survival, force of mortality, harapan hidup, tabel mortalitas, dan hukum mortalita"
+  },
+  {
+    "system_code": "MAT405325",
+    "source_entry_no": 52,
+    "sequence_no": 2,
+    "title": "Asuransi jiwa meliputi model pembayaran asuransi jiwa, polis asuransi jiwa, nilai sekarang asuransi, jenis pembayaran benefit asuransi."
+  },
+  {
+    "system_code": "MAT405325",
+    "source_entry_no": 52,
+    "sequence_no": 3,
+    "title": "Anuitas jiwa meliputi anuitas jiwa untuk pembayaran secara kontinu dan anuitas untuk pembayaran secara diskrit"
+  },
+  {
+    "system_code": "MAT405325",
+    "source_entry_no": 52,
+    "sequence_no": 4,
+    "title": "Premi asuransi jiwa meliputi premi model kontinu dan diskrit, premi tunggal bersih dan premi tahunan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 1,
+    "title": "Konsep Dasar Statistika dalam Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 2,
+    "title": "Penyajian Data Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 3,
+    "title": "Ukuran Deskriptif Data Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 4,
+    "title": "Uji Hipotesis dalam Penelitian Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 5,
+    "title": "Estimasi Parameter dalam Penelitian Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 6,
+    "title": "Regresi Linier dalam Penelitian Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 7,
+    "title": "Analisis Survival dalam Penelitian Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 8,
+    "title": "Statistika Non-Parametrik dalam Penelitian Kesehatan"
+  },
+  {
+    "system_code": "MAT154325",
+    "source_entry_no": 53,
+    "sequence_no": 9,
+    "title": "Etika dalam Statistika Kesehatan"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 1,
+    "title": "Tingkat bunga"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 2,
+    "title": "Diskonto"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 3,
+    "title": "Anuitas"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 4,
+    "title": "Amortisasi dan dana pelunasan"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 5,
+    "title": "Depresiasi aset"
+  },
+  {
+    "system_code": "MAT263324",
+    "source_entry_no": 54,
+    "sequence_no": 6,
+    "title": "Obligasi"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 1,
+    "title": "Konsep dasar analisis regresi"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 2,
+    "title": "Model regresi linier"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 3,
+    "title": "Koefisien regresi"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 4,
+    "title": "Asumsi-asumsi regresi linier"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 5,
+    "title": "Variabel dummy"
+  },
+  {
+    "system_code": "MAT283324",
+    "source_entry_no": 55,
+    "sequence_no": 6,
+    "title": "Regresi berganda"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 1,
+    "title": "Karakteristik dan contoh Data Survival"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 2,
+    "title": "Model Peluang Variabel Acak Waktu Survive"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 3,
+    "title": "Skema Penyensoran dan Pemancungan"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 4,
+    "title": "Pendekatan Non-Parametrik"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 5,
+    "title": "Penaksiran fungsi survival dan fungsi hazard dengan metode Kaplan-Meier dan Nelson-Aalen serta pengujian hipotesis"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 6,
+    "title": "Pendekatan Semi-Parametrik"
+  },
+  {
+    "system_code": "MAT385225",
+    "source_entry_no": 56,
+    "sequence_no": 7,
+    "title": "model regresi Cox Proportional Hazard"
+  },
+  {
+    "system_code": "MAT256325",
+    "source_entry_no": 57,
+    "sequence_no": 1,
+    "title": "Isi mata kuliah dapat bervariasi tergantung bidang kajian yang dipilih dan merupakan pendalaman topik-topik tertentu dalam bidang matematika yang sedang berkembang."
+  }
+]

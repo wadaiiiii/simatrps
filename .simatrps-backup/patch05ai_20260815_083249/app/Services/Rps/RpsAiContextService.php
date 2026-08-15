@@ -1,0 +1,582 @@
+<?php
+
+namespace App\Services\Rps;
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+class RpsAiContextService
+{
+    public function build(object $rps, object $version, ?string $suggestionType = null): array
+    {
+        $course = DB::table('courses')->where('id', $rps->course_id)->first();
+        $curriculum = DB::table('curriculums')->where('id', $rps->curriculum_id)->first();
+
+        $officialCplIds = DB::table('course_cpls')
+            ->where('course_id', $rps->course_id)
+            ->pluck('cpl_id')
+            ->all();
+
+        $additionalCplIds = DB::table('rps_additional_cpls')
+            ->where('rps_version_id', $version->id)
+            ->pluck('cpl_id')
+            ->all();
+
+        $scopeCplIds = array_values(array_unique([
+            ...$officialCplIds,
+            ...$additionalCplIds,
+        ]));
+
+        $cpls = DB::table('cpls')
+            ->whereIn('id', $scopeCplIds)
+            ->orderBy('sequence_no')
+            ->get(['id', 'code', 'description'])
+            ->map(function ($cpl) use ($officialCplIds): array {
+                return [
+                    'code' => $cpl->code,
+                    'description' => $cpl->description,
+                    'source' => in_array($cpl->id, $officialCplIds, true)
+                        ? 'curriculum'
+                        : 'lecturer_addition',
+                ];
+            })
+            ->values()
+            ->all();
+
+        $cpmks = DB::table('rps_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->get(['id', 'code', 'description', 'bloom_level', 'source_type'])
+            ->map(function ($cpmk): array {
+                $mapped = DB::table('rps_cpmk_cpls')
+                    ->join('cpls', 'cpls.id', '=', 'rps_cpmk_cpls.cpl_id')
+                    ->where('rps_cpmk_cpls.rps_cpmk_id', $cpmk->id)
+                    ->orderBy('cpls.sequence_no')
+                    ->pluck('cpls.code')
+                    ->all();
+
+                return [
+                    'code' => $cpmk->code,
+                    'description' => $cpmk->description,
+                    'bloom_level' => $cpmk->bloom_level,
+                    'source_type' => $cpmk->source_type,
+                    'cpl_codes' => $mapped,
+                ];
+            })
+            ->all();
+
+        $subCpmks = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->get(['id', 'code', 'description', 'bloom_level', 'source_type'])
+            ->map(function ($sub): array {
+                $parent = DB::table('rps_cpmk_subcpmks')
+                    ->join('rps_cpmks', 'rps_cpmks.id', '=', 'rps_cpmk_subcpmks.rps_cpmk_id')
+                    ->where('rps_cpmk_subcpmks.rps_sub_cpmk_id', $sub->id)
+                    ->value('rps_cpmks.code');
+
+                return [
+                    'code' => $sub->code,
+                    'parent_cpmk_code' => $parent,
+                    'description' => $sub->description,
+                    'bloom_level' => $sub->bloom_level,
+                    'source_type' => $sub->source_type,
+                ];
+            })
+            ->all();
+
+        $materials = DB::table('rps_materials')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->pluck('title')
+            ->all();
+
+        $syllabus = DB::table('course_syllabi')
+            ->where('course_id', $rps->course_id)
+            ->orderBy('source_entry_no')
+            ->first();
+
+        $syllabusItems = DB::table('course_syllabus_items')
+            ->where('course_id', $rps->course_id)
+            ->orderBy('sequence_no')
+            ->pluck('title')
+            ->all();
+
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('week_number')
+            ->get()
+            ->map(function ($week): array {
+                $subCode = $week->rps_sub_cpmk_id
+                    ? DB::table('rps_sub_cpmks')->where('id', $week->rps_sub_cpmk_id)->value('code')
+                    : null;
+
+                return [
+                    'week_number' => (int) $week->week_number,
+                    'exam_type' => $week->exam_type,
+                    'sub_cpmk_code' => $subCode,
+                    'material' => $week->material_text,
+                    'learning_method' => $week->learning_method,
+                    'learning_activity' => $week->learning_activity,
+                    'assessment_indicator' => $week->assessment_indicator,
+                    'assessment_criteria' => $week->assessment_criteria,
+                    'assessment_method' => $week->assessment_method,
+                    'reference' => $week->reference_text,
+                ];
+            })
+            ->all();
+
+        $assessments = DB::table('assessments')
+            ->where('rps_version_id', $version->id)
+            ->orderByRaw('COALESCE(week_number, 99)')
+            ->get()
+            ->map(function ($assessment): array {
+                $subCodes = DB::table('assessment_subcpmks')
+                    ->join('rps_sub_cpmks', 'rps_sub_cpmks.id', '=', 'assessment_subcpmks.rps_sub_cpmk_id')
+                    ->where('assessment_subcpmks.assessment_id', $assessment->id)
+                    ->pluck('rps_sub_cpmks.code')
+                    ->all();
+
+                return [
+                    'name' => $assessment->name,
+                    'type' => $assessment->type,
+                    'week_number' => $assessment->week_number,
+                    'weight' => $assessment->weight,
+                    'sub_cpmk_codes' => $subCodes,
+                ];
+            })
+            ->all();
+
+        $documentMeta = null;
+
+        if (Schema::hasTable('rps_document_meta')) {
+            $documentMeta = DB::table('rps_document_meta')
+                ->where('rps_version_id', $version->id)
+                ->first(['reference_text', 'supporting_reference_text']);
+        }
+
+        $full = [
+            'curriculum' => [
+                'code' => $curriculum?->code,
+                'name' => $curriculum?->name,
+                'year' => $curriculum?->year,
+            ],
+            'course' => [
+                'system_code' => $course?->system_code,
+                'official_code' => $course?->official_code,
+                'name' => $course?->name,
+                'credits' => $course?->credits,
+                'semester_recommended' => $course?->semester_recommended,
+                'has_practicum' => (bool) ($course?->has_practicum ?? false),
+            ],
+            'period' => [
+                'academic_year' => $rps->academic_year,
+                'academic_semester' => $rps->academic_semester,
+            ],
+            'cpl_scope' => $cpls,
+            'cpmks' => $cpmks,
+            'sub_cpmks' => $subCpmks,
+            'materials' => $materials,
+            'master_syllabus' => [
+                'description' => $syllabus?->description,
+                'items' => $syllabusItems,
+                'references' => $syllabus?->reference_text,
+            ],
+            'weekly_plan' => $weeks,
+            'document' => [
+                'reference_text' => $documentMeta?->reference_text,
+                'supporting_reference_text' => $documentMeta?->supporting_reference_text,
+            ],
+            'assessments' => $assessments,
+            'constraints' => [
+                'cpl_is_locked_to_current_rps_scope' => true,
+                'do_not_create_new_cpl' => true,
+                'uts_week' => 8,
+                'uas_week' => 16,
+                'teaching_weeks' => [1,2,3,4,5,6,7,9,10,11,12,13,14,15],
+                'lecturer_must_review_before_apply' => true,
+            ],
+        ];
+
+        return $this->compactForType($full, $suggestionType);
+    }
+
+    public function buildWeekContext(
+        object $rps,
+        object $version,
+        int $week,
+        string $targetSubCpmkCode
+    ): array {
+        $course = DB::table('courses')->where('id', $rps->course_id)->first();
+
+        $targetSub = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->where('code', $targetSubCpmkCode)
+            ->first(['id', 'code', 'description', 'bloom_level']);
+
+        abort_unless($targetSub, 404);
+
+        $parentCode = DB::table('rps_cpmk_subcpmks')
+            ->join('rps_cpmks', 'rps_cpmks.id', '=', 'rps_cpmk_subcpmks.rps_cpmk_id')
+            ->where('rps_cpmk_subcpmks.rps_sub_cpmk_id', $targetSub->id)
+            ->value('rps_cpmks.code');
+
+        $materials = DB::table('rps_materials')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->limit(20)
+            ->pluck('title')
+            ->all();
+
+
+        $syllabusItems = DB::table('course_syllabus_items')
+            ->where('course_id', $rps->course_id)
+            ->orderBy('sequence_no')
+            ->limit(12)
+            ->pluck('title')
+            ->all();
+
+        $references = null;
+
+        if (
+            Schema::hasTable('rps_document_meta')
+            && Schema::hasColumn('rps_document_meta', 'reference_text')
+        ) {
+            $meta = DB::table('rps_document_meta')
+                ->where('rps_version_id', $version->id)
+                ->first(['reference_text', 'supporting_reference_text']);
+
+            if ($meta) {
+                $references = trim(
+                    "Utama:
+".trim((string) ($meta->reference_text ?? ''))
+                    .(filled($meta->supporting_reference_text ?? null)
+                        ? "
+Pendukung:
+".trim((string) $meta->supporting_reference_text)
+                        : '')
+                );
+            }
+        }
+
+        $previous = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $version->id)
+            ->where('week_number', '<', $week)
+            ->where('is_exam', false)
+            ->orderByDesc('week_number')
+            ->first();
+
+        $previousSubCode = $previous?->rps_sub_cpmk_id
+            ? DB::table('rps_sub_cpmks')->where('id', $previous->rps_sub_cpmk_id)->value('code')
+            : null;
+
+        $credits = max(1, (int) ($course?->credits ?? 1));
+
+        return [
+            'course' => [
+                'official_code' => $course?->official_code,
+                'name' => $course?->name,
+                'credits' => $credits,
+            ],
+            'target_week' => $week,
+            'target_sub_cpmk' => [
+                'code' => $targetSub->code,
+                'description' => $this->clip($targetSub->description, 600),
+                'bloom_level' => $targetSub->bloom_level,
+                'parent_cpmk_code' => $parentCode,
+            ],
+            'materials' => $materials,
+            'syllabus_items' => $syllabusItems,
+            'bibliography' => $this->bibliographyEntries((string) $references),
+            'previous_week' => $previous ? [
+                'week_number' => (int) $previous->week_number,
+                'sub_cpmk_code' => $previousSubCode,
+                'material' => $this->clip($previous->material_text, 220),
+                'learning_method' => $this->clip($previous->learning_method, 140),
+            ] : null,
+            'time_standard' => [
+                'tatap_muka' => "{$credits}×50 menit",
+                'tugas_terstruktur' => "{$credits}×60 menit",
+                'belajar_mandiri' => "{$credits}×60 menit",
+            ],
+            'constraints' => [
+                'target_weeks' => [$week],
+                'must_use_target_sub_cpmk' => true,
+                'do_not_move_backward_to_earlier_sub_cpmk' => true,
+            ],
+        ];
+    }
+
+    private function compactForType(array $full, ?string $type): array
+    {
+        if (! $type) {
+            return $full;
+        }
+
+        $base = [
+            'course' => $full['course'],
+            'period' => $full['period'],
+            'constraints' => $full['constraints'],
+        ];
+
+        return match ($type) {
+            'cpl_mapping' => $base + [
+                'cpl_scope' => array_map(
+                    fn (array $cpl): array => [
+                        'code' => $cpl['code'],
+                        'description' => $this->clip($cpl['description'] ?? null, 750),
+                        'source' => $cpl['source'],
+                    ],
+                    $full['cpl_scope']
+                ),
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 900),
+                        'bloom_level' => $cpmk['bloom_level'],
+                        'current_cpl_codes' => $cpmk['cpl_codes'],
+                    ],
+                    $full['cpmks']
+                ),
+            ],
+
+            'cpmk_review' => $base + [
+                'cpl_scope' => array_map(
+                    fn (array $cpl): array => [
+                        'code' => $cpl['code'],
+                        'description' => $this->clip($cpl['description'] ?? null, 650),
+                        'source' => $cpl['source'],
+                    ],
+                    $full['cpl_scope']
+                ),
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 900),
+                        'bloom_level' => $cpmk['bloom_level'],
+                        'cpl_codes' => $cpmk['cpl_codes'],
+                    ],
+                    $full['cpmks']
+                ),
+            ],
+
+            'reference_plan' => $base + [
+                'course_description' => $this->clip(
+                    $full['course']['description_short'] ?? null,
+                    500
+                ),
+                'sub_cpmks' => array_map(
+                    fn (array $sub): array => [
+                        'code' => $sub['code'],
+                        'description' => $this->clip($sub['description'] ?? null, 280),
+                    ],
+                    array_slice($full['sub_cpmks'], 0, 16)
+                ),
+                'materials' => array_slice($full['materials'], 0, 16),
+                'existing_references' => [
+                    'main' => $this->clip(
+                        (string) ($full['document']['reference_text'] ?? ''),
+                        1800
+                    ),
+                    'supporting' => $this->clip(
+                        (string) ($full['document']['supporting_reference_text'] ?? ''),
+                        1200
+                    ),
+                ],
+            ],
+
+            'material_plan' => $base + [
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 320),
+                    ],
+                    $full['cpmks']
+                ),
+                'sub_cpmks' => array_map(
+                    fn (array $sub): array => [
+                        'code' => $sub['code'],
+                        'parent_cpmk_code' => $sub['parent_cpmk_code'],
+                        'description' => $this->clip($sub['description'] ?? null, 300),
+                        'bloom_level' => $sub['bloom_level'],
+                    ],
+                    array_slice($full['sub_cpmks'], 0, 16)
+                ),
+                'existing_materials' => array_slice($full['materials'], 0, 16),
+                'syllabus_items' => array_slice(
+                    $full['master_syllabus']['items'] ?? [],
+                    0,
+                    16
+                ),
+            ],
+
+            'sub_cpmk' => $base + [
+                'cpl_scope' => array_map(
+                    fn (array $cpl): array => [
+                        'code' => $cpl['code'],
+                        'description' => $this->clip($cpl['description'] ?? null, 500),
+                    ],
+                    $full['cpl_scope']
+                ),
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 850),
+                        'bloom_level' => $cpmk['bloom_level'],
+                        'cpl_codes' => $cpmk['cpl_codes'],
+                    ],
+                    $full['cpmks']
+                ),
+                'existing_sub_cpmks' => array_map(
+                    fn (array $sub): array => [
+                        'code' => $sub['code'],
+                        'parent_cpmk_code' => $sub['parent_cpmk_code'],
+                        'description' => $this->clip($sub['description'] ?? null, 650),
+                        'bloom_level' => $sub['bloom_level'],
+                    ],
+                    $full['sub_cpmks']
+                ),
+                'materials' => array_slice($full['materials'], 0, 30),
+                'syllabus_items' => array_slice($full['master_syllabus']['items'] ?? [], 0, 30),
+            ],
+
+            'weekly_plan' => $base + [
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 700),
+                    ],
+                    $full['cpmks']
+                ),
+                'sub_cpmks' => array_map(
+                    fn (array $sub): array => [
+                        'code' => $sub['code'],
+                        'parent_cpmk_code' => $sub['parent_cpmk_code'],
+                        'description' => $this->clip($sub['description'] ?? null, 600),
+                        'bloom_level' => $sub['bloom_level'],
+                    ],
+                    $full['sub_cpmks']
+                ),
+                'materials' => array_slice($full['materials'], 0, 30),
+                'syllabus_items' => array_slice($full['master_syllabus']['items'] ?? [], 0, 30),
+                'bibliography' => $this->bibliographyEntries(
+                    trim(
+                        (string) ($full['document']['reference_text'] ?? '')
+                        ."\n"
+                        .(string) ($full['document']['supporting_reference_text'] ?? '')
+                    )
+                ),
+            ],
+
+            'assessment_plan' => $base + [
+                'sub_cpmks' => array_map(
+                    fn (array $sub): array => [
+                        'code' => $sub['code'],
+                        'description' => $this->clip($sub['description'] ?? null, 300),
+                        'bloom_level' => $sub['bloom_level'],
+                    ],
+                    array_slice($full['sub_cpmks'], 0, 16)
+                ),
+                'weekly_evidence' => collect($full['weekly_plan'])
+                    ->map(fn (array $week): array => [
+                        'week_number' => $week['week_number'],
+                        'sub_cpmk_code' => $week['sub_cpmk_code'],
+                        'assessment_method' => $this->clip(
+                            $week['assessment_method'] ?? null,
+                            100
+                        ),
+                    ])
+                    ->all(),
+                'current_assessments' => collect($full['assessments'])
+                    ->map(fn (array $assessment): array => [
+                        'code' => $assessment['code'] ?? null,
+                        'name' => $this->clip($assessment['name'] ?? null, 120),
+                        'type' => $assessment['type'] ?? null,
+                        'week_number' => $assessment['week_number'] ?? null,
+                        'weight' => $assessment['weight'] ?? null,
+                        'sub_cpmk_codes' => $assessment['sub_cpmk_codes'] ?? [],
+                    ])
+                    ->take(16)
+                    ->values()
+                    ->all(),
+            ],
+
+            default => $base,
+        };
+    }
+
+    private function bibliographyEntries(string $text): array
+    {
+        $text = trim($text);
+
+        if ($text === '') {
+            return [];
+        }
+
+        $normalized = preg_replace(
+            '/\s+(?=[a-z]\.\s+[A-Z0-9])/u',
+            "\n",
+            $text
+        ) ?? $text;
+
+        $parts = preg_split('/\r\n|\r|\n/', $normalized) ?: [$normalized];
+        $category = 'utama';
+        $entries = [];
+
+        foreach ($parts as $line) {
+            $line = trim((string) $line);
+
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^(pustaka\s*)?utama\s*:?\s*$/i', $line)) {
+                $category = 'utama';
+                continue;
+            }
+
+            if (preg_match('/^(pendukung|tambahan)\s*:?\s*$/i', $line)) {
+                $category = 'pendukung';
+                continue;
+            }
+
+            $line = preg_replace(
+                '/^\s*(?:(?:\d+|[a-z])[\.\)]|[-•])\s*/iu',
+                '',
+                $line
+            ) ?: $line;
+
+            if ($line === '') {
+                continue;
+            }
+
+            $entries[] = [
+                'category' => $category,
+                'text' => $line,
+            ];
+        }
+
+        return collect($entries)
+            ->unique(fn ($item) => mb_strtolower($item['text']))
+            ->values()
+            ->map(fn ($item, $index) => [
+                'code' => '['.($index + 1).']',
+                'category' => $item['category'],
+                'text' => $this->clip($item['text'], 420),
+            ])
+            ->all();
+    }
+
+    private function clip(?string $value, int $maxChars): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
+
+        return mb_strlen($value) <= $maxChars
+            ? $value
+            : rtrim(mb_substr($value, 0, $maxChars - 1)).'…';
+    }
+}

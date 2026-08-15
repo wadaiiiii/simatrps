@@ -1,0 +1,1706 @@
+{
+  "study_program": {
+    "code": "MAT-S1",
+    "name": "Matematika",
+    "faculty_name": "Fakultas Matematika dan Ilmu Pengetahuan Alam",
+    "university_name": "Universitas Sulawesi Barat",
+    "degree_level": "S1",
+    "is_active": true
+  },
+  "curriculum": {
+    "code": "KUR-MAT-2025",
+    "name": "Kurikulum Program Studi Matematika 2025",
+    "year": 2025,
+    "effective_academic_year": "2025/2026",
+    "status": "active",
+    "source_type": "official_curriculum",
+    "source_reference": "Buku Kurikulum Program Studi Matematika 2025",
+    "notes": "Kurikulum resmi yang menjadi master awal SiMatRPS."
+  },
+  "cpls": [
+    {
+      "code": "CPL-01",
+      "description": "Bertakwa kepada Tuhan Yang Maha Esa dan memiliki sikap nasionalisme yang dilandasi nilai-nilai Pancasila",
+      "sequence_no": 1
+    },
+    {
+      "code": "CPL-02",
+      "description": "Memiliki pengetahuan konsep matematika yang cukup pada bidang analisis, aljabar, matematika terapan dan ilmu komputasi untuk menyelesaikan permasalahan sederhana dan praktis pada berbagai bidang",
+      "sequence_no": 2
+    },
+    {
+      "code": "CPL-03",
+      "description": "Mampu mengembangkan kemampuan berpikir logis, kritis, inovatif, dan sistematis dalam pengembangan ilmu matematika atau bidang lain",
+      "sequence_no": 3
+    },
+    {
+      "code": "CPL-04",
+      "description": "Memiliki kemampuan analisis, konstruksi model, dan modifikasi suatu permasalahan matematis serta mampu mengintrepretasikan hasil yang diperoleh",
+      "sequence_no": 4
+    },
+    {
+      "code": "CPL-05",
+      "description": "Mampu memanfaatkan teknologi informasi dan komunikasi secara bijaksana untuk mengidentifikasi dan menyelesaikan masalah matematika",
+      "sequence_no": 5
+    },
+    {
+      "code": "CPL-06",
+      "description": "Mampu mengembangkan dan mengaplikasikan teori dan metode matematika baik dalam bidang matematika atau bidang lain dalam karir atau untuk studi lanjut",
+      "sequence_no": 6
+    },
+    {
+      "code": "CPL-07",
+      "description": "Mampu menyampaikan gagasan matematika secara lisan dan tulisan",
+      "sequence_no": 7
+    },
+    {
+      "code": "CPL-08",
+      "description": "Memiliki etika, sikap percaya diri, kemampuan kerjasama dan mampu menjadi pembelajar sepanjang hayat",
+      "sequence_no": 8
+    }
+  ],
+  "kbks": [
+    {
+      "code": "KBK-AA",
+      "name": "Analisis dan Aljabar",
+      "sequence_no": 1
+    },
+    {
+      "code": "KBK-MTK",
+      "name": "Matematika Terapan dan Komputasi",
+      "sequence_no": 2
+    },
+    {
+      "code": "KBK-SK",
+      "name": "Statistika dan Keuangan",
+      "sequence_no": 3
+    }
+  ],
+  "categories": [
+    {
+      "code": "WAJIB_UNIVERSITAS",
+      "name": "Mata Kuliah Wajib Universitas",
+      "sequence_no": 1,
+      "is_active": true
+    },
+    {
+      "code": "WAJIB_FAKULTAS",
+      "name": "Mata Kuliah Fakultas",
+      "sequence_no": 2,
+      "is_active": true
+    },
+    {
+      "code": "WAJIB_PRODI",
+      "name": "Mata Kuliah Wajib Program Studi",
+      "sequence_no": 3,
+      "is_active": true
+    },
+    {
+      "code": "PILIHAN_PRODI",
+      "name": "Mata Kuliah Pilihan Program Studi",
+      "sequence_no": 4,
+      "is_active": true
+    },
+    {
+      "code": "REKOGNISI",
+      "name": "Rekognisi Pembelajaran",
+      "sequence_no": 5,
+      "is_active": true
+    }
+  ],
+  "courses": [
+    {
+      "system_code": "USB-AGAMA",
+      "official_code": null,
+      "name": "Pendidikan Agama",
+      "credits": 2,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": true,
+      "code_status": "variant_parent",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "USB071224",
+      "official_code": "USB071224",
+      "name": "Bahasa Indonesia",
+      "credits": 2,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "USB081224",
+      "official_code": "USB081224",
+      "name": "Pendidikan Pancasila",
+      "credits": 2,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "USB091224",
+      "official_code": "USB091224",
+      "name": "Pendidikan Kewarganegaraan",
+      "credits": 2,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "USB111224",
+      "official_code": "USB111224",
+      "name": "Bahasa Inggris",
+      "credits": 2,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "USB101224",
+      "official_code": "USB101224",
+      "name": "Wawasan Sosial Budaya dan IPTEKS",
+      "credits": 2,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "FMI011325",
+      "official_code": "FMI011325",
+      "name": "Matematika Dasar",
+      "credits": 3,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_FAKULTAS",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT011225",
+      "official_code": "MAT011225",
+      "name": "Teori Himpunan dan Logika",
+      "credits": 2,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT021325",
+      "official_code": "MAT021325",
+      "name": "Kalkulus I",
+      "credits": 3,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "FMI021325",
+      "official_code": "FMI021325",
+      "name": "Ilmu Alamiah Dasar",
+      "credits": 3,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_FAKULTAS",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT031325",
+      "official_code": "MAT031325",
+      "name": "Statistika Dasar",
+      "credits": 3,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT041325",
+      "official_code": "MAT041325",
+      "name": "Algoritma dan Dasar Pemrograman",
+      "credits": 3,
+      "semester_recommended": 1,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT052325",
+      "official_code": "MAT052325",
+      "name": "Kalkulus II",
+      "credits": 3,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT062325",
+      "official_code": "MAT062325",
+      "name": "Aljabar Linear I",
+      "credits": 3,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT093325",
+      "official_code": "MAT093325",
+      "name": "Statistika Matematika",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT113325",
+      "official_code": "MAT113325",
+      "name": "Geometri Analitik",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT083325",
+      "official_code": "MAT083325",
+      "name": "Kalkulus Lanjut I",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT072225",
+      "official_code": "MAT072225",
+      "name": "Program Linear",
+      "credits": 2,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT102325",
+      "official_code": "MAT102325",
+      "name": "Matematika Diskrit",
+      "credits": 3,
+      "semester_recommended": 2,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT144325",
+      "official_code": "MAT144325",
+      "name": "Analisis Data",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT123325",
+      "official_code": "MAT123325",
+      "name": "Aljabar Linear II",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT133325",
+      "official_code": "MAT133325",
+      "name": "Persamaan Diferensial Biasa",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT153325",
+      "official_code": "MAT153325",
+      "name": "Metode Numerik",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT164325",
+      "official_code": "MAT164325",
+      "name": "Kalkulus Lanjut II",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT174325",
+      "official_code": "MAT174325",
+      "name": "Fungsi Variabel Kompleks",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT184325",
+      "official_code": "MAT184325",
+      "name": "Persamaan Diferensial Parsial",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT193325",
+      "official_code": "MAT193325",
+      "name": "Struktur Aljabar I",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT204325",
+      "official_code": "MAT204325",
+      "name": "Pengantar Analisis Real I",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT215325",
+      "official_code": "MAT215325",
+      "name": "Pemodelan Matematika",
+      "credits": 3,
+      "semester_recommended": 5,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT354325",
+      "official_code": "MAT354325",
+      "name": "Optimasi",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT235325",
+      "official_code": "MAT235325",
+      "name": "Struktur Aljabar II",
+      "credits": 3,
+      "semester_recommended": 5,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT245225",
+      "official_code": "MAT245225",
+      "name": "Pengantar Analisis Real II",
+      "credits": 2,
+      "semester_recommended": 5,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT256325",
+      "official_code": "MAT256325",
+      "name": "Topik Khusus",
+      "credits": 3,
+      "semester_recommended": 6,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "mandatory",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT263324",
+      "official_code": "MAT263324",
+      "name": "Matematika Finansial",
+      "credits": 2,
+      "semester_recommended": 3,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT273324",
+      "official_code": "MAT273324",
+      "name": "Teori Bilangan",
+      "credits": 2,
+      "semester_recommended": 3,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT283324",
+      "official_code": "MAT283324",
+      "name": "Analisis Regresi",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT293324",
+      "official_code": "MAT293324",
+      "name": "Pemrograman Lanjutan",
+      "credits": 3,
+      "semester_recommended": 3,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT304225",
+      "official_code": "MAT304225",
+      "name": "Analisis Runtun Waktu",
+      "credits": 2,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT314225",
+      "official_code": "MAT314225",
+      "name": "Persamaan Diferensial Lanjut",
+      "credits": 2,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT324225",
+      "official_code": "MAT324225",
+      "name": "Matematika Komputasi",
+      "credits": 2,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT154325",
+      "official_code": "MAT154325",
+      "name": "Statistika Kesehatan",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT334325",
+      "official_code": "MAT334325",
+      "name": "Teori Graf",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT344225",
+      "official_code": "MAT344225",
+      "name": "Pengantar Data Sains",
+      "credits": 2,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT364325",
+      "official_code": "MAT364325",
+      "name": "Aljabar Linear Terapan",
+      "credits": 3,
+      "semester_recommended": 4,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": "Silabus juga menyebut Aljabar Elementer; perlu verifikasi admin karena bukan nama MK yang konsisten pada tabel distribusi."
+    },
+    {
+      "system_code": "MAT375325",
+      "official_code": "MAT375325",
+      "name": "Riset Operasi",
+      "credits": 3,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT385225",
+      "official_code": "MAT385225",
+      "name": "Analisis Survival",
+      "credits": 2,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT395225",
+      "official_code": "MAT395225",
+      "name": "Proses Stokastik",
+      "credits": 2,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT405325",
+      "official_code": "MAT405325",
+      "name": "Matematika Aktuaria",
+      "credits": 3,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT425325",
+      "official_code": "MAT425325",
+      "name": "Pengantar Topologi",
+      "credits": 3,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT436225",
+      "official_code": "MAT436225",
+      "name": "Dinamika Populasi",
+      "credits": 2,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT456325",
+      "official_code": "MAT456325",
+      "name": "Sistem Dinamik",
+      "credits": 3,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT466225",
+      "official_code": "MAT466225",
+      "name": "Pengantar Analisis Fungsional",
+      "credits": 2,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT476325",
+      "official_code": "MAT476325",
+      "name": "Dinamika Fluida",
+      "credits": 3,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT486325",
+      "official_code": "MAT486325",
+      "name": "Pengantar Kriptografi",
+      "credits": 3,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT446325",
+      "official_code": "MAT446325",
+      "name": "Pengantar Teori Modul",
+      "credits": 3,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT496225",
+      "official_code": "MAT496225",
+      "name": "Matematika Epidemiologi",
+      "credits": 2,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT506225",
+      "official_code": "MAT506225",
+      "name": "Pemrograman Web",
+      "credits": 2,
+      "semester_recommended": 6,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "MAT415225",
+      "official_code": "MAT415225",
+      "name": "Jaringan Syaraf Tiruan",
+      "credits": 2,
+      "semester_recommended": 5,
+      "is_mandatory": false,
+      "category_code": "PILIHAN_PRODI",
+      "course_type": "elective",
+      "has_practicum": true,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "SYS-MAPIA-2025",
+      "official_code": null,
+      "name": "MAPIA",
+      "credits": 10,
+      "semester_recommended": 6,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "other",
+      "has_practicum": false,
+      "is_recognition_course": true,
+      "is_course_group": false,
+      "code_status": "internal",
+      "prerequisite_note": null
+    },
+    {
+      "system_code": "SYS-PKL-2025",
+      "official_code": null,
+      "name": "Praktek Kerja Lapang (PKL)",
+      "credits": 3,
+      "semester_recommended": 7,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "practicum",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "internal",
+      "prerequisite_note": "Minimal 80 SKS dan IPK minimal 2,75."
+    },
+    {
+      "system_code": "USB1444",
+      "official_code": "USB1444",
+      "name": "Kuliah Kerja Nyata (KKN)",
+      "credits": 4,
+      "semester_recommended": 7,
+      "is_mandatory": true,
+      "category_code": "WAJIB_UNIVERSITAS",
+      "course_type": "mkwu",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "official",
+      "prerequisite_note": "Minimal 110 SKS, IPK minimal 2,75, dan telah menyelesaikan PKL."
+    },
+    {
+      "system_code": "SYS-TA1-2025",
+      "official_code": null,
+      "name": "Tugas Akhir I (Proposal)",
+      "credits": 2,
+      "semester_recommended": 7,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "thesis",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "internal",
+      "prerequisite_note": "Dapat diprogramkan setelah melulusi 120 SKS."
+    },
+    {
+      "system_code": "SYS-TA2-2025",
+      "official_code": null,
+      "name": "Tugas Akhir II (Ujian Hasil)",
+      "credits": 4,
+      "semester_recommended": 8,
+      "is_mandatory": true,
+      "category_code": "WAJIB_PRODI",
+      "course_type": "thesis",
+      "has_practicum": false,
+      "is_recognition_course": false,
+      "is_course_group": false,
+      "code_status": "internal",
+      "prerequisite_note": "Hubungan TA I → TA II terlihat pada peta kurikulum; perlu verifikasi admin untuk aturan formal."
+    }
+  ],
+  "variants": [
+    {
+      "variant_code": "USB011224",
+      "variant_name": "Pendidikan Agama Islam",
+      "credits": 2
+    },
+    {
+      "variant_code": "USB021224",
+      "variant_name": "Pendidikan Agama Protestan",
+      "credits": 2
+    },
+    {
+      "variant_code": "USB031224",
+      "variant_name": "Pendidikan Agama Katolik",
+      "credits": 2
+    },
+    {
+      "variant_code": "USB041224",
+      "variant_name": "Pendidikan Agama Hindu",
+      "credits": 2
+    },
+    {
+      "variant_code": "USB051224",
+      "variant_name": "Pendidikan Agama Budha",
+      "credits": 2
+    },
+    {
+      "variant_code": "USB061224",
+      "variant_name": "Pendidikan Agama Konghucu",
+      "credits": 2
+    }
+  ],
+  "prerequisites": [
+    {
+      "target_code": "MAT052325",
+      "prerequisite_code": "MAT021325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester II",
+      "note": null
+    },
+    {
+      "target_code": "MAT083325",
+      "prerequisite_code": "MAT021325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT083325",
+      "prerequisite_code": "MAT052325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT123325",
+      "prerequisite_code": "MAT062325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT133325",
+      "prerequisite_code": "MAT021325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT133325",
+      "prerequisite_code": "MAT052325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT144325",
+      "prerequisite_code": "MAT031325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT164325",
+      "prerequisite_code": "MAT083325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT174325",
+      "prerequisite_code": "MAT083325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT184325",
+      "prerequisite_code": "MAT133325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT204325",
+      "prerequisite_code": "MAT021325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT204325",
+      "prerequisite_code": "MAT052325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT215325",
+      "prerequisite_code": "MAT133325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT215325",
+      "prerequisite_code": "MAT184325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT235325",
+      "prerequisite_code": "MAT193325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT245225",
+      "prerequisite_code": "MAT204325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT273324",
+      "prerequisite_code": "FMI011325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT283324",
+      "prerequisite_code": "MAT031325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT293324",
+      "prerequisite_code": "MAT041325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester III",
+      "note": null
+    },
+    {
+      "target_code": "MAT314225",
+      "prerequisite_code": "MAT133325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT354325",
+      "prerequisite_code": "MAT072225",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT364325",
+      "prerequisite_code": "MAT062325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT364325",
+      "prerequisite_code": "MAT123325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester IV",
+      "note": null
+    },
+    {
+      "target_code": "MAT375325",
+      "prerequisite_code": "MAT072225",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT375325",
+      "prerequisite_code": "MAT354325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT425325",
+      "prerequisite_code": "MAT204325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester V",
+      "note": null
+    },
+    {
+      "target_code": "MAT436225",
+      "prerequisite_code": "MAT215325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT446325",
+      "prerequisite_code": "MAT193325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT446325",
+      "prerequisite_code": "MAT235325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT466225",
+      "prerequisite_code": "MAT245225",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT476325",
+      "prerequisite_code": "MAT314225",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT486325",
+      "prerequisite_code": "MAT102325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "MAT496225",
+      "prerequisite_code": "MAT215325",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - MK Pilihan Semester VI",
+      "note": null
+    },
+    {
+      "target_code": "USB1444",
+      "prerequisite_code": "SYS-PKL-2025",
+      "prerequisite_type": "required",
+      "source_reference": "Buku Kurikulum 2025 - Peraturan Umum",
+      "note": "KKN mensyaratkan telah menyelesaikan PKL."
+    },
+    {
+      "target_code": "SYS-TA2-2025",
+      "prerequisite_code": "SYS-TA1-2025",
+      "prerequisite_type": "recommended",
+      "source_reference": "Buku Kurikulum 2025 - Diagram Peta Kurikulum",
+      "note": "Disimpan sebagai recommended sampai diverifikasi admin."
+    }
+  ],
+  "issues": [
+    {
+      "issue_code": "ISSUE-KALKULUS1-CODE",
+      "entity_type": "course",
+      "entity_key": "Kalkulus I",
+      "issue_description": "Kode Kalkulus I berbeda antara tabel distribusi semester dan bagian silabus.",
+      "selected_value": "MAT021325",
+      "selection_basis": "Master sementara mengikuti tabel distribusi semester; bagian silabus mencantumkan MAT021324.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Semester I dan Silabus Kalkulus I"
+    },
+    {
+      "issue_code": "ISSUE-DATASAINS-SKS",
+      "entity_type": "course",
+      "entity_key": "Pengantar Data Sains",
+      "issue_description": "Ringkasan daftar mata kuliah pilihan menyebut 3 SKS, sedangkan tabel Semester IV/matriks menggunakan 2 SKS.",
+      "selected_value": "2 SKS",
+      "selection_basis": "Master sementara mengikuti tabel distribusi Semester IV yang mencantumkan kode MAT344225.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Ringkasan MK Pilihan dan Semester IV"
+    },
+    {
+      "issue_code": "ISSUE-INTERNAL-CODES",
+      "entity_type": "course",
+      "entity_key": "MAPIA/PKL/TA I/TA II",
+      "issue_description": "Kode resmi tidak tercantum konsisten pada tabel distribusi yang tersedia.",
+      "selected_value": "Gunakan identifier internal sementara",
+      "selection_basis": "Identifier internal diperlukan untuk relasi database dan harus dapat diganti admin tanpa mengubah histori.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Distribusi Semester VI-VIII"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT021325",
+      "entity_type": "course",
+      "entity_key": "Kalkulus I",
+      "issue_description": "Kode pada bagian silabus (MAT021324) berbeda dari kode master pada tabel distribusi semester (MAT021325).",
+      "selected_value": "MAT021325",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 10 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT193325",
+      "entity_type": "course",
+      "entity_key": "Struktur Aljabar I",
+      "issue_description": "Kode pada bagian silabus (MAT194325) berbeda dari kode master pada tabel distribusi semester (MAT193325).",
+      "selected_value": "MAT193325",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 22 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT273324",
+      "entity_type": "course",
+      "entity_key": "Teori Bilangan",
+      "issue_description": "Kode pada bagian silabus (MAT273225) berbeda dari kode master pada tabel distribusi semester (MAT273324).",
+      "selected_value": "MAT273324",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 25 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT153325",
+      "entity_type": "course",
+      "entity_key": "Metode Numerik",
+      "issue_description": "Kode pada bagian silabus (MAT1533245) berbeda dari kode master pada tabel distribusi semester (MAT153325).",
+      "selected_value": "MAT153325",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 34 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT354325",
+      "entity_type": "course",
+      "entity_key": "Optimasi",
+      "issue_description": "Kode pada bagian silabus (MAT154324) berbeda dari kode master pada tabel distribusi semester (MAT354325).",
+      "selected_value": "MAT354325",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 40 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT293324",
+      "entity_type": "course",
+      "entity_key": "Pemrograman Lanjutan",
+      "issue_description": "Kode pada bagian silabus (MAT293325) berbeda dari kode master pada tabel distribusi semester (MAT293324).",
+      "selected_value": "MAT293324",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 44 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT154325",
+      "entity_type": "course",
+      "entity_key": "Statistika Kesehatan",
+      "issue_description": "Kode pada bagian silabus (MAT354325) berbeda dari kode master pada tabel distribusi semester (MAT154325).",
+      "selected_value": "MAT154325",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 53 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT263324",
+      "entity_type": "course",
+      "entity_key": "Matematika Finansial",
+      "issue_description": "Kode pada bagian silabus (MAT263225) berbeda dari kode master pada tabel distribusi semester (MAT263324).",
+      "selected_value": "MAT263324",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 54 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT283324",
+      "entity_type": "course",
+      "entity_key": "Analisis Regresi",
+      "issue_description": "Kode pada bagian silabus (MAT283325) berbeda dari kode master pada tabel distribusi semester (MAT283324).",
+      "selected_value": "MAT283324",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 55 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-CODE-MAT385225",
+      "entity_type": "course",
+      "entity_key": "Analisis Survival",
+      "issue_description": "Kode pada bagian silabus (MAT385325) berbeda dari kode master pada tabel distribusi semester (MAT385225).",
+      "selected_value": "MAT385225",
+      "selection_basis": "Identitas master tetap mengikuti tabel distribusi semester; kode silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 56 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-SKS-MAT385225",
+      "entity_type": "course",
+      "entity_key": "Analisis Survival",
+      "issue_description": "Bobot SKS pada bagian silabus (3 SKS) berbeda dari master tabel distribusi (2 SKS).",
+      "selected_value": "2 SKS",
+      "selection_basis": "Bobot master tetap mengikuti tabel distribusi semester; bobot silabus disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 56 vs tabel distribusi"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-TITLE-GEOMETRI",
+      "entity_type": "course",
+      "entity_key": "Geometri Analitik",
+      "issue_description": "Nama pada silabus tertulis \"Geometrik Analitik\", sedangkan master kurikulum menggunakan \"Geometri Analitik\".",
+      "selected_value": "Geometri Analitik",
+      "selection_basis": "Nama master mengikuti struktur/distribusi mata kuliah; judul silabus disimpan apa adanya.",
+      "severity": "info",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 14"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-PKL-PREREQ",
+      "entity_type": "course_prerequisite",
+      "entity_key": "Praktek Kerja Lapang (PKL)",
+      "issue_description": "Bagian silabus PKL menyebut telah lulus 100 SKS, sedangkan Peraturan Umum menetapkan minimal 80 SKS dan IPK minimal 2,75.",
+      "selected_value": "Minimal 80 SKS + IPK 2,75",
+      "selection_basis": "Aturan master mengikuti Bagian Peraturan Umum; teks silabus disimpan sebagai sumber pembanding.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Peraturan Umum vs Silabus entri 59"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-KKN-PREREQ",
+      "entity_type": "course_prerequisite",
+      "entity_key": "Kuliah Kerja Nyata (KKN)",
+      "issue_description": "Bagian silabus KKN menyebut telah lulus 100 SKS, sedangkan Peraturan Umum menetapkan minimal 110 SKS, IPK minimal 2,75, dan telah menyelesaikan PKL.",
+      "selected_value": "Minimal 110 SKS + IPK 2,75 + PKL",
+      "selection_basis": "Aturan master mengikuti Bagian Peraturan Umum; teks silabus disimpan sebagai sumber pembanding.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Peraturan Umum vs Silabus entri 60"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-TA-GROUP",
+      "entity_type": "course",
+      "entity_key": "Tugas Akhir I / Tugas Akhir II",
+      "issue_description": "Silabus menyediakan satu entri Tugas Akhir 6 SKS, sedangkan struktur kurikulum memisahkan Tugas Akhir I (2 SKS) dan Tugas Akhir II (4 SKS).",
+      "selected_value": "Simpan silabus gabungan sebagai metadata untuk TA I dan TA II; CPMK tidak dipecah otomatis.",
+      "selection_basis": "Pemisahan CPMK TA I dan TA II memerlukan keputusan akademik/admin agar tidak diinventarisasi oleh sistem.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 61 vs struktur mata kuliah"
+    },
+    {
+      "issue_code": "ISSUE-SYLLABUS-TA-PREREQ",
+      "entity_type": "course_prerequisite",
+      "entity_key": "Tugas Akhir",
+      "issue_description": "Silabus gabungan Tugas Akhir menyebut telah lulus 110 SKS, sedangkan Peraturan Umum menetapkan Tugas Akhir I dapat diprogramkan setelah melulusi 120 SKS.",
+      "selected_value": "TA I minimal 120 SKS",
+      "selection_basis": "Aturan master mengikuti Bagian Peraturan Umum; silabus gabungan disimpan sebagai metadata sumber.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Peraturan Umum vs Silabus entri 61"
+    },
+    {
+      "issue_code": "ISSUE-MISSING-SYLLABUS-ANALISIS-DATA",
+      "entity_type": "course",
+      "entity_key": "Analisis Data",
+      "issue_description": "Mata kuliah Analisis Data terdapat pada struktur Kurikulum 2025, tetapi tidak ditemukan sebagai entri tersendiri pada BAB III.A Silabus Mata Kuliah.",
+      "selected_value": "Belum ada CPMK/silabus resmi yang diimpor untuk Analisis Data.",
+      "selection_basis": "MATRPS tidak membuat CPMK sendiri pada master kurikulum; Admin dapat melengkapi setelah sumber resmi tersedia.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Struktur mata kuliah vs BAB III.A Silabus"
+    },
+    {
+      "issue_code": "ISSUE-MAPIA-SYLLABUS-EMPTY",
+      "entity_type": "course",
+      "entity_key": "MAPIA",
+      "issue_description": "BAB III.A mencantumkan \"58. MAPIA (10 sks)\" tanpa deskripsi, CPMK, silabus, atau pustaka pada entri tersebut.",
+      "selected_value": "Simpan placeholder sumber tanpa CPMK.",
+      "selection_basis": "MATRPS tidak mengarang CPMK MAPIA; pengisian menunggu rumusan resmi/admin.",
+      "severity": "warning",
+      "source_reference": "Buku Kurikulum 2025 - Silabus entri 58"
+    }
+  ],
+  "template": {
+    "code": "RPS-MAT-UNSULBAR-2025",
+    "name": "Format RPS Program Studi Matematika 2025",
+    "version_no": 1,
+    "effective_year": 2025,
+    "status": "active",
+    "description": "Template awal SiMatRPS berdasarkan format RPS Prodi Matematika yang tersedia.",
+    "source_reference": "Format RPS Prodi Matematika / Lampiran Format RPS Kurikulum 2025"
+  },
+  "template_sections": [
+    {
+      "section_key": "identity",
+      "section_name": "Identitas Mata Kuliah",
+      "sequence_no": 1,
+      "is_required": true
+    },
+    {
+      "section_key": "authorization",
+      "section_name": "Otorisasi",
+      "sequence_no": 2,
+      "is_required": true
+    },
+    {
+      "section_key": "cpl",
+      "section_name": "CPL-PRODI yang dibebankan pada MK",
+      "sequence_no": 3,
+      "is_required": true
+    },
+    {
+      "section_key": "cpmk",
+      "section_name": "Capaian Pembelajaran Mata Kuliah (CPMK)",
+      "sequence_no": 4,
+      "is_required": true
+    },
+    {
+      "section_key": "sub_cpmk",
+      "section_name": "Kemampuan Akhir tiap Tahapan Belajar (Sub-CPMK)",
+      "sequence_no": 5,
+      "is_required": true
+    },
+    {
+      "section_key": "cpmk_subcpmk_matrix",
+      "section_name": "Korelasi CPMK terhadap Sub-CPMK",
+      "sequence_no": 6,
+      "is_required": true
+    },
+    {
+      "section_key": "description",
+      "section_name": "Deskripsi Singkat Mata Kuliah",
+      "sequence_no": 7,
+      "is_required": true
+    },
+    {
+      "section_key": "materials",
+      "section_name": "Bahan Kajian / Materi Pembelajaran",
+      "sequence_no": 8,
+      "is_required": true
+    },
+    {
+      "section_key": "references",
+      "section_name": "Daftar Referensi",
+      "sequence_no": 9,
+      "is_required": true
+    },
+    {
+      "section_key": "weekly_plan",
+      "section_name": "Matriks Kegiatan Pembelajaran Mingguan",
+      "sequence_no": 10,
+      "is_required": true
+    },
+    {
+      "section_key": "cpl_evaluation",
+      "section_name": "Tabel Penilaian dan Evaluasi CPL",
+      "sequence_no": 11,
+      "is_required": true
+    },
+    {
+      "section_key": "rtm",
+      "section_name": "Lembar Rencana Tugas Mahasiswa",
+      "sequence_no": 12,
+      "is_required": true
+    }
+  ],
+  "obe_rules": [
+    {
+      "code": "OBE-CPMK-CPL",
+      "name": "CPMK terhubung ke CPL",
+      "description": "Setiap CPMK pada RPS harus memiliki minimal satu relasi ke CPL resmi mata kuliah.",
+      "severity": "error",
+      "is_active": true,
+      "config": {}
+    },
+    {
+      "code": "OBE-SUB-CPMK",
+      "name": "Sub-CPMK terhubung ke CPMK",
+      "description": "Setiap Sub-CPMK harus terhubung ke minimal satu CPMK.",
+      "severity": "error",
+      "is_active": true,
+      "config": {}
+    },
+    {
+      "code": "OBE-ASSESSMENT",
+      "name": "Sub-CPMK diasesmen",
+      "description": "Setiap Sub-CPMK perlu memiliki minimal satu asesmen yang mengukurnya.",
+      "severity": "warning",
+      "is_active": true,
+      "config": {}
+    },
+    {
+      "code": "OBE-WEIGHT-100",
+      "name": "Total bobot 100%",
+      "description": "Total bobot asesmen RPS harus sama dengan 100%.",
+      "severity": "error",
+      "is_active": true,
+      "config": {
+        "target": 100
+      }
+    },
+    {
+      "code": "OBE-WEEK-16",
+      "name": "Rencana 16 minggu",
+      "description": "RPS harus menyediakan rencana pembelajaran untuk minggu 1 sampai 16.",
+      "severity": "error",
+      "is_active": true,
+      "config": {
+        "weeks": 16
+      }
+    },
+    {
+      "code": "OBE-UTS-W8",
+      "name": "UTS minggu 8",
+      "description": "Template awal menggunakan minggu 8 sebagai UTS.",
+      "severity": "warning",
+      "is_active": true,
+      "config": {
+        "week": 8
+      }
+    },
+    {
+      "code": "OBE-UAS-W16",
+      "name": "UAS minggu 16",
+      "description": "Template awal menggunakan minggu 16 sebagai UAS.",
+      "severity": "warning",
+      "is_active": true,
+      "config": {
+        "week": 16
+      }
+    },
+    {
+      "code": "OBE-SCL",
+      "name": "Metode berpusat pada mahasiswa",
+      "description": "RPS perlu memuat metode pembelajaran berpusat pada mahasiswa yang sesuai.",
+      "severity": "warning",
+      "is_active": true,
+      "config": {}
+    }
+  ]
+}

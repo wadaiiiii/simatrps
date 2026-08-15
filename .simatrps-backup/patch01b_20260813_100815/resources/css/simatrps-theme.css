@@ -1,0 +1,170 @@
+/* SiMatRPS Patch 01E - Elegant Blue + 3D Workflow */
+
+:root {
+    --sim-ink: #0f172a;
+    --sim-muted: #64748b;
+    --sim-bg: #edf4fb;
+    --sim-bg-2: #e6eef8;
+    --sim-surface: rgba(240, 246, 253, 0.8);
+    --sim-surface-strong: #f6f9fd;
+    --sim-border: #cfdbeb;
+
+    --sim-blue-950: #0b132b;
+    --sim-blue-900: #102542;
+    --sim-blue-800: #163a63;
+    --sim-blue-700: #1f5d99;
+    --sim-blue-600: #2a7bc7;
+    --sim-blue-500: #55a6f2;
+    --sim-blue-soft: #dcecff;
+    --sim-blue-soft-2: #cfe4fb;
+    --sim-accent: #8fd0ff;
+}
+
+:root,
+.dark {
+    --background: #edf4fb;
+    --foreground: #0f172a;
+
+    --card: #f6f9fd;
+    --card-foreground: #0f172a;
+
+    --popover: #f8fbff;
+    --popover-foreground: #0f172a;
+
+    --primary: #1f5d99;
+    --primary-foreground: #ffffff;
+
+    --secondary: #ddeaf8;
+    --secondary-foreground: #163a63;
+
+    --muted: #eaf1f8;
+    --muted-foreground: #64748b;
+
+    --accent: #d7e8fa;
+    --accent-foreground: #163a63;
+
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+
+    --border: #cfdbeb;
+    --input: #cfdbeb;
+    --ring: #55a6f2;
+
+    --sidebar: #e8f0fa;
+    --sidebar-foreground: #102542;
+    --sidebar-primary: #163a63;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #d8e8f8;
+    --sidebar-accent-foreground: #163a63;
+    --sidebar-border: #cfdbeb;
+    --sidebar-ring: #55a6f2;
+}
+
+body {
+    background:
+        radial-gradient(circle at 8% 0%, rgba(85, 166, 242, .16), transparent 24rem),
+        radial-gradient(circle at 100% 0%, rgba(31, 93, 153, .10), transparent 24rem),
+        linear-gradient(180deg, #eef5fc 0%, #eaf2fb 55%, #e6eef8 100%);
+    color: #0f172a;
+}
+
+::selection {
+    background: rgba(42, 123, 199, .18);
+}
+
+.sim-surface {
+    background: rgba(240, 246, 253, .74);
+    border: 1px solid #cfdbeb;
+    box-shadow: 0 14px 40px rgba(16, 37, 66, .07);
+    backdrop-filter: blur(14px);
+}
+
+.sim-gradient-chip {
+    background: linear-gradient(135deg, rgba(31,93,153,.08), rgba(85,166,242,.12));
+    border: 1px solid rgba(31,93,153,.12);
+    color: #163a63;
+}
+
+.sim-button-primary {
+    background: linear-gradient(135deg, #163A63 0%, #1F5D99 65%, #55A6F2 100%);
+    color: white;
+    box-shadow: 0 12px 26px rgba(31, 93, 153, .22);
+}
+
+.sim-button-primary:hover {
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+}
+
+.sim-gradient-line {
+    background: linear-gradient(90deg, #0B132B 0%, #163A63 30%, #1F5D99 70%, #55A6F2 100%);
+}
+
+.sim-3d-shell {
+    position: relative;
+    border-radius: 2rem;
+    background: linear-gradient(180deg, rgba(248,251,255,.95), rgba(233,242,251,.92));
+    border: 1px solid rgba(188, 209, 231, .9);
+    box-shadow:
+        0 28px 60px rgba(16, 37, 66, .11),
+        inset 0 1px 0 rgba(255,255,255,.85);
+}
+
+.sim-3d-shell::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border-radius: 1.6rem;
+    background: linear-gradient(180deg, rgba(230,239,249,.85), rgba(244,248,253,.65));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    border: 1px solid rgba(201, 216, 233, .95);
+}
+
+.sim-3d-shell > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sim-3d-panel {
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, rgba(245,249,254,.94), rgba(237,244,252,.88));
+    border: 1px solid rgba(194, 211, 230, .95);
+    box-shadow:
+        0 18px 32px rgba(31, 93, 153, .08),
+        inset 0 1px 0 rgba(255,255,255,.85);
+}
+
+.sim-step-3d {
+    background: linear-gradient(180deg, rgba(250,253,255,.98), rgba(240,246,252,.94));
+    border: 1px solid rgba(208, 222, 237, .98);
+    box-shadow:
+        0 10px 20px rgba(16, 37, 66, .06),
+        inset 0 1px 0 rgba(255,255,255,.95),
+        inset 0 -2px 0 rgba(207, 220, 234, .45);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.sim-step-3d:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 16px 26px rgba(16, 37, 66, .09),
+        inset 0 1px 0 rgba(255,255,255,.95),
+        inset 0 -2px 0 rgba(207, 220, 234, .45);
+}
+
+.sim-icon-3d {
+    background: linear-gradient(180deg, #f6fbff 0%, #e8f1fb 100%);
+    border: 1px solid #d5e2f0;
+    box-shadow:
+        0 6px 14px rgba(31, 93, 153, .08),
+        inset 0 1px 0 rgba(255,255,255,.95);
+}
+
+.sim-num-3d {
+    background: linear-gradient(180deg, #eef6ff 0%, #dfeeff 100%);
+    border: 1px solid #cfe0f2;
+    color: #1f5d99;
+    box-shadow:
+        0 6px 12px rgba(31,93,153,.08),
+        inset 0 1px 0 rgba(255,255,255,.95);
+}

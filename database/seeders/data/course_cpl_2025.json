@@ -1,0 +1,1022 @@
+[
+  {
+    "system_code": "USB-AGAMA",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB-AGAMA",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB071224",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB071224",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB071224",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB081224",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB081224",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB081224",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB091224",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB091224",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB091224",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB111224",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB111224",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB111224",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB101224",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB101224",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "USB101224",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "FMI011325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "FMI011325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "FMI011325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "FMI011325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT011225",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT011225",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT011225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT011225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT021325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT021325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT021325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT021325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "FMI021325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "FMI021325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "FMI021325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT031325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT031325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT031325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT031325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT041325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT041325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT041325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT052325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT052325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT052325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT052325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT062325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT062325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT062325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT062325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT093325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT093325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT093325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT113325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT113325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT113325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT113325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT083325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT083325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT083325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT083325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT072225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT072225",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT072225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT072225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT102325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT102325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT102325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT102325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT144325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT144325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT144325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT144325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT123325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT123325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT123325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT123325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT133325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT133325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT133325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT133325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT133325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT153325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT153325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT153325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT153325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT164325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT164325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT164325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT164325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT174325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT174325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT174325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT174325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT184325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT184325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT184325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT184325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT184325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT193325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT193325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT193325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT193325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT204325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT204325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT204325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT204325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT215325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT215325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT215325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT215325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT354325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT354325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT354325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT354325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT235325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT235325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT235325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT235325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT245225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT245225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT245225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT245225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT256325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT256325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT256325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT256325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT263324",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT273324",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT273324",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT273324",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT273324",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT283324",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT283324",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT283324",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT283324",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT283324",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT293324",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT293324",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT293324",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT304225",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT304225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT304225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT304225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT304225",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT314225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT314225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT314225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT324225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT324225",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT324225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT154325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT154325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT154325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT154325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT334325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT334325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT334325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT334325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT334325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT344225",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT344225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT344225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT364325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT364325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT364325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT364325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT364325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT375325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT375325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT375325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT375325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT385225",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT385225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT385225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT385225",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT395225",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT395225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT395225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT395225",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT405325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT425325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT425325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT425325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT425325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT425325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT436225",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT436225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT436225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT436225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT436225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT456325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT456325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT456325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT456325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT456325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT466225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT466225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT466225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT466225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT466225",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT476325",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT476325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT476325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT486325",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT486325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT486325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT486325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT486325",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "MAT446325",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "MAT446325",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "MAT446325",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT446325",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT446325",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT496225",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "MAT496225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT496225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT496225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT506225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT506225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT506225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT506225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "MAT415225",
+    "cpl_code": "CPL-02"
+  },
+  {
+    "system_code": "MAT415225",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "MAT415225",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "MAT415225",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "SYS-MAPIA-2025",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "SYS-PKL-2025",
+    "cpl_code": "CPL-03"
+  },
+  {
+    "system_code": "SYS-PKL-2025",
+    "cpl_code": "CPL-05"
+  },
+  {
+    "system_code": "SYS-PKL-2025",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "SYS-PKL-2025",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "USB1444",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "USB1444",
+    "cpl_code": "CPL-04"
+  },
+  {
+    "system_code": "USB1444",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "SYS-TA1-2025",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "SYS-TA1-2025",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "SYS-TA1-2025",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "SYS-TA1-2025",
+    "cpl_code": "CPL-08"
+  },
+  {
+    "system_code": "SYS-TA2-2025",
+    "cpl_code": "CPL-01"
+  },
+  {
+    "system_code": "SYS-TA2-2025",
+    "cpl_code": "CPL-06"
+  },
+  {
+    "system_code": "SYS-TA2-2025",
+    "cpl_code": "CPL-07"
+  },
+  {
+    "system_code": "SYS-TA2-2025",
+    "cpl_code": "CPL-08"
+  }
+]
