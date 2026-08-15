@@ -12,6 +12,7 @@ use App\Http\Controllers\RpsController;
 use App\Http\Controllers\RpsDeleteController;
 use App\Http\Controllers\RpsDocumentController;
 use App\Http\Controllers\RpsTaskController;
+use App\Http\Middleware\EnsureAssessmentPlanWeightLimit;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
@@ -56,7 +57,9 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
 
         Route::post('{rps}/ai/suggestions', [RpsAiController::class, 'generate'])->name('ai.generate');
         Route::post('{rps}/ai/weeks/{week}', [RpsAiController::class, 'generateWeek'])->name('ai.week.generate');
-        Route::post('{rps}/ai/suggestions/{suggestion}/apply', [RpsAiController::class, 'apply'])->name('ai.apply');
+        Route::post('{rps}/ai/suggestions/{suggestion}/apply', [RpsAiController::class, 'apply'])
+            ->middleware(EnsureAssessmentPlanWeightLimit::class)
+            ->name('ai.apply');
         Route::post('{rps}/ai/suggestions/{suggestion}/reject', [RpsAiController::class, 'reject'])->name('ai.reject');
 
         Route::post('{rps}/smart-draft', [RpsAutomationController::class, 'smartDraft'])->name('smart-draft');
@@ -83,7 +86,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->name('admin.')
     ->group(function (): void {
         Route::get('kurikulum', CurriculumController::class)->name('curriculum');
-        Route::inertia('template-rps', 'admin/templates')->name('templates');
+        Route::inertia('admin/template-rps', 'admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
         Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
     });
