@@ -7,8 +7,9 @@ define('LARAVEL_START', microtime(true));
 $root = dirname(__DIR__);
 
 // Vercel Functions have a read-only project filesystem at runtime.
-// Laravel may need writable temporary directories for compiled views.
+// Redirect every Laravel writable path to /tmp.
 $tmpStorage = '/tmp/simatrps-storage';
+$tmpBootstrapCache = '/tmp/simatrps-bootstrap-cache';
 
 foreach ([
     $tmpStorage,
@@ -18,15 +19,28 @@ foreach ([
     $tmpStorage.'/framework/sessions',
     $tmpStorage.'/framework/views',
     $tmpStorage.'/logs',
+    $tmpBootstrapCache,
 ] as $directory) {
     if (! is_dir($directory)) {
         @mkdir($directory, 0777, true);
     }
 }
 
-putenv('VIEW_COMPILED_PATH='.$tmpStorage.'/framework/views');
-$_ENV['VIEW_COMPILED_PATH'] = $tmpStorage.'/framework/views';
-$_SERVER['VIEW_COMPILED_PATH'] = $tmpStorage.'/framework/views';
+$runtimeEnvironment = [
+    'LARAVEL_STORAGE_PATH' => $tmpStorage,
+    'VIEW_COMPILED_PATH' => $tmpStorage.'/framework/views',
+    'APP_CONFIG_CACHE' => $tmpBootstrapCache.'/config.php',
+    'APP_EVENTS_CACHE' => $tmpBootstrapCache.'/events.php',
+    'APP_PACKAGES_CACHE' => $tmpBootstrapCache.'/packages.php',
+    'APP_ROUTES_CACHE' => $tmpBootstrapCache.'/routes.php',
+    'APP_SERVICES_CACHE' => $tmpBootstrapCache.'/services.php',
+];
+
+foreach ($runtimeEnvironment as $key => $value) {
+    putenv("{$key}={$value}");
+    $_ENV[$key] = $value;
+    $_SERVER[$key] = $value;
+}
 
 // Safe defaults for a serverless runtime. Vercel environment variables
 // still take precedence whenever they are configured.
