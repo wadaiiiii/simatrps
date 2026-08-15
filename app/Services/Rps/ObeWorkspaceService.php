@@ -107,16 +107,30 @@ class ObeWorkspaceService
             ->where('rps_version_id', $versionId)
             ->get();
 
+        $assessmentIds = $assessments->pluck('id');
+
         $weightTotal = round((float) $weeks->sum(
             fn ($week) => (float) ($week->assessment_weight ?? 0)
         ), 2);
 
-        $assessedSubCount = $subCpmkIds->isEmpty()
+        $assessedSubCount = ($subCpmkIds->isEmpty() || $assessmentIds->isEmpty())
             ? 0
             : DB::table('assessment_subcpmks')
+                ->whereIn('assessment_id', $assessmentIds)
                 ->whereIn('rps_sub_cpmk_id', $subCpmkIds)
                 ->distinct()
                 ->count('rps_sub_cpmk_id');
+
+        $mappedAssessmentCount = ($subCpmkIds->isEmpty() || $assessmentIds->isEmpty())
+            ? 0
+            : DB::table('assessment_subcpmks')
+                ->whereIn('assessment_id', $assessmentIds)
+                ->whereIn('rps_sub_cpmk_id', $subCpmkIds)
+                ->distinct()
+                ->count('assessment_id');
+
+        $allAssessmentsMapped = $assessments->isNotEmpty()
+            && $mappedAssessmentCount === $assessments->count();
 
         $taskAssessments = $assessments
             ->whereIn('type', ['assignment', 'project', 'practicum']);
@@ -189,9 +203,18 @@ class ObeWorkspaceService
             ],
             [
                 'key' => 'subcpmk_assessed',
-                'label' => 'Cakupan Asesmen',
-                'done' => $subCpmks->isNotEmpty() && $assessedSubCount === $subCpmks->count(),
-                'message' => "{$assessedSubCount}/{$subCpmks->count()} Sub-CPMK terhubung ke asesmen.",
+                'label' => 'Asesmen ↔ Sub-CPMK',
+                'done' => $subCpmks->isNotEmpty()
+                    && $assessments->isNotEmpty()
+                    && $allAssessmentsMapped
+                    && $assessedSubCount === $subCpmks->count(),
+                'message' => "{$mappedAssessmentCount}/{$assessments->count()} asesmen terhubung ke minimal satu Sub-CPMK; {$assessedSubCount}/{$subCpmks->count()} Sub-CPMK tercakup asesmen.",
+                'details' => [
+                    'assessment_total' => $assessments->count(),
+                    'assessment_mapped' => $mappedAssessmentCount,
+                    'sub_cpmk_total' => $subCpmks->count(),
+                    'sub_cpmk_assessed' => $assessedSubCount,
+                ],
             ],
             [
                 'key' => 'rtm',
