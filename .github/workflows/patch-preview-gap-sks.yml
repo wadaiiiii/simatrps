@@ -1,0 +1,79 @@
+name: Patch Preview Gap and SKS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-preview-gap-sks.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch preview gap and SKS reads
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          # 1) Make the blank space before the weekly RPS table part of the
+          # wrapper itself, so Chromium print cannot collapse/ignore it.
+          path = Path('resources/js/components/app-sidebar-header.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          pattern = re.compile(
+              r"        const weeklyWrapper = weeklyTable\?\.closest<HTMLElement>\('div\.overflow-x-auto'\);\n"
+              r"        if \(weeklyWrapper\?\.parentElement\) \{\n"
+              r"            const spacer = document\.createElement\('div'\);.*?"
+              r"        \}\n",
+              re.S,
+          )
+          replacement = """        const weeklyWrapper = weeklyTable?.closest<HTMLElement>('div.overflow-x-auto');
+        setPrintStyle(weeklyWrapper, 'padding-top', '8mm');
+        setPrintStyle(weeklyWrapper, 'box-sizing', 'border-box');
+        setPrintStyle(weeklyWrapper, 'overflow', 'visible');
+        setPrintStyle(weeklyWrapper, 'background', '#fff');
+"""
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Weekly preview spacer block not found exactly once: {count}')
+          path.write_text(text, encoding='utf-8')
+
+          # 2) Normalize SKS at the RPS controller boundary. The courses table
+          # may store NUMERIC/DECIMAL values, but RPS pages should receive whole
+          # SKS values (3, 2, etc.), not 3.0/2.0.
+          path = Path('app/Http/Controllers/RpsController.php')
+          text = path.read_text(encoding='utf-8')
+
+          old = "                'courses.credits',"
+          count = text.count(old)
+          if count < 2:
+              raise SystemExit(f'Expected at least two course credit selects, found {count}')
+          text = text.replace(old, "                DB::raw('CAST(courses.credits AS INTEGER) as credits'),")
+
+          old_return = "                    'credits' => (float) $course->credits,"
+          if old_return not in text:
+              raise SystemExit('Create-RPS credits cast not found')
+          text = text.replace(old_return, "                    'credits' => (int) round((float) $course->credits),", 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "SiMatRPS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add resources/js/components/app-sidebar-header.tsx app/Http/Controllers/RpsController.php
+          if git diff --cached --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git commit -m "Fix preview table gap and normalize SKS display"
+          git push origin HEAD:main
