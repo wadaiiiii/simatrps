@@ -117,13 +117,28 @@ export function AppSidebarHeader({
                     object-fit: contain !important;
                 }
 
-                /* Preview v3 - isi utama RPS dibuat besar dan terbaca. */
+                /*
+                 * Blok RPS utama mengalir sebagai SATU tabel kontinu:
+                 * Universitas -> identitas -> CPL/CPMK/Sub-CPMK -> bahan kajian
+                 * -> referensi -> dosen -> MK prasyarat.
+                 * Page break hanya boleh terjadi DI ANTARA baris.
+                 */
                 html.rps-print-mode .rps-print-main-table {
                     width: 100% !important;
                     table-layout: fixed !important;
                     font-size: 12pt !important;
                     line-height: 1.26 !important;
                     color: #111827 !important;
+                    break-before: auto !important;
+                    break-after: auto !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
+                }
+
+                html.rps-print-mode .rps-print-main-table tbody {
+                    display: table-row-group !important;
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
                 }
 
                 html.rps-print-mode .rps-print-main-table th,
@@ -143,17 +158,40 @@ export function AppSidebarHeader({
                     page-break-inside: avoid !important;
                 }
 
-                /* Tabel rencana pembelajaran mingguan: 12 pt, A4 landscape, border hitam. */
+                html.rps-print-mode .rps-print-main-table td,
+                html.rps-print-mode .rps-print-main-table th {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                /*
+                 * Tabel Minggu 1 s.d. 16/UAS juga SATU tabel kontinu.
+                 * Header tiga tingkat diulang pada halaman berikutnya.
+                 * Satu minggu tidak boleh dibelah di tengah halaman.
+                 */
                 html.rps-print-mode .rps-print-weekly {
                     width: 100% !important;
                     table-layout: fixed !important;
                     font-size: 12pt !important;
                     line-height: 1.25 !important;
                     color: #111827 !important;
+                    margin-top: 0 !important;
+                    break-before: auto !important;
+                    break-after: auto !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
                 }
 
                 html.rps-print-mode .rps-print-weekly thead {
                     display: table-header-group !important;
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly tbody {
+                    display: table-row-group !important;
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
                 }
 
                 html.rps-print-mode .rps-print-weekly thead th {
@@ -174,6 +212,10 @@ export function AppSidebarHeader({
                 html.rps-print-mode .rps-print-weekly tbody td {
                     break-inside: avoid-page !important;
                     page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly tfoot {
+                    display: table-row-group !important;
                 }
 
                 /* Penilaian & evaluasi dibuat halaman landscape sendiri. */
