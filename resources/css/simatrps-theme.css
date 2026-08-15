@@ -128,3 +128,32 @@ section > details.group > summary > span > span:last-child {
     background: rgba(255,255,255,.14) !important;
     color: #FFFFFF !important;
 }
+
+/*
+ * Sidebar mobile dirender di dalam portal Sheet, sehingga class turunan dari
+ * AppSidebar desktop tidak ikut membungkusnya. Paksa warna brand + teks putih
+ * agar menu tetap terbaca di layar kecil.
+ */
+[data-sidebar="sidebar"][data-mobile="true"] {
+    background: linear-gradient(180deg, #04182d 0%, #07384b 52%, #075a56 100%) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255,255,255,.12) !important;
+}
+
+[data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"] {
+    color: rgba(255,255,255,.92) !important;
+}
+
+[data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"] svg {
+    color: #CFFAFE !important;
+}
+
+[data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"]:hover,
+[data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"][data-active="true"] {
+    background: rgba(255,255,255,.13) !important;
+    color: #FFFFFF !important;
+}
+
+[data-sidebar="sidebar"][data-mobile="true"] [data-sidebar="menu-button"][data-active="true"] svg {
+    color: #FFFFFF !important;
+}
