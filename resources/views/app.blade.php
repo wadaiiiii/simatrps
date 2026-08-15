@@ -28,6 +28,77 @@
             html.dark {
                 background-color: oklch(0.145 0 0);
             }
+
+            /*
+             * Final pagination guard for RPS Preview.
+             * This selector intentionally has higher specificity than the
+             * runtime preview style injected by app-sidebar-header.tsx.
+             */
+            @media print {
+                /*
+                 * Header -> identity -> CP -> description -> materials ->
+                 * references -> lecturer -> prerequisite stays one continuous
+                 * table, but long rows may naturally continue when the page
+                 * really runs out of space. This removes large blank areas.
+                 */
+                html.rps-print-mode body .rps-print-main-table,
+                html.rps-print-mode body .rps-print-main-table tbody,
+                html.rps-print-mode body .rps-print-main-table tr,
+                html.rps-print-mode body .rps-print-main-table th,
+                html.rps-print-mode body .rps-print-main-table td {
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
+                    break-before: auto !important;
+                    break-after: auto !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
+                }
+
+                /* Overflow containers must not interfere with print fragmentation. */
+                html.rps-print-mode body .overflow-x-auto {
+                    overflow: visible !important;
+                    overflow-x: visible !important;
+                    overflow-y: visible !important;
+                }
+
+                /* Weekly table remains one continuous table with repeated header. */
+                html.rps-print-mode body .rps-print-weekly {
+                    overflow: visible !important;
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
+                }
+
+                html.rps-print-mode body .rps-print-weekly thead {
+                    display: table-header-group !important;
+                }
+
+                html.rps-print-mode body .rps-print-weekly tbody {
+                    display: table-row-group !important;
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
+                }
+
+                /*
+                 * Chromium is more reliable when the ROW is atomic and the
+                 * cells themselves are allowed to fragment internally.
+                 * If a whole week does not fit in the remaining space, the
+                 * complete week moves to the next page.
+                 */
+                html.rps-print-mode body .rps-print-weekly tbody tr {
+                    display: table-row !important;
+                    break-inside: avoid !important;
+                    page-break-inside: avoid !important;
+                    break-before: auto !important;
+                    break-after: auto !important;
+                    page-break-before: auto !important;
+                    page-break-after: auto !important;
+                }
+
+                html.rps-print-mode body .rps-print-weekly tbody td {
+                    break-inside: auto !important;
+                    page-break-inside: auto !important;
+                }
+            }
         </style>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
