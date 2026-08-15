@@ -2,7 +2,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 import { usePage } from '@inertiajs/react';
-import { Printer } from 'lucide-react';
+import { Eye } from 'lucide-react';
 
 type SimatRpsHeaderPageProps = {
     auth?: {
@@ -358,10 +358,10 @@ export function AppSidebarHeader({
                     type="button"
                     onClick={printRps}
                     className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800"
-                    title="Uji cetak RPS sebagai Admin"
+                    title="Preview RPS sebelum dicetak"
                 >
-                    <Printer className="size-4" />
-                    Cetak / Simpan PDF
+                    <Eye className="size-4" />
+                    Preview RPS
                 </button>
             )}
         </header>
