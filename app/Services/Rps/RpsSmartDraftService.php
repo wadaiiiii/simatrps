@@ -62,11 +62,28 @@ class RpsSmartDraftService
             ->where('id', $rps->course_id)
             ->first();
 
+        $hasPracticum = (bool) ($course->has_practicum ?? false);
+        $credits = max(1, (int) ($course->credits ?? 1));
+
+        $currentWeeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $version->id)
+            ->whereIn('week_number', array_merge(self::TEACHING_WEEKS, [8, 16]))
+            ->get()
+            ->keyBy('week_number');
+
         $updated = 0;
         $subCount = $subCpmks->count();
         $weekCount = count(self::TEACHING_WEEKS);
+        $rows = [];
+        $updateColumns = [];
 
         foreach (self::TEACHING_WEEKS as $position => $weekNumber) {
+            $current = $currentWeeks->get($weekNumber);
+
+            if (! $current) {
+                continue;
+            }
+
             $subIndex = min(
                 $subCount - 1,
                 (int) floor(($position * $subCount) / $weekCount)
@@ -95,7 +112,7 @@ class RpsSmartDraftService
                     ->implode('; ');
             }
 
-            $method = $course?->has_practicum
+            $method = $hasPracticum
                 ? 'Ceramah interaktif, demonstrasi, latihan terbimbing, diskusi, dan praktikum.'
                 : 'Ceramah interaktif, diskusi, studi kasus/contoh, dan latihan terbimbing.';
 
@@ -110,11 +127,11 @@ class RpsSmartDraftService
             $payload = [
                 'rps_sub_cpmk_id' => $sub->id,
                 'material_text' => $materialText,
-                'learning_form' => $course?->has_practicum
+                'learning_form' => $hasPracticum
                     ? 'Tatap Muka / Praktikum'
                     : 'Tatap Muka',
                 'learning_method' => $method,
-                'time_estimate' => $this->timeEstimate((int) ($course?->credits ?? 1)),
+                'time_estimate' => $this->timeEstimate($credits),
                 'face_to_face_sessions' => 1,
                 'learning_activity' => $activity,
                 'independent_study_sessions' => 1,
@@ -130,45 +147,56 @@ class RpsSmartDraftService
                     $position
                 ),
                 'source_type' => 'smart_draft',
-                'updated_at' => now(),
             ];
 
-            $query = DB::table('rps_weekly_plans')
-                ->where('rps_version_id', $version->id)
-                ->where('week_number', $weekNumber);
-
-            $current = $query->first();
-
-            if (! $current) {
-                continue;
-            }
-
-            if ($mode === 'overwrite') {
-                $query->update($payload);
-                $updated++;
-                continue;
-            }
-
-            $fill = ['updated_at' => now()];
+            $merged = [
+                'id' => $current->id,
+                'rps_version_id' => $version->id,
+                'week_number' => $weekNumber,
+            ];
+            $changed = false;
 
             foreach ($payload as $key => $value) {
-                if ($key === 'updated_at') {
+                $existing = $current->{$key} ?? null;
+
+                if ($mode === 'overwrite') {
+                    $merged[$key] = $value;
+                    if ($existing != $value) {
+                        $changed = true;
+                    }
                     continue;
                 }
 
-                if (! filled($current->{$key} ?? null) && filled($value)) {
-                    $fill[$key] = $value;
+                if (! filled($existing) && filled($value)) {
+                    $merged[$key] = $value;
+                    $changed = true;
+                } else {
+                    $merged[$key] = $existing;
                 }
             }
 
-            if (count($fill) > 1) {
-                $query->update($fill);
-                $updated++;
+            if (! $changed) {
+                continue;
+            }
+
+            $merged['updated_at'] = now();
+            $rows[] = $merged;
+            $updated++;
+
+            if ($updateColumns === []) {
+                $updateColumns = [...array_keys($payload), 'updated_at'];
             }
         }
 
-        $this->fillExamWeek($version->id, 8, 'UTS', 'Ujian Tengah Semester');
-        $this->fillExamWeek($version->id, 16, 'UAS', 'Ujian Akhir Semester');
+        if ($rows !== []) {
+            DB::table('rps_weekly_plans')->upsert(
+                $rows,
+                ['rps_version_id', 'week_number'],
+                $updateColumns
+            );
+        }
+
+        $this->fillExamWeeks($version->id, $currentWeeks);
 
         return [
             'updated_weeks' => $updated,
@@ -257,9 +285,15 @@ class RpsSmartDraftService
             Schema::hasTable('rps_document_meta')
             && Schema::hasColumn('rps_document_meta', 'reference_text')
         ) {
+            $columns = ['reference_text'];
+
+            if (Schema::hasColumn('rps_document_meta', 'supporting_reference_text')) {
+                $columns[] = 'supporting_reference_text';
+            }
+
             $meta = DB::table('rps_document_meta')
                 ->where('rps_version_id', $versionId)
-                ->first(['reference_text', 'supporting_reference_text']);
+                ->first($columns);
 
             if ($meta) {
                 $text = trim(
@@ -339,17 +373,20 @@ class RpsSmartDraftService
             ['code' => 'UAS', 'name' => 'Ujian Akhir Semester', 'type' => 'uas', 'week_number' => 16],
         ];
 
-        foreach ($items as $item) {
-            $exists = DB::table('assessments')
-                ->where('rps_version_id', $versionId)
-                ->where('code', $item['code'])
-                ->exists();
+        $existingCodes = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('code', ['UTS', 'UAS'])
+            ->pluck('code')
+            ->all();
 
-            if ($exists) {
+        $rows = [];
+
+        foreach ($items as $item) {
+            if (in_array($item['code'], $existingCodes, true)) {
                 continue;
             }
 
-            DB::table('assessments')->insert([
+            $rows[] = [
                 'id' => (string) Str::uuid(),
                 'rps_version_id' => $versionId,
                 ...$item,
@@ -358,37 +395,54 @@ class RpsSmartDraftService
                 'created_by' => $userId,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+        }
+
+        if ($rows !== []) {
+            DB::table('assessments')->insert($rows);
         }
     }
 
-    private function fillExamWeek(
-        string $versionId,
-        int $week,
-        string $type,
-        string $activity
-    ): void {
-        $row = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $versionId)
-            ->where('week_number', $week)
-            ->first();
+    private function fillExamWeeks(string $versionId, $currentWeeks): void
+    {
+        $config = [
+            8 => ['type' => 'UTS', 'activity' => 'Ujian Tengah Semester'],
+            16 => ['type' => 'UAS', 'activity' => 'Ujian Akhir Semester'],
+        ];
 
-        if (! $row) {
+        $rows = [];
+
+        foreach ($config as $week => $item) {
+            $current = $currentWeeks->get($week);
+
+            if (! $current) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => $current->id,
+                'rps_version_id' => $versionId,
+                'week_number' => $week,
+                'is_exam' => true,
+                'exam_type' => $item['type'],
+                'learning_activity' => filled($current->learning_activity ?? null)
+                    ? $current->learning_activity
+                    : $item['activity'],
+                'assessment_method' => filled($current->assessment_method ?? null)
+                    ? $current->assessment_method
+                    : $item['type'],
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($rows === []) {
             return;
         }
 
-        DB::table('rps_weekly_plans')
-            ->where('id', $row->id)
-            ->update([
-                'is_exam' => true,
-                'exam_type' => $type,
-                'learning_activity' => filled($row->learning_activity)
-                    ? $row->learning_activity
-                    : $activity,
-                'assessment_method' => filled($row->assessment_method)
-                    ? $row->assessment_method
-                    : $type,
-                'updated_at' => now(),
-            ]);
+        DB::table('rps_weekly_plans')->upsert(
+            $rows,
+            ['rps_version_id', 'week_number'],
+            ['is_exam', 'exam_type', 'learning_activity', 'assessment_method', 'updated_at']
+        );
     }
 }
