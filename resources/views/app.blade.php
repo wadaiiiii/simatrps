@@ -246,6 +246,108 @@
                     input.tabIndex = -1;
                     input.setAttribute('aria-readonly', 'true');
                     input.title = 'Bobot tersinkron otomatis dari Edit Detail Asesmen.';
+
+                    const display = Array.from(input.parentElement?.querySelectorAll('span') ?? [])
+                        .find((span) => span instanceof HTMLElement);
+
+                    if (display instanceof HTMLElement) {
+                        const raw = String(input.value ?? '').trim();
+                        const numeric = raw === '' ? null : Number(raw);
+                        const text = numeric === null || Number.isNaN(numeric)
+                            ? '—'
+                            : String(Number(numeric.toFixed(2)));
+
+                        display.dataset.rpsSyncedWeightDisplay = 'true';
+                        if (display.textContent !== text) {
+                            display.textContent = text;
+                        }
+                    }
+
+                    input.style.display = 'none';
+                };
+
+                const syncAssessmentPresentation = (tables) => {
+                    const evaluationTable = tables.find((table) =>
+                        normalizedText(table.textContent).includes('Bobot per Bentuk Penilaian')
+                    );
+
+                    if (evaluationTable) {
+                        /*
+                         * Header evaluasi memakai nama asesmen resmi yang sama
+                         * dengan Edit Detail Asesmen, termasuk saat print.
+                         */
+                        evaluationTable.querySelectorAll('thead tr:nth-child(2) th').forEach((th) => {
+                            const input = th.querySelector('input:not([type="number"])');
+                            if (!(input instanceof HTMLInputElement)) return;
+
+                            const actualName = input.value.trim();
+                            const printSpan = Array.from(th.querySelectorAll('span')).find((span) =>
+                                String(span.className || '').includes('print:inline')
+                            );
+
+                            if (printSpan instanceof HTMLElement && actualName && printSpan.textContent !== actualName) {
+                                printSpan.textContent = actualName;
+                            }
+
+                            const compactLabel = input.parentElement?.querySelector('div.mt-1');
+                            if (compactLabel instanceof HTMLElement) {
+                                compactLabel.style.display = 'none';
+                            }
+                        });
+
+                        const totalRow = evaluationTable.querySelector('tbody tr:last-child');
+                        const totalCell = totalRow?.querySelector('td:last-child');
+                        const total = Number(normalizedText(totalCell?.textContent).replace(',', '.'));
+
+                        if (!Number.isNaN(total)) {
+                            const editor = document.querySelector('section > details.group');
+                            const aiButton = Array.from(editor?.querySelectorAll('button') ?? []).find((button) =>
+                                normalizedText(button.textContent).includes('Telaah Asesmen + RTM AI')
+                            );
+
+                            if (aiButton instanceof HTMLButtonElement && aiButton.parentElement) {
+                                let badge = aiButton.parentElement.querySelector('[data-rps-assessment-total-badge="true"]');
+
+                                if (!(badge instanceof HTMLElement)) {
+                                    badge = document.createElement('span');
+                                    badge.dataset.rpsAssessmentTotalBadge = 'true';
+                                    aiButton.parentElement.insertBefore(badge, aiButton);
+                                }
+
+                                const rounded = Number(total.toFixed(2));
+                                const text = `Total bobot: ${rounded}%`;
+                                const tone = Math.abs(rounded - 100) < 0.01
+                                    ? 'ok'
+                                    : rounded > 100
+                                        ? 'error'
+                                        : 'warn';
+
+                                if (badge.textContent !== text) badge.textContent = text;
+                                badge.dataset.tone = tone;
+                            }
+                        }
+                    }
+
+                    const simulationTable = tables.find((table) => {
+                        const text = normalizedText(table.textContent);
+                        return text.includes('TOTAL NILAI AKHIR') && text.includes('Nilai Mhs');
+                    });
+
+                    if (simulationTable) {
+                        const questionHeader = simulationTable.querySelector('thead th:nth-child(5)');
+                        const label = 'Nama Asesmen / Bentuk Penilaian';
+                        if (questionHeader instanceof HTMLElement && questionHeader.textContent !== label) {
+                            questionHeader.textContent = label;
+                        }
+                    }
+
+                    const fillEmptyButton = Array.from(document.querySelectorAll('button')).find((button) =>
+                        normalizedText(button.textContent) === 'Isi Kosong'
+                    );
+
+                    if (fillEmptyButton instanceof HTMLButtonElement) {
+                        fillEmptyButton.title = 'Mengisi field kosong dari Sub-CPMK, silabus/bahan kajian, SKS/praktikum, dan pustaka RPS. Tidak mengubah bobot asesmen.';
+                    }
                 };
 
                 const markDocumentPresentation = () => {
@@ -291,6 +393,8 @@
                             table.dataset.rpsSubMatrix = 'true';
                         }
                     });
+
+                    syncAssessmentPresentation(tables);
                 };
 
                 const lockSyncedWeights = () => {
