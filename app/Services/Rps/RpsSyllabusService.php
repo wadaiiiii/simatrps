@@ -20,7 +20,6 @@ class RpsSyllabusService
 
         $text = trim((string) $syllabus->syllabus_text);
 
-        // Some imported source rows accidentally append "Pustaka" to syllabus_text.
         $parts = preg_split('/\bPustaka\s*:?\s*/iu', $text, 2);
         $topicText = trim($parts[0] ?? $text);
 
@@ -77,19 +76,25 @@ class RpsSyllabusService
                 ->delete();
         }
 
-        $inserted = 0;
+        $existing = DB::table('rps_materials')
+            ->where('rps_version_id', $versionId)
+            ->pluck('title')
+            ->map(fn ($title) => mb_strtolower(trim((string) $title)))
+            ->filter()
+            ->flip();
+
+        $rows = [];
+        $seen = [];
 
         foreach ($topics as $index => $topic) {
-            $exists = DB::table('rps_materials')
-                ->where('rps_version_id', $versionId)
-                ->whereRaw('LOWER(title) = ?', [mb_strtolower($topic)])
-                ->exists();
+            $normalized = mb_strtolower(trim($topic));
 
-            if ($exists) {
+            if ($normalized === '' || isset($seen[$normalized]) || $existing->has($normalized)) {
                 continue;
             }
 
-            DB::table('rps_materials')->insert([
+            $seen[$normalized] = true;
+            $rows[] = [
                 'id' => (string) Str::uuid(),
                 'rps_version_id' => $versionId,
                 'rps_sub_cpmk_id' => null,
@@ -99,12 +104,14 @@ class RpsSyllabusService
                 'source_type' => 'curriculum_syllabus',
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-
-            $inserted++;
+            ];
         }
 
-        return $inserted;
+        if ($rows !== []) {
+            DB::table('rps_materials')->insert($rows);
+        }
+
+        return count($rows);
     }
 
     public function importedMaterialsLookLikeReferences(string $versionId): bool
