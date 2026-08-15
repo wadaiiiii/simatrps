@@ -21,56 +21,53 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           path = Path('resources/js/pages/rps/show.tsx')
           text = path.read_text(encoding='utf-8')
 
-          old_cpl = '''                                        <div className="flex items-center justify-between gap-2">
-                                            <span>CPL-PRODI yang dibebankan pada MK</span>
-                                            <SectionAiButton
-                                                label="AI Pemetaan"
-                                                busy={aiBusyType === 'cpl_mapping'}
-                                                disabled={!ai.configured || cpmks.length === 0}
-                                                onClick={() => generateAi('cpl_mapping')}
-                                                suggestions={cplMappingSuggestions}
-                                                rpsId={rps.id}
-                                            />
-                                        </div>'''
-          new_cpl = '''                                        <span>CPL-PRODI yang dibebankan pada MK</span>'''
+          mapping_pattern = re.compile(
+              r'\n[ \t]*<SectionAiButton\s*\n'
+              r'[ \t]*label="AI Pemetaan"\s*\n'
+              r'[\s\S]*?suggestions=\{cplMappingSuggestions\}[\s\S]*?\n[ \t]*/>',
+          )
+          text, removed = mapping_pattern.subn('', text, count=1)
+          if removed != 1:
+              raise SystemExit(f'Expected one AI Pemetaan button, removed {removed}')
 
-          if text.count(old_cpl) != 1:
-              raise SystemExit(f'Expected exactly one CPL AI block, found {text.count(old_cpl)}')
-          text = text.replace(old_cpl, new_cpl, 1)
+          text, renamed = re.subn(
+              r'label="Telaah CPMK AI"',
+              'label="Telaah CPMK + Bloom AI"',
+              text,
+              count=1,
+          )
+          if renamed != 1:
+              raise SystemExit(f'Expected one Telaah CPMK AI label, renamed {renamed}')
 
-          old_cpmk = '''                                                <SectionAiButton
-                                                    label="Telaah CPMK AI"
-                                                    busy={aiBusyType === 'cpmk_review'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
-                                                    onClick={() => generateAi('cpmk_review')}
-                                                    suggestions={cpmkReviewSuggestions}
-                                                    rpsId={rps.id}
-                                                />'''
-          new_cpmk = '''                                                <SectionAiButton
-                                                    label="Telaah CPMK + Bloom AI"
-                                                    busy={aiBusyType === 'cpmk_review'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
-                                                    onClick={() => generateAi('cpmk_review')}
-                                                    suggestions={cpmkReviewSuggestions}
-                                                    rpsId={rps.id}
-                                                />
-                                                <SectionAiButton
-                                                    label="Pemetaan CPMK → CPL AI"
-                                                    busy={aiBusyType === 'cpl_mapping'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
-                                                    onClick={() => generateAi('cpl_mapping')}
-                                                    suggestions={cplMappingSuggestions}
-                                                    rpsId={rps.id}
-                                                />'''
+          review_pattern = re.compile(
+              r'(?P<indent>[ \t]*)<SectionAiButton\s*\n'
+              r'(?P=indent)[ \t]+label="Telaah CPMK \+ Bloom AI"\s*\n'
+              r'(?P<body>[\s\S]*?suggestions=\{cpmkReviewSuggestions\}[\s\S]*?\n(?P=indent)/>)'
+          )
+          match = review_pattern.search(text)
+          if not match:
+              raise SystemExit('Could not find the CPMK review button after renaming')
 
-          if text.count(old_cpmk) != 1:
-              raise SystemExit(f'Expected exactly one CPMK AI block, found {text.count(old_cpmk)}')
-          text = text.replace(old_cpmk, new_cpmk, 1)
+          indent = match.group('indent')
+          mapping_block = (
+              '\n'
+              f'{indent}<SectionAiButton\n'
+              f'{indent}    label="Pemetaan CPMK → CPL AI"\n'
+              f'{indent}    busy={{aiBusyType === \'cpl_mapping\'}}\n'
+              f'{indent}    disabled={{!ai.configured || cpmks.length === 0}}\n'
+              f'{indent}    onClick={{() => generateAi(\'cpl_mapping\')}}\n'
+              f'{indent}    suggestions={{cplMappingSuggestions}}\n'
+              f'{indent}    rpsId={{rps.id}}\n'
+              f'{indent}/>'
+          )
 
+          insert_at = match.end()
+          text = text[:insert_at] + mapping_block + text[insert_at:]
           path.write_text(text, encoding='utf-8')
 
       - name: Commit patch
