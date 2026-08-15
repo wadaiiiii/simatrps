@@ -41,6 +41,32 @@
                 cursor: default !important;
             }
 
+            /* Presentasi dokumen RPS pada layar dan preview. */
+            [data-rps-cpl-related-label='true'] {
+                color: #111827 !important;
+                text-transform: none !important;
+            }
+
+            [data-rps-cpmk-description='true'] {
+                display: inline-block;
+            }
+
+            [data-rps-cpmk-description='true']::first-letter {
+                text-transform: uppercase;
+            }
+
+            /* Matriks langsung memakai kode Sub-CPMK, tanpa alias S1/S2/S3. */
+            table[data-rps-sub-matrix='true'] thead th:not(:first-child) > div:first-child {
+                display: none !important;
+            }
+
+            table[data-rps-sub-matrix='true'] thead th:not(:first-child) > div:last-child {
+                color: #334155 !important;
+                font-size: 10px !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
+            }
+
             /*
              * Final pagination guard for RPS Preview.
              * This selector intentionally has higher specificity than the
@@ -66,6 +92,21 @@
                     page-break-after: auto !important;
                 }
 
+                /* MK prasyarat mengikuti ukuran isi standar yang lebih kecil. */
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'],
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'] td,
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'] th,
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'] * {
+                    font-size: 9.5px !important;
+                    line-height: 1.2 !important;
+                }
+
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'] td,
+                html.rps-print-mode body tr[data-rps-prerequisite-row='true'] th {
+                    padding-top: 2px !important;
+                    padding-bottom: 2px !important;
+                }
+
                 /* Overflow containers must not interfere with print fragmentation. */
                 html.rps-print-mode body .overflow-x-auto {
                     overflow: visible !important;
@@ -73,15 +114,30 @@
                     overflow-y: visible !important;
                 }
 
-                /* Weekly table remains one continuous table with repeated header. */
+                /* Dua baris ruang setelah MK prasyarat sebelum tabel mingguan. */
                 html.rps-print-mode body .rps-print-weekly {
                     overflow: visible !important;
                     break-inside: auto !important;
                     page-break-inside: auto !important;
+                    margin-top: 6mm !important;
                 }
 
                 html.rps-print-mode body .rps-print-weekly thead {
                     display: table-header-group !important;
+                }
+
+                /* Kop tabel dibuat tegas, termasuk saat diulang pada halaman lanjut. */
+                html.rps-print-mode body .rps-print-weekly thead th {
+                    border: 1.4px solid #000 !important;
+                    box-shadow: none !important;
+                }
+
+                html.rps-print-mode body .rps-print-weekly thead tr:first-child th {
+                    border-top-width: 1.8px !important;
+                }
+
+                html.rps-print-mode body .rps-print-weekly thead tr:last-child th {
+                    border-bottom-width: 1.8px !important;
                 }
 
                 html.rps-print-mode body .rps-print-weekly tbody {
@@ -131,6 +187,31 @@
                     font-size: 12px !important;
                     line-height: 1.18 !important;
                 }
+
+                /*
+                 * Setelah Tabel Penilaian & Evaluasi CPL, Simulasi langsung
+                 * mengisi ruang halaman yang masih tersedia. Jangan paksa page baru.
+                 */
+                html.rps-print-mode.rps-print-mode body .rps-print-simulation-title.rps-print-simulation-title {
+                    break-before: auto !important;
+                    page-break-before: auto !important;
+                    break-after: avoid !important;
+                    page-break-after: avoid !important;
+                    margin-top: 5mm !important;
+                    padding-top: 0 !important;
+                }
+
+                html.rps-print-mode body .rps-print-simulation-table {
+                    break-before: auto !important;
+                    page-break-before: auto !important;
+                }
+
+                /* RTM tetap selalu dimulai pada lembar baru. */
+                html.rps-print-mode.rps-print-mode body .rps-print-rtm.rps-print-rtm,
+                html.rps-print-mode.rps-print-mode body .rps-print-rtm-card.rps-print-page-break {
+                    break-before: page !important;
+                    page-break-before: always !important;
+                }
             }
         </style>
 
@@ -167,6 +248,51 @@
                     input.title = 'Bobot tersinkron otomatis dari Edit Detail Asesmen.';
                 };
 
+                const markDocumentPresentation = () => {
+                    const tables = Array.from(document.querySelectorAll('table'));
+                    const mainTable = tables.find((table) =>
+                        normalizedText(table.textContent).includes('RENCANA PEMBELAJARAN SEMESTER (RPS)')
+                    );
+
+                    if (mainTable) {
+                        /* CPL terkait: hitam, kapitalisasi normal. */
+                        mainTable.querySelectorAll('span').forEach((span) => {
+                            if (normalizedText(span.textContent).toLowerCase() === 'cpl terkait:') {
+                                span.dataset.rpsCplRelatedLabel = 'true';
+                            }
+                        });
+
+                        /* Huruf pertama rumusan CPMK dibuat kapital tanpa mengubah data server. */
+                        mainTable.querySelectorAll('tbody > tr').forEach((row) => {
+                            const firstCell = row.querySelector('td:first-child');
+                            const firstText = normalizedText(firstCell?.textContent);
+
+                            if (!/^CPMK\s*\d+/i.test(firstText)) return;
+
+                            const description = row.querySelector('td[colspan="4"] > div > div:first-child > span:first-child');
+                            if (description instanceof HTMLElement) {
+                                description.dataset.rpsCpmkDescription = 'true';
+                            }
+                        });
+
+                        /* Tandai baris MK prasyarat untuk ukuran print yang lebih kecil. */
+                        mainTable.querySelectorAll('tbody > tr').forEach((row) => {
+                            const text = normalizedText(row.textContent).toLowerCase();
+                            if (text.startsWith('matakuliah syarat') || text.startsWith('mk prasyarat')) {
+                                row.dataset.rpsPrerequisiteRow = 'true';
+                            }
+                        });
+                    }
+
+                    /* Hilangkan alias S1/S2 dst; tampilkan langsung Sub-CPMK-n. */
+                    tables.forEach((table) => {
+                        const text = normalizedText(table.textContent);
+                        if (text.includes('Baris ↓ CPMK') && text.includes('Kolom → Sub-CPMK')) {
+                            table.dataset.rpsSubMatrix = 'true';
+                        }
+                    });
+                };
+
                 const lockSyncedWeights = () => {
                     scheduled = false;
 
@@ -197,6 +323,8 @@
                                 .forEach(lockInput);
                         }
                     });
+
+                    markDocumentPresentation();
                 };
 
                 const scheduleLock = () => {
