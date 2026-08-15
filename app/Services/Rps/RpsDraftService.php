@@ -52,6 +52,7 @@ class RpsDraftService
             }
 
             $rpsId = $existing?->id ?: (string) Str::uuid();
+            $timestamp = now();
 
             if (! $existing) {
                 DB::table('rps')->insert([
@@ -62,8 +63,8 @@ class RpsDraftService
                     'academic_year' => $academicYear,
                     'academic_semester' => $academicSemester,
                     'status' => 'draft',
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
                 ]);
             }
 
@@ -88,8 +89,8 @@ class RpsDraftService
                     'cpmk_cpl_mapping_generated' => false,
                 ]),
                 'created_by' => $ownerId,
-                'created_at' => now(),
-                'updated_at' => now(),
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
             ]);
 
             $masterCpmks = DB::table('curriculum_cpmks')
@@ -97,40 +98,46 @@ class RpsDraftService
                 ->orderBy('sequence_no')
                 ->get();
 
-            foreach ($masterCpmks as $cpmk) {
-                DB::table('rps_cpmks')->insert([
-                    'id' => (string) Str::uuid(),
-                    'rps_version_id' => $versionId,
-                    'code' => $cpmk->code,
-                    'description' => $cpmk->description,
-                    'source_type' => 'curriculum',
-                    'source_cpmk_id' => $cpmk->id,
-                    'sequence_no' => $cpmk->sequence_no,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            $cpmkRows = $masterCpmks->map(fn ($cpmk): array => [
+                'id' => (string) Str::uuid(),
+                'rps_version_id' => $versionId,
+                'code' => $cpmk->code,
+                'description' => $cpmk->description,
+                'source_type' => 'curriculum',
+                'source_cpmk_id' => $cpmk->id,
+                'sequence_no' => $cpmk->sequence_no,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ])->all();
+
+            if ($cpmkRows !== []) {
+                DB::table('rps_cpmks')->insert($cpmkRows);
             }
+
+            $weekRows = [];
 
             for ($week = 1; $week <= 16; $week++) {
                 $isUts = $week === 8;
                 $isUas = $week === 16;
 
-                DB::table('rps_weekly_plans')->insert([
+                $weekRows[] = [
                     'id' => (string) Str::uuid(),
                     'rps_version_id' => $versionId,
                     'week_number' => $week,
                     'is_exam' => $isUts || $isUas,
                     'exam_type' => $isUts ? 'UTS' : ($isUas ? 'UAS' : null),
                     'source_type' => 'system',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
+                ];
             }
+
+            DB::table('rps_weekly_plans')->insert($weekRows);
 
             DB::table('rps')->where('id', $rpsId)->update([
                 'current_version_id' => $versionId,
                 'status' => 'draft',
-                'updated_at' => now(),
+                'updated_at' => $timestamp,
             ]);
 
             return [
