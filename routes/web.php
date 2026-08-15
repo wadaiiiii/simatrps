@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CurriculumController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ObeWorkspaceController;
 use App\Http\Controllers\RpsAssessmentController;
@@ -83,7 +84,8 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->group(function (): void {
         Route::get('kurikulum', CurriculumController::class)->name('curriculum');
         Route::inertia('template-rps', 'admin/templates')->name('templates');
-        Route::inertia('pengguna', 'admin/users')->name('users');
+        Route::get('pengguna', [UserController::class, 'index'])->name('users');
+        Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
     });
 
 require __DIR__.'/settings.php';
