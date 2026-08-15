@@ -11,9 +11,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify which of the database connections below you wish
-    | to use as your default connection for database operations. This is
-    | the connection which will be utilized unless another connection
-    | is explicitly specified when you execute a query / statement.
+    | to use as your default connection for all database work. This is the
+    | connection which will be utilized unless another connection is
+    | explicitly specified when you execute a query / statement.
     |
     */
 
@@ -97,6 +97,12 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'options' => extension_loaded('pdo_pgsql') ? [
+                \PDO::ATTR_EMULATE_PREPARES => filter_var(
+                    env('DB_EMULATE_PREPARES', false),
+                    FILTER_VALIDATE_BOOLEAN,
+                ),
+            ] : [],
         ],
 
         'sqlsrv' => [
@@ -138,8 +144,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Redis is an open source, fast, and advanced key-value store that also
-    | provides a richer body of commands than a typical key-value system
-    | such as Memcached. You may define your connection settings here.
+    | provides a richer body of commands than a typical key-value store. You
+    | may define your connection settings here.
     |
     */
 
