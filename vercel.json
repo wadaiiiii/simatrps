@@ -8,14 +8,11 @@
     }
   },
   "buildCommand": "npm run build",
-  "routes": [
+  "outputDirectory": "public",
+  "rewrites": [
     {
-      "src": "/(.*\\.(?:css|js|mjs|map|png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|otf|pdf|txt|xml|webmanifest))",
-      "dest": "/public/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.php"
+      "source": "/(.*)",
+      "destination": "/api/index.php"
     }
   ]
 }
