@@ -219,6 +219,7 @@ section > details.group > summary > span > span:last-child {
  */
 @media print {
     html.rps-print-mode body .rps-print-main-table {
+        font-family: 'Instrument Sans', Arial, sans-serif !important;
         font-size: 10pt !important;
         line-height: 1.22 !important;
         border-collapse: collapse !important;
@@ -227,6 +228,7 @@ section > details.group > summary > span > span:last-child {
 
     html.rps-print-mode body .rps-print-main-table th,
     html.rps-print-mode body .rps-print-main-table td {
+        font-family: inherit !important;
         font-size: 10pt !important;
         line-height: 1.22 !important;
         border: 1.2px solid #111827 !important;
@@ -234,6 +236,7 @@ section > details.group > summary > span > span:last-child {
 
     html.rps-print-mode body .rps-print-main-table th > *,
     html.rps-print-mode body .rps-print-main-table td > * {
+        font-family: inherit !important;
         font-size: inherit !important;
         line-height: inherit !important;
     }
@@ -252,9 +255,14 @@ section > details.group > summary > span > span:last-child {
     html.rps-print-mode body .rps-print-main-table .rps-print-label::after {
         display: inline-block !important;
         white-space: pre-line !important;
+        font-family: 'Instrument Sans', Arial, sans-serif !important;
         font-size: 10pt !important;
         line-height: 1.22 !important;
         font-weight: inherit !important;
+    }
+
+    html.rps-print-mode body .rps-print-main-table .rps-print-label[data-rps-print-label^="Diskripsi Singkat"]::after {
+        content: "Deskripsi Singkat\A Mata Kuliah" !important;
     }
 
     /* Keep the RPS title as the only intentional larger row in the main table. */
@@ -265,6 +273,7 @@ section > details.group > summary > span > span:last-child {
 
     html.rps-print-mode body .rps-print-weekly {
         margin-top: 20pt !important;
+        font-family: 'Instrument Sans', Arial, sans-serif !important;
         font-size: 10pt !important;
         line-height: 1.22 !important;
         border-collapse: collapse !important;
@@ -275,6 +284,7 @@ section > details.group > summary > span > span:last-child {
     html.rps-print-mode body .rps-print-weekly tbody td,
     html.rps-print-mode body .rps-print-weekly tfoot th,
     html.rps-print-mode body .rps-print-weekly tfoot td {
+        font-family: inherit !important;
         font-size: 10pt !important;
         line-height: 1.22 !important;
         border: 1.2px solid #111827 !important;
@@ -282,6 +292,7 @@ section > details.group > summary > span > span:last-child {
 
     html.rps-print-mode body .rps-print-weekly th > *,
     html.rps-print-mode body .rps-print-weekly td > * {
+        font-family: inherit !important;
         font-size: inherit !important;
         line-height: inherit !important;
     }
