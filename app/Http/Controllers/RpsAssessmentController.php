@@ -83,6 +83,12 @@ class RpsAssessmentController extends Controller
             $validated['week_number'] = 16;
         }
 
+        $this->assertWeightWithinLimit(
+            $version->id,
+            $validated['weight'] ?? null,
+            $assessment
+        );
+
         DB::transaction(function () use ($assessment, $version, $validated): void {
             DB::table('assessments')->where('id', $assessment)->update([
                 'name' => $validated['name'],
@@ -113,8 +119,8 @@ class RpsAssessmentController extends Controller
         return back()->with(
             'success',
             in_array($row->code, ['UTS', 'UAS'], true)
-                ? "{$row->code} berhasil disimpan."
-                : 'Asesmen diperbarui.'
+                ? "{$row->code} berhasil disimpan dan seluruh tabel bobot tersinkron."
+                : 'Asesmen diperbarui dan seluruh tabel bobot tersinkron.'
         );
     }
 
@@ -132,9 +138,14 @@ class RpsAssessmentController extends Controller
 
         abort_unless($row, 404);
 
+        if ($request->has('weight')) {
+            throw ValidationException::withMessages([
+                'weight' => 'Bobot hanya dapat diubah melalui Edit Detail Asesmen. Tabel Penilaian dan Evaluasi CPL hanya menampilkan bobot hasil sinkronisasi.',
+            ]);
+        }
+
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:500'],
-            'weight' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'sub_cpmk_ids' => ['sometimes', 'array', 'min:1'],
             'sub_cpmk_ids.*' => [
                 'uuid',
@@ -152,18 +163,6 @@ class RpsAssessmentController extends Controller
 
         if (array_key_exists('name', $validated) && filled($validated['name'])) {
             $updates['name'] = trim((string) $validated['name']);
-        }
-
-        if (array_key_exists('weight', $validated)) {
-            $this->assertWeightWithinLimit(
-                $version->id,
-                $validated['weight'],
-                $assessment
-            );
-
-            $updates['weight'] = $validated['weight'] === null || $validated['weight'] === ''
-                ? null
-                : round((float) $validated['weight'], 2);
         }
 
         DB::transaction(function () use ($assessment, $version, $validated, $updates): void {
@@ -185,13 +184,9 @@ class RpsAssessmentController extends Controller
             }
         });
 
-        if ($row->week_number) {
-            $this->syncWeekPrintWeight($version->id, (int) $row->week_number);
-        }
-
         return back()->with(
             'success',
-            'Tabel Penilaian dan Evaluasi CPL berhasil diperbarui.'
+            'Pemetaan Sub-CPMK pada Tabel Penilaian dan Evaluasi CPL berhasil diperbarui.'
         );
     }
 
