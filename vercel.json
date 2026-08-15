@@ -13,6 +13,10 @@
   "outputDirectory": "public/build",
   "routes": [
     {
+      "src": "/logo-unsulbar.png",
+      "dest": "/api/logo.php"
+    },
+    {
       "src": "/__health",
       "dest": "/api/health.php"
     },
