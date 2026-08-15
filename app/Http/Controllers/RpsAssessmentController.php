@@ -15,7 +15,7 @@ class RpsAssessmentController extends Controller
     {
         [, $version] = $this->context($request, $rps);
 
-        $validated = $this->validated($request);
+        $validated = $this->validated($request, $version->id);
         $this->assertWeightWithinLimit($version->id, $validated['weight'] ?? null);
 
         $next = (int) DB::table('assessments')
@@ -45,7 +45,7 @@ class RpsAssessmentController extends Controller
             $this->syncSubCpmks(
                 $id,
                 $version->id,
-                $validated['sub_cpmk_ids'] ?? []
+                $validated['sub_cpmk_ids']
             );
         });
 
@@ -70,7 +70,7 @@ class RpsAssessmentController extends Controller
 
         abort_unless($row, 404);
 
-        $validated = $this->validated($request);
+        $validated = $this->validated($request, $version->id);
         $oldWeek = $row->week_number ? (int) $row->week_number : null;
 
         if ($row->code === 'UTS') {
@@ -82,7 +82,6 @@ class RpsAssessmentController extends Controller
             $validated['type'] = 'uas';
             $validated['week_number'] = 16;
         }
-
 
         DB::transaction(function () use ($assessment, $version, $validated): void {
             DB::table('assessments')->where('id', $assessment)->update([
@@ -99,7 +98,7 @@ class RpsAssessmentController extends Controller
             $this->syncSubCpmks(
                 $assessment,
                 $version->id,
-                $validated['sub_cpmk_ids'] ?? []
+                $validated['sub_cpmk_ids']
             );
         });
 
@@ -136,8 +135,17 @@ class RpsAssessmentController extends Controller
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:500'],
             'weight' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'sub_cpmk_ids' => ['nullable', 'array'],
-            'sub_cpmk_ids.*' => ['uuid'],
+            'sub_cpmk_ids' => ['sometimes', 'array', 'min:1'],
+            'sub_cpmk_ids.*' => [
+                'uuid',
+                'distinct',
+                Rule::exists('rps_sub_cpmks', 'id')->where(
+                    fn ($query) => $query->where('rps_version_id', $version->id)
+                ),
+            ],
+        ], [
+            'sub_cpmk_ids.min' => 'Setiap asesmen OBE wajib terkait dengan minimal satu Sub-CPMK.',
+            'sub_cpmk_ids.*.exists' => 'Sub-CPMK yang dipilih tidak termasuk dalam RPS ini.',
         ]);
 
         $updates = [];
@@ -172,7 +180,7 @@ class RpsAssessmentController extends Controller
                 $this->syncSubCpmks(
                     $assessment,
                     $version->id,
-                    $validated['sub_cpmk_ids'] ?? []
+                    $validated['sub_cpmk_ids']
                 );
             }
         });
@@ -262,7 +270,7 @@ class RpsAssessmentController extends Controller
         }
     }
 
-    private function validated(Request $request): array
+    private function validated(Request $request, string $versionId): array
     {
         return $request->validate([
             'name' => ['required', 'string', 'max:500'],
@@ -273,8 +281,18 @@ class RpsAssessmentController extends Controller
             'week_number' => ['nullable', 'integer', 'min:1', 'max:16'],
             'weight' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'description' => ['nullable', 'string', 'max:4000'],
-            'sub_cpmk_ids' => ['nullable', 'array'],
-            'sub_cpmk_ids.*' => ['uuid'],
+            'sub_cpmk_ids' => ['required', 'array', 'min:1'],
+            'sub_cpmk_ids.*' => [
+                'uuid',
+                'distinct',
+                Rule::exists('rps_sub_cpmks', 'id')->where(
+                    fn ($query) => $query->where('rps_version_id', $versionId)
+                ),
+            ],
+        ], [
+            'sub_cpmk_ids.required' => 'Setiap asesmen OBE wajib terkait dengan minimal satu Sub-CPMK.',
+            'sub_cpmk_ids.min' => 'Setiap asesmen OBE wajib terkait dengan minimal satu Sub-CPMK.',
+            'sub_cpmk_ids.*.exists' => 'Sub-CPMK yang dipilih tidak termasuk dalam RPS ini.',
         ]);
     }
 
