@@ -29,6 +29,18 @@
                 background-color: oklch(0.145 0 0);
             }
 
+            /* Bobot pada tabel turunan hanya display hasil sinkronisasi asesmen. */
+            input[data-rps-synced-weight='true'] {
+                pointer-events: none !important;
+                border-color: transparent !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                color: #334155 !important;
+                opacity: 1 !important;
+                -webkit-text-fill-color: #334155 !important;
+                cursor: default !important;
+            }
+
             /*
              * Final pagination guard for RPS Preview.
              * This selector intentionally has higher specificity than the
@@ -81,8 +93,6 @@
                 /*
                  * Chromium is more reliable when the ROW is atomic and the
                  * cells themselves are allowed to fragment internally.
-                 * If a whole week does not fit in the remaining space, the
-                 * complete week moves to the next page.
                  */
                 html.rps-print-mode body .rps-print-weekly tbody tr {
                     display: table-row !important;
@@ -100,17 +110,16 @@
                 }
 
                 /*
-                 * Uniform preview typography:
-                 * all printable RPS content uses 11pt; only document/table
-                 * titles use 12pt. Repeated class selectors intentionally beat
-                 * the runtime preview overrides without changing the editor UI.
+                 * Typography benchmark = the native weekly RPS table.
+                 * Body/header cells use 11px. Only major document/table titles
+                 * use 12px. This intentionally overrides the older 11pt rules.
                  */
                 html.rps-print-mode.rps-print-mode body table.rps-print-main-table.rps-print-main-table *,
                 html.rps-print-mode.rps-print-mode body table.rps-print-weekly.rps-print-weekly *,
                 html.rps-print-mode.rps-print-mode body .rps-print-evaluation.rps-print-evaluation *,
                 html.rps-print-mode.rps-print-mode body .rps-print-grade-scale.rps-print-grade-scale *,
                 html.rps-print-mode.rps-print-mode body .rps-print-rtm.rps-print-rtm * {
-                    font-size: 11pt !important;
+                    font-size: 11px !important;
                     line-height: 1.22 !important;
                 }
 
@@ -119,7 +128,7 @@
                 html.rps-print-mode.rps-print-mode body .rps-print-simulation-title.rps-print-simulation-title,
                 html.rps-print-mode.rps-print-mode body .rps-print-rtm.rps-print-rtm > div > div:first-child,
                 html.rps-print-mode.rps-print-mode body table.rps-print-rtm-table.rps-print-rtm-table > tbody > tr:nth-child(2) th {
-                    font-size: 12pt !important;
+                    font-size: 12px !important;
                     line-height: 1.18 !important;
                 }
             }
@@ -139,5 +148,74 @@
     </head>
     <body class="font-sans antialiased">
         <x-inertia::app />
+
+        <script>
+            (function () {
+                let scheduled = false;
+
+                const normalizedText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+
+                const lockInput = (input) => {
+                    if (!(input instanceof HTMLInputElement)) return;
+                    if (input.dataset.rpsSyncedWeight === 'true') return;
+
+                    input.dataset.rpsSyncedWeight = 'true';
+                    input.disabled = true;
+                    input.readOnly = true;
+                    input.tabIndex = -1;
+                    input.setAttribute('aria-readonly', 'true');
+                    input.title = 'Bobot tersinkron otomatis dari Edit Detail Asesmen.';
+                };
+
+                const lockSyncedWeights = () => {
+                    scheduled = false;
+
+                    if (!/^\/rps\/[^/]+$/.test(window.location.pathname)) return;
+
+                    document.querySelectorAll('table').forEach((table) => {
+                        const text = normalizedText(table.textContent);
+
+                        /* Tabel RPS mingguan: kolom terakhir = Bobot Penilaian. */
+                        if (
+                            text.includes('Sub-CPMK')
+                            && text.includes('Bobot Penilaian')
+                            && text.includes('Bentuk Pembelajaran')
+                        ) {
+                            table.querySelectorAll('tbody tr td:last-child input[type="number"]')
+                                .forEach(lockInput);
+                        }
+
+                        /* Tabel Penilaian & Evaluasi CPL: semua input angka = bobot asesmen. */
+                        if (text.includes('Bobot per Bentuk Penilaian')) {
+                            table.querySelectorAll('input[type="number"]')
+                                .forEach(lockInput);
+                        }
+
+                        /* Simulasi: kolom ke-6 = Bobot (%); Nilai Mhs tetap editable. */
+                        if (text.includes('TOTAL NILAI AKHIR') && text.includes('Nilai Mhs')) {
+                            table.querySelectorAll('tbody tr td:nth-child(6) input[type="number"]')
+                                .forEach(lockInput);
+                        }
+                    });
+                };
+
+                const scheduleLock = () => {
+                    if (scheduled) return;
+                    scheduled = true;
+                    window.requestAnimationFrame(lockSyncedWeights);
+                };
+
+                document.addEventListener('DOMContentLoaded', scheduleLock);
+                document.addEventListener('inertia:finish', scheduleLock);
+
+                const observer = new MutationObserver(scheduleLock);
+                observer.observe(document.documentElement, {
+                    childList: true,
+                    subtree: true,
+                });
+
+                scheduleLock();
+            })();
+        </script>
     </body>
 </html>
