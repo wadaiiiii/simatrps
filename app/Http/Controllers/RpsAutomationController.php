@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class RpsAutomationController extends Controller
 {
@@ -22,12 +24,22 @@ class RpsAutomationController extends Controller
             'mode' => ['nullable', Rule::in(['fill_empty', 'overwrite'])],
         ]);
 
-        $result = $service->generate(
-            $record,
-            $version,
-            $request->user()->id,
-            $validated['mode'] ?? 'fill_empty'
-        );
+        try {
+            $result = $service->generate(
+                $record,
+                $version,
+                $request->user()->id,
+                $validated['mode'] ?? 'fill_empty'
+            );
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'smart_draft' => 'Isi Kosong belum berhasil diproses. Coba ulangi setelah halaman dimuat ulang. Jika tetap terjadi, gunakan AI per pekan sementara proses otomatis diperiksa.',
+            ]);
+        }
 
         return back()->with(
             'success',
