@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 $root = dirname(__DIR__);
 $tmpStorage = '/tmp/simatrps-storage';
+$tmpBootstrapCache = '/tmp/simatrps-bootstrap-cache';
 
 foreach ([
     $tmpStorage,
@@ -16,15 +17,28 @@ foreach ([
     $tmpStorage.'/framework/sessions',
     $tmpStorage.'/framework/views',
     $tmpStorage.'/logs',
+    $tmpBootstrapCache,
 ] as $directory) {
     if (! is_dir($directory)) {
         @mkdir($directory, 0777, true);
     }
 }
 
-putenv('VIEW_COMPILED_PATH='.$tmpStorage.'/framework/views');
-$_ENV['VIEW_COMPILED_PATH'] = $tmpStorage.'/framework/views';
-$_SERVER['VIEW_COMPILED_PATH'] = $tmpStorage.'/framework/views';
+$runtimeEnvironment = [
+    'LARAVEL_STORAGE_PATH' => $tmpStorage,
+    'VIEW_COMPILED_PATH' => $tmpStorage.'/framework/views',
+    'APP_CONFIG_CACHE' => $tmpBootstrapCache.'/config.php',
+    'APP_EVENTS_CACHE' => $tmpBootstrapCache.'/events.php',
+    'APP_PACKAGES_CACHE' => $tmpBootstrapCache.'/packages.php',
+    'APP_ROUTES_CACHE' => $tmpBootstrapCache.'/routes.php',
+    'APP_SERVICES_CACHE' => $tmpBootstrapCache.'/services.php',
+];
+
+foreach ($runtimeEnvironment as $key => $value) {
+    putenv("{$key}={$value}");
+    $_ENV[$key] = $value;
+    $_SERVER[$key] = $value;
+}
 
 $defaults = [
     'APP_ENV' => 'production',
@@ -86,6 +100,7 @@ try {
         'root_view' => file_exists($root.'/resources/views/app.blade.php'),
         'welcome_page' => file_exists($root.'/resources/js/pages/welcome.tsx'),
         'vite_manifest' => file_exists($root.'/public/build/manifest.json'),
+        'bootstrap_cache_writable' => is_writable($tmpBootstrapCache),
     ];
 
     try {
