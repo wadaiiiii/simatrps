@@ -439,17 +439,10 @@ export function AppSidebarHeader({
         setPrintStyle(mainTitleCell, 'line-height', '1.15');
 
         const weeklyWrapper = weeklyTable?.closest<HTMLElement>('div.overflow-x-auto');
-        if (weeklyWrapper?.parentElement) {
-            const spacer = document.createElement('div');
-            spacer.setAttribute('data-rps-print-weekly-spacer', 'true');
-            spacer.setAttribute('aria-hidden', 'true');
-            spacer.style.setProperty('display', 'block', 'important');
-            spacer.style.setProperty('width', '100%', 'important');
-            spacer.style.setProperty('height', '8mm', 'important');
-            spacer.style.setProperty('min-height', '8mm', 'important');
-            weeklyWrapper.parentElement.insertBefore(spacer, weeklyWrapper);
-            cleanupActions.push(() => spacer.remove());
-        }
+        setPrintStyle(weeklyWrapper, 'padding-top', '8mm');
+        setPrintStyle(weeklyWrapper, 'box-sizing', 'border-box');
+        setPrintStyle(weeklyWrapper, 'overflow', 'visible');
+        setPrintStyle(weeklyWrapper, 'background', '#fff');
 
         const assessmentContainer = assessmentTable?.closest('div.border-x');
         addClass(assessmentContainer, 'rps-print-landscape');

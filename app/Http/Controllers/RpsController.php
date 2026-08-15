@@ -30,7 +30,7 @@ class RpsController extends Controller
                 'courses.name as course_name',
                 'courses.system_code',
                 'courses.official_code',
-                'courses.credits',
+                DB::raw('CAST(courses.credits AS INTEGER) as credits'),
                 'courses.semester_recommended',
             ]);
 
@@ -67,7 +67,7 @@ class RpsController extends Controller
                     'system_code' => $course->system_code,
                     'official_code' => $course->official_code,
                     'name' => $course->name,
-                    'credits' => (float) $course->credits,
+                    'credits' => (int) round((float) $course->credits),
                     'semester_recommended' => $course->semester_recommended,
                     'has_practicum' => (bool) $course->has_practicum,
                     'official_cpl_codes' => $cpls,
@@ -123,7 +123,7 @@ class RpsController extends Controller
                 'courses.name as course_name',
                 'courses.system_code',
                 'courses.official_code',
-                'courses.credits',
+                DB::raw('CAST(courses.credits AS INTEGER) as credits'),
                 'courses.semester_recommended',
                 'courses.has_practicum',
                 'courses.verification_status',
