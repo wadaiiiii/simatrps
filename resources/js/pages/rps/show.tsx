@@ -470,9 +470,7 @@ export default function RpsShow(props: any) {
                                     ? 'bg-emerald-50 text-emerald-700'
                                     : 'bg-amber-50 text-amber-700'
                             }`}>
-                                {ai.configured
-                                    ? `${String(ai.provider).toUpperCase()} | ${ai.model}${safeList(ai.fallbacks).length ? ` | Backup ${safeList(ai.fallbacks).map((x: any) => String(x).toUpperCase()).join(' → ')}` : ''}`
-                                    : 'Belum aktif'}
+                                {ai.configured ? 'AI aktif' : 'AI belum aktif'}
                             </span>
                             <span className="text-xs text-slate-400">
                                 Rekomendasi AI ditempatkan tepat di bagian yang sedang dikerjakan.
@@ -814,6 +812,9 @@ export default function RpsShow(props: any) {
                         </table>
                     </div>
 
+                    {/* Spacer nyata agar tabel identitas dan tabel pekan tidak menempel, termasuk di Chrome print preview. */}
+                    <div aria-hidden="true" className="w-full shrink-0" style={{ height: '32px' }} />
+
                     {/* Weekly toolbar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
                         <div className="text-xs font-bold text-slate-600">Rencana Pembelajaran Semester</div>
@@ -853,14 +854,15 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
+                                title="Mengisi otomatis bagian RPS yang masih kosong tanpa mengubah isian yang sudah ada."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
                                     { mode: 'fill_empty' },
-                                    actionOptions('Bagian yang masih kosong berhasil dilengkapi.'),
+                                    actionOptions('Bagian RPS yang masih kosong berhasil dilengkapi tanpa mengubah isian yang sudah ada.'),
                                 )}
                                 className="rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white"
                             >
-                                Isi Kosong
+                                Lengkapi Bagian Kosong
                             </button>
                         </div>
                     </div>
