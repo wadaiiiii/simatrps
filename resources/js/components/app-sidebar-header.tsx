@@ -25,7 +25,7 @@ export function AppSidebarHeader({
     const isAdmin = page.props.auth?.user?.role === 'admin';
     const isRpsDetail = /^\/rps\/(?!baru(?:\/|$))[^/?#]+(?:[?#].*)?$/.test(page.url);
 
-    const printRps = () => {
+    const printRps = async () => {
         const root = document.documentElement;
         const cleanupActions: Array<() => void> = [];
 
@@ -109,7 +109,17 @@ export function AppSidebarHeader({
         addClass(rtmContainer, 'rps-print-portrait');
         addClass(rtmContainer, 'rps-print-rtm');
         addClass(rtmContainer, 'rps-print-page-break');
-        rtmTables.forEach((table) => addClass(table, 'rps-print-rtm-table'));
+
+        rtmTables.forEach((table, index) => {
+            addClass(table, 'rps-print-rtm-table');
+
+            const card = table.closest('div.break-inside-avoid');
+            addClass(card, 'rps-print-rtm-card');
+
+            if (index > 0) {
+                addClass(card, 'rps-print-page-break');
+            }
+        });
 
         const institutionTables = [mainRpsTable, ...rtmTables].filter(Boolean) as HTMLTableElement[];
         institutionTables.forEach((table) => {
@@ -145,6 +155,41 @@ export function AppSidebarHeader({
             'Bentuk Pembelajaran; Metode Pembelajaran; Penugasan; [Estimasi Waktu]',
             'Bentuk Pembelajaran;\nMetode Pembelajaran;\nPenugasan Mahasiswa;\n[Estimasi Waktu]',
         );
+
+        const logoImages = Array.from(
+            document.querySelectorAll<HTMLImageElement>('img[src*="logo-unsulbar"]'),
+        );
+
+        logoImages.forEach((image) => {
+            const originalSrc = image.getAttribute('src') || '/logo-unsulbar.png';
+            const separator = originalSrc.includes('?') ? '&' : '?';
+            image.setAttribute('src', `${originalSrc}${separator}print=${Date.now()}`);
+            cleanupActions.push(() => image.setAttribute('src', originalSrc));
+        });
+
+        await Promise.all(
+            logoImages.map((image) => {
+                if (image.complete && image.naturalWidth > 0) {
+                    return Promise.resolve();
+                }
+
+                return new Promise<void>((resolve) => {
+                    let finished = false;
+                    const finish = () => {
+                        if (finished) return;
+                        finished = true;
+                        resolve();
+                    };
+
+                    image.addEventListener('load', finish, { once: true });
+                    image.addEventListener('error', finish, { once: true });
+                    window.setTimeout(finish, 4000);
+                });
+            }),
+        );
+
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
         const cleanup = () => {
             [...cleanupActions].reverse().forEach((action) => action());
