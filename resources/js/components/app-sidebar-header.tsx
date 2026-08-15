@@ -68,6 +68,151 @@ export function AppSidebarHeader({
 
         root.classList.add('rps-print-mode');
 
+        const printStyle = document.createElement('style');
+        printStyle.setAttribute('data-rps-print-overrides', 'true');
+        printStyle.textContent = `
+            @page rpsLandscape { size: A4 landscape; margin: 7mm 7mm; }
+            @page rpsPortrait { size: A4 portrait; margin: 10mm 10mm; }
+
+            @media print {
+                html.rps-print-mode .rps-print-label::after {
+                    font-size: 9.5pt !important;
+                    line-height: 1.2 !important;
+                }
+
+                html.rps-print-mode .rps-print-institution-grid {
+                    grid-template-columns: 27mm 1fr !important;
+                    min-height: 25mm !important;
+                }
+
+                html.rps-print-mode .rps-print-institution-grid img {
+                    width: 19mm !important;
+                    height: 19mm !important;
+                    max-width: 19mm !important;
+                    object-fit: contain !important;
+                }
+
+                html.rps-print-mode .rps-print-main-table {
+                    font-size: 9pt !important;
+                    line-height: 1.28 !important;
+                }
+
+                html.rps-print-mode .rps-print-main-table th,
+                html.rps-print-mode .rps-print-main-table td {
+                    padding: 3.5px 5px !important;
+                }
+
+                html.rps-print-mode .rps-print-main-table > tbody > tr:first-child + tr th {
+                    font-size: 11pt !important;
+                    padding: 4px !important;
+                }
+
+                html.rps-print-mode .rps-print-main-table tr {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly {
+                    table-layout: fixed !important;
+                    font-size: 9pt !important;
+                    line-height: 1.28 !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly thead th {
+                    font-size: 9pt !important;
+                    line-height: 1.2 !important;
+                    padding: 5px 4px !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly tbody td {
+                    padding: 5px 5px !important;
+                    line-height: 1.3 !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly tbody tr {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-weekly tbody td {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-assessment-table,
+                html.rps-print-mode .rps-print-simulation-table {
+                    font-size: 9.2pt !important;
+                    line-height: 1.24 !important;
+                }
+
+                html.rps-print-mode .rps-print-assessment-table th,
+                html.rps-print-mode .rps-print-assessment-table td,
+                html.rps-print-mode .rps-print-simulation-table th,
+                html.rps-print-mode .rps-print-simulation-table td {
+                    padding: 4px 5px !important;
+                }
+
+                html.rps-print-mode .rps-print-assessment-table tr,
+                html.rps-print-mode .rps-print-simulation-table tr {
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                }
+
+                html.rps-print-mode .rps-print-grade-scale {
+                    font-size: 11pt !important;
+                    line-height: 1.45 !important;
+                    padding-top: 5mm !important;
+                }
+
+                html.rps-print-mode .rps-print-grade-scale table {
+                    width: 115mm !important;
+                    min-width: 115mm !important;
+                    margin: 5mm auto 0 !important;
+                    font-size: 11pt !important;
+                    line-height: 1.4 !important;
+                }
+
+                html.rps-print-mode .rps-print-grade-scale table th,
+                html.rps-print-mode .rps-print-grade-scale table td {
+                    padding: 4px 8px !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-table {
+                    font-size: 10pt !important;
+                    line-height: 1.32 !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-table th,
+                html.rps-print-mode .rps-print-rtm-table td {
+                    padding: 4px 6px !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-card {
+                    margin: 0 !important;
+                    break-inside: avoid-page !important;
+                    page-break-inside: avoid !important;
+                    border-radius: 0 !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-card.rps-print-page-break {
+                    break-before: page !important;
+                    page-break-before: always !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-card .rps-print-institution-grid {
+                    min-height: 24mm !important;
+                }
+
+                html.rps-print-mode .rps-print-rtm-card .rps-print-institution-grid img {
+                    width: 18mm !important;
+                    height: 18mm !important;
+                    max-width: 18mm !important;
+                }
+            }
+        `;
+        document.head.appendChild(printStyle);
+        cleanupActions.push(() => printStyle.remove());
+
         const mainRpsTable = findTable('RENCANA PEMBELAJARAN SEMESTER (RPS)');
         const weeklyTable = tables.find((table) => {
             const text = normalizedText(table.textContent);
