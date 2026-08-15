@@ -107,3 +107,24 @@ body {
 .sim-accent-line {
     background: linear-gradient(90deg, #008080, #06B6D4, #F59E0B);
 }
+
+/* Highlight the advanced OBE editor header with the same brand tone as the sidebar. */
+section > details.group > summary {
+    background: linear-gradient(135deg, #008080 0%, #0EA5A4 100%) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255,255,255,.18) !important;
+}
+
+section > details.group > summary:hover {
+    background: linear-gradient(135deg, #0A8F8F 0%, #18B7B5 100%) !important;
+}
+
+section > details.group > summary svg {
+    color: #FFFFFF !important;
+}
+
+section > details.group > summary > span > span:last-child {
+    border-color: rgba(255,255,255,.72) !important;
+    background: rgba(255,255,255,.14) !important;
+    color: #FFFFFF !important;
+}
