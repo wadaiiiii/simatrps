@@ -245,22 +245,37 @@ class RpsAssessmentController extends Controller
         mixed $newWeight,
         ?string $excludeAssessmentId = null
     ): void {
-        $query = DB::table('assessments')
-            ->where('rps_version_id', $versionId);
+        $all = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->get(['id', 'weight']);
 
-        if ($excludeAssessmentId) {
-            $query->where('id', '!=', $excludeAssessmentId);
-        }
-
-        $total = round(
-            (float) $query->sum('weight')
-            + (float) (($newWeight === null || $newWeight === '') ? 0 : $newWeight),
+        $currentTotal = round(
+            (float) $all->sum(fn ($row) => (float) ($row->weight ?? 0)),
             2
         );
 
-        if ($total > 100.0) {
+        $oldWeight = 0.0;
+
+        if ($excludeAssessmentId) {
+            $existing = $all->firstWhere('id', $excludeAssessmentId);
+            $oldWeight = (float) ($existing?->weight ?? 0);
+        }
+
+        $incomingWeight = (float) (($newWeight === null || $newWeight === '') ? 0 : $newWeight);
+        $projectedTotal = round(
+            $currentTotal - $oldWeight + $incomingWeight,
+            2
+        );
+
+        /*
+         * Jika data lama sudah terlanjur >100%, dosen tetap harus bisa
+         * menyimpan perubahan nama/Sub-CPMK atau MENURUNKAN bobot secara
+         * bertahap. Yang dilarang adalah penambahan/kenaikan yang membuat
+         * total semakin besar di atas 100%.
+         */
+        if ($projectedTotal > 100.0 && $projectedTotal > ($currentTotal + 0.001)) {
             throw ValidationException::withMessages([
-                'weight' => "Total bobot akan menjadi {$total}%. Bobot asesmen tidak boleh melebihi 100%.",
+                'weight' => "Total bobot akan meningkat menjadi {$projectedTotal}%. Bobot asesmen tidak boleh melebihi 100%.",
             ]);
         }
     }
