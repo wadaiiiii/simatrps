@@ -583,14 +583,6 @@ export default function RpsShow(props: any) {
                                     <td colSpan={2} className="border border-slate-400 bg-slate-50 px-2 py-1.5 font-bold">
                                         <div className="flex items-center justify-between gap-2">
                                             <span>CPL-PRODI yang dibebankan pada MK</span>
-                                            <SectionAiButton
-                                                label="AI Pemetaan"
-                                                busy={aiBusyType === 'cpl_mapping'}
-                                                disabled={!ai.configured || cpmks.length === 0}
-                                                onClick={() => generateAi('cpl_mapping')}
-                                                suggestions={cplMappingSuggestions}
-                                                rpsId={rps.id}
-                                            />
                                         </div>
                                     </td>
                                     <td colSpan={3} className="border border-slate-400 px-2 py-1.5 print:hidden">
@@ -621,11 +613,19 @@ export default function RpsShow(props: any) {
                                             <div className="flex flex-wrap items-center justify-end gap-1.5 print:hidden">
                                                 <DocumentCpmkAdd rpsId={rps.id} />
                                                 <SectionAiButton
-                                                    label="Telaah CPMK AI"
+                                                    label="Telaah CPMK + Bloom AI"
                                                     busy={aiBusyType === 'cpmk_review'}
                                                     disabled={!ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('cpmk_review')}
                                                     suggestions={cpmkReviewSuggestions}
+                                                    rpsId={rps.id}
+                                                />
+                                                <SectionAiButton
+                                                    label="Pemetaan CPMK → CPL AI"
+                                                    busy={aiBusyType === 'cpl_mapping'}
+                                                    disabled={!ai.configured || cpmks.length === 0}
+                                                    onClick={() => generateAi('cpl_mapping')}
+                                                    suggestions={cplMappingSuggestions}
                                                     rpsId={rps.id}
                                                 />
                                             </div>
