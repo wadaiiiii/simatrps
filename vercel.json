@@ -16,6 +16,10 @@
       "dest": "/api/health.php"
     },
     {
+      "src": "/__laravel-health",
+      "dest": "/api/laravel-health.php"
+    },
+    {
       "src": "/build/(.*)",
       "dest": "/$1"
     },
