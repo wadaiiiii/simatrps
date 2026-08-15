@@ -340,6 +340,17 @@ Pendukung:
                 ),
             ],
 
+            'bloom_mapping' => $base + [
+                'cpmks' => array_map(
+                    fn (array $cpmk): array => [
+                        'code' => $cpmk['code'],
+                        'description' => $this->clip($cpmk['description'] ?? null, 900),
+                        'bloom_level' => $cpmk['bloom_level'],
+                    ],
+                    $full['cpmks']
+                ),
+            ],
+
             'cpmk_review' => $base + [
                 'cpl_scope' => array_map(
                     fn (array $cpl): array => [

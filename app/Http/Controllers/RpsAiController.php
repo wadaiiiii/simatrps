@@ -27,6 +27,7 @@ class RpsAiController extends Controller
         $data = $request->validate([
             'suggestion_type' => ['required', Rule::in([
                 'cpmk_review',
+                'bloom_mapping',
                 'cpl_mapping',
                 'material_plan',
                 'sub_cpmk',
@@ -37,6 +38,22 @@ class RpsAiController extends Controller
         ]);
 
         $context = $contextService->build($record, $version, $data['suggestion_type']);
+
+        $providerType = $data['suggestion_type'] === 'bloom_mapping'
+            ? 'cpmk_review'
+            : $data['suggestion_type'];
+
+        $effectiveInstruction = $data['instruction'] ?? null;
+        if ($data['suggestion_type'] === 'bloom_mapping') {
+            $bloomInstruction = 'Fokus HANYA pada klasifikasi Taksonomi Bloom untuk setiap CPMK yang sudah ada. '
+                .'Jangan mengubah rumusan CPMK, jangan menambah atau menghapus CPMK, dan jangan memetakan CPL. '
+                .'Kembalikan tepat satu rekomendasi untuk SETIAP CPMK dengan target_code yang sama, description yang sama persis, '
+                .'dan bloom_level C1-C6 yang paling sesuai dengan kata kerja operasional serta tuntutan kognitif rumusannya. '
+                .'Gunakan action adapt bila level Bloom perlu diisi atau diubah, dan keep bila level saat ini sudah tepat.';
+            $effectiveInstruction = filled($effectiveInstruction)
+                ? trim($effectiveInstruction)."\n\n".$bloomInstruction
+                : $bloomInstruction;
+        }
 
         $contextHash = hash(
             'sha256',
@@ -73,9 +90,9 @@ class RpsAiController extends Controller
 
         try {
             $result = $aiProvider->generate(
-                $data['suggestion_type'],
+                $providerType,
                 $context,
-                $data['instruction'] ?? null
+                $effectiveInstruction
             );
         } catch (ValidationException $error) {
             throw $error;
@@ -91,6 +108,11 @@ class RpsAiController extends Controller
 
         if ($data['suggestion_type'] === 'cpmk_review') {
             $result['payload'] = $this->sanitizeCpmkReviewPayload(
+                $result['payload'] ?? [],
+                $version
+            );
+        } elseif ($data['suggestion_type'] === 'bloom_mapping') {
+            $result['payload'] = $this->sanitizeBloomMappingPayload(
                 $result['payload'] ?? [],
                 $version
             );
@@ -110,7 +132,7 @@ class RpsAiController extends Controller
                 'updated_at' => now(),
             ]);
 
-        if ($data['suggestion_type'] === 'cpmk_review') {
+        if (in_array($data['suggestion_type'], ['cpmk_review', 'bloom_mapping'], true)) {
             $actionable = collect($result['payload']['recommendations'] ?? [])
                 ->contains(fn ($item) =>
                     is_array($item)
@@ -121,7 +143,7 @@ class RpsAiController extends Controller
                 DB::table('ai_suggestions')->insert([
                     'id' => (string) Str::uuid(),
                     'rps_version_id' => $version->id,
-                    'suggestion_type' => 'cpmk_review',
+                    'suggestion_type' => $data['suggestion_type'],
                     'status' => 'accepted',
                     'input_context' => json_encode([
                         'provider' => $result['provider'] ?? null,
@@ -140,7 +162,9 @@ class RpsAiController extends Controller
 
                 return back()->with(
                     'success',
-                    'Telaah AI selesai: CPMK sudah memadai dan tidak ada perubahan substantif yang perlu diterapkan.'
+                    $data['suggestion_type'] === 'bloom_mapping'
+                        ? 'Pemetaan Bloom AI selesai: level Bloom CPMK yang dianalisis sudah sesuai; tidak ada perubahan yang perlu diterapkan.'
+                        : 'Telaah AI selesai: CPMK sudah memadai dan tidak ada perubahan substantif yang perlu diterapkan.'
                 );
             }
         }
@@ -403,7 +427,7 @@ class RpsAiController extends Controller
         $selectedAssessmentIndices = array_values(array_unique(array_map('intval', $data['selected_assessment_indices'] ?? [])));
         $selectedTaskIndices = array_values(array_unique(array_map('intval', $data['selected_task_indices'] ?? [])));
 
-        if (in_array($row->suggestion_type, ['cpmk_review', 'cpl_mapping', 'material_plan', 'sub_cpmk'], true) && $selectedIndices === []) {
+        if (in_array($row->suggestion_type, ['cpmk_review', 'bloom_mapping', 'cpl_mapping', 'material_plan', 'sub_cpmk'], true) && $selectedIndices === []) {
             throw ValidationException::withMessages([
                 'ai' => 'Pilih minimal satu rekomendasi yang akan diterapkan.',
             ]);
@@ -431,6 +455,7 @@ class RpsAiController extends Controller
         ): array {
             $result = match ($row->suggestion_type) {
                 'cpmk_review' => $this->applyCpmkReview($payload, $selectedIndices, $record, $version, $request->user()->id),
+                'bloom_mapping' => $this->applyBloomMapping($payload, $selectedIndices, $version),
                 'cpl_mapping' => $this->applyCplMapping($payload, $selectedIndices, $record, $version),
                 'material_plan' => $this->applyMaterialPlan($payload, $selectedIndices, $version),
                 'sub_cpmk' => $this->applySubCpmk($payload, $selectedIndices, $version, $request->user()->id),
@@ -445,7 +470,7 @@ class RpsAiController extends Controller
                 default => throw ValidationException::withMessages(['ai' => 'Jenis rekomendasi AI tidak didukung.']),
             };
 
-            if (($result['changed'] ?? 0) < 1 && in_array($row->suggestion_type, ['cpmk_review', 'cpl_mapping', 'material_plan', 'sub_cpmk', 'assessment_plan'], true)) {
+            if (($result['changed'] ?? 0) < 1 && in_array($row->suggestion_type, ['cpmk_review', 'bloom_mapping', 'cpl_mapping', 'material_plan', 'sub_cpmk', 'assessment_plan'], true)) {
                 throw ValidationException::withMessages([
                     'ai' => 'Tidak ada perubahan yang diterapkan. Pilih rekomendasi ADAPT atau ADD yang valid.',
                 ]);
@@ -511,52 +536,32 @@ class RpsAiController extends Controller
             }
 
             $action = strtolower((string) ($item['action'] ?? 'keep'));
-            $target = $this->normalizeCpmkCode(
-                (string) ($item['target_code'] ?? '')
-            );
+            $target = $this->normalizeCpmkCode((string) ($item['target_code'] ?? ''));
 
             if ($action === 'adapt' && $current->has($target)) {
                 $existing = $current->get($target);
-                $sameDescription = $this->comparableText(
-                    (string) ($item['description'] ?? '')
-                ) === $this->comparableText(
-                    (string) ($existing->description ?? '')
-                );
+                $sameDescription = $this->comparableText((string) ($item['description'] ?? ''))
+                    === $this->comparableText((string) ($existing->description ?? ''));
 
-                $newBloom = strtoupper(trim((string) ($item['bloom_level'] ?? '')));
-                $oldBloom = strtoupper(trim((string) ($existing->bloom_level ?? '')));
-                $sameBloom = $newBloom === '' || $newBloom === $oldBloom;
-
-                if ($sameDescription && $sameBloom) {
+                if ($sameDescription) {
                     $items[$index]['action'] = 'keep';
                     $items[$index]['target_code'] = $target;
                     $items[$index]['description'] = $existing->description;
                     $items[$index]['bloom_level'] = $existing->bloom_level;
-                    $items[$index]['rationale'] =
-                        'CPMK sudah sama dengan rekomendasi AI; tidak ada perubahan yang perlu diterapkan.';
-                } elseif ($sameDescription && ! $sameBloom) {
-                    // Bloom adalah bagian data kerja CPMK RPS. Jika AI hanya
-                    // memperjelas level Bloom, tetap ADAPT agar tombol
-                    // "Terapkan" benar-benar menghasilkan perubahan.
-                    $items[$index]['action'] = 'adapt';
+                    $items[$index]['cpl_codes'] = [];
+                    $items[$index]['rationale'] = 'Rumusan CPMK sudah memadai; Bloom dan CPL dipetakan pada tahap terpisah.';
+                } else {
                     $items[$index]['target_code'] = $target;
-                    $items[$index]['description'] = $existing->description;
-                    $items[$index]['rationale'] =
-                        'Rumusan CPMK dipertahankan, tetapi level Bloom diperbarui agar CPMK lebih terukur.';
+                    $items[$index]['bloom_level'] = $existing->bloom_level;
+                    $items[$index]['cpl_codes'] = [];
                 }
             }
 
             if ($action === 'add') {
-                $newText = $this->comparableText(
-                    (string) ($item['description'] ?? '')
-                );
-
-                $duplicate = $current->first(
-                    fn ($row) =>
-                        $newText !== ''
-                        && $this->comparableText(
-                            (string) ($row->description ?? '')
-                        ) === $newText
+                $newText = $this->comparableText((string) ($item['description'] ?? ''));
+                $duplicate = $current->first(fn ($row) =>
+                    $newText !== ''
+                    && $this->comparableText((string) ($row->description ?? '')) === $newText
                 );
 
                 if ($duplicate) {
@@ -564,14 +569,68 @@ class RpsAiController extends Controller
                     $items[$index]['target_code'] = $duplicate->code;
                     $items[$index]['description'] = $duplicate->description;
                     $items[$index]['bloom_level'] = $duplicate->bloom_level;
-                    $items[$index]['rationale'] =
-                        'Usulan baru identik dengan CPMK yang sudah ada, sehingga tidak perlu ditambahkan.';
+                    $items[$index]['cpl_codes'] = [];
+                    $items[$index]['rationale'] = 'Usulan identik dengan CPMK yang sudah ada.';
+                } else {
+                    $items[$index]['bloom_level'] = null;
+                    $items[$index]['cpl_codes'] = [];
                 }
             }
         }
 
+        $payload['summary'] = 'Telaah rumusan CPMK tanpa mengubah level Bloom maupun pemetaan CPL.';
         $payload['recommendations'] = $items;
+        return $payload;
+    }
 
+    private function sanitizeBloomMappingPayload(array $payload, object $version): array
+    {
+        $current = DB::table('rps_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->get(['id', 'code', 'description', 'bloom_level'])
+            ->keyBy('code');
+
+        $byTarget = collect($payload['recommendations'] ?? [])
+            ->filter(fn ($item) => is_array($item))
+            ->keyBy(fn ($item) => $this->normalizeCpmkCode((string) ($item['target_code'] ?? '')));
+
+        $items = [];
+        foreach ($current as $code => $existing) {
+            $candidate = $byTarget->get($code);
+            if (! is_array($candidate)) {
+                continue;
+            }
+
+            $newBloom = strtoupper(trim((string) ($candidate['bloom_level'] ?? '')));
+            if (! in_array($newBloom, ['C1','C2','C3','C4','C5','C6'], true)) {
+                continue;
+            }
+
+            $oldBloom = strtoupper(trim((string) ($existing->bloom_level ?? '')));
+            $same = $oldBloom === $newBloom;
+
+            $items[] = [
+                'action' => $same ? 'keep' : 'adapt',
+                'target_code' => $existing->code,
+                'description' => $existing->description,
+                'bloom_level' => $newBloom,
+                'cpl_codes' => [],
+                'rationale' => trim((string) ($candidate['rationale'] ?? ''))
+                    ?: ($same
+                        ? 'Level Bloom saat ini sudah sesuai dengan tuntutan kognitif CPMK.'
+                        : 'Level Bloom disesuaikan dengan kata kerja operasional dan tuntutan kognitif CPMK.'),
+            ];
+        }
+
+        if ($items === []) {
+            throw ValidationException::withMessages([
+                'ai' => 'AI belum menghasilkan pemetaan Bloom C1-C6 yang valid. Coba kembali.',
+            ]);
+        }
+
+        $payload['summary'] = 'Pemetaan Taksonomi Bloom untuk CPMK yang sudah final. Rumusan CPMK dan pemetaan CPL tidak diubah.';
+        $payload['recommendations'] = $items;
         return $payload;
     }
 
@@ -871,6 +930,51 @@ class RpsAiController extends Controller
         ];
     }
 
+    private function applyBloomMapping(array $payload, array $selectedIndices, object $version): array
+    {
+        $items = $payload['recommendations'] ?? [];
+        $changed = 0;
+
+        foreach ($selectedIndices as $index) {
+            $item = $items[$index] ?? null;
+            if (! is_array($item)) {
+                throw ValidationException::withMessages(['ai' => 'Pilihan pemetaan Bloom AI tidak valid.']);
+            }
+            if (strtolower((string) ($item['action'] ?? 'keep')) === 'keep') {
+                continue;
+            }
+
+            $target = $this->normalizeCpmkCode((string) ($item['target_code'] ?? ''));
+            $bloom = strtoupper(trim((string) ($item['bloom_level'] ?? '')));
+            if (! in_array($bloom, ['C1','C2','C3','C4','C5','C6'], true)) {
+                throw ValidationException::withMessages(['ai' => 'Level Bloom '.$target.' tidak valid.']);
+            }
+
+            $cpmk = DB::table('rps_cpmks')
+                ->where('rps_version_id', $version->id)
+                ->where('code', $target)
+                ->first();
+            if (! $cpmk) {
+                throw ValidationException::withMessages(['ai' => 'CPMK target '.$target.' tidak ditemukan.']);
+            }
+
+            if (strtoupper(trim((string) ($cpmk->bloom_level ?? ''))) === $bloom) {
+                continue;
+            }
+
+            DB::table('rps_cpmks')->where('id', $cpmk->id)->update([
+                'bloom_level' => $bloom,
+                'updated_at' => now(),
+            ]);
+            $changed++;
+        }
+
+        return [
+            'changed' => $changed,
+            'message' => "{$changed} level Bloom CPMK berhasil dipetakan.",
+        ];
+    }
+
     private function applyCpmkReview(
         array $payload,
         array $selectedIndices,
@@ -918,12 +1022,10 @@ class RpsAiController extends Controller
 
                 DB::table('rps_cpmks')->where('id', $cpmk->id)->update([
                     'description' => trim((string) ($item['description'] ?? $cpmk->description)),
-                    'bloom_level' => ($item['bloom_level'] ?? null) ?: null,
                     'source_type' => 'ai_adapted',
                     'updated_at' => now(),
                 ]);
 
-                $this->replaceCpmkMappings($cpmk->id, $item['cpl_codes'] ?? [], $scopeCpls);
                 $changed++;
                 $adapted++;
                 continue;
@@ -953,7 +1055,7 @@ class RpsAiController extends Controller
                     'rps_version_id' => $version->id,
                     'code' => $code,
                     'description' => $description,
-                    'bloom_level' => ($item['bloom_level'] ?? null) ?: null,
+                    'bloom_level' => null,
                     'source_type' => 'ai_added',
                     'source_cpmk_id' => null,
                     'sequence_no' => $sequence,
@@ -961,7 +1063,6 @@ class RpsAiController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                $this->replaceCpmkMappings($id, $item['cpl_codes'] ?? [], $scopeCpls);
                 $changed++;
                 $added++;
                 continue;

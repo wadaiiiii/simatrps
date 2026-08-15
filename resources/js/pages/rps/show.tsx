@@ -288,10 +288,13 @@ export default function RpsShow(props: any) {
     const cpmkReviewSuggestions = aiSuggestions.filter(
         (item: any) => item.suggestion_type === 'cpmk_review',
     );
+    const bloomMappingSuggestions = aiSuggestions.filter(
+        (item: any) => item.suggestion_type === 'bloom_mapping',
+    );
     const cplMappingSuggestions = aiSuggestions.filter(
         (item: any) => item.suggestion_type === 'cpl_mapping',
     );
-    const cpmkAiSuggestions = [...cpmkReviewSuggestions, ...cplMappingSuggestions];
+    const cpmkAiSuggestions = [...cpmkReviewSuggestions, ...bloomMappingSuggestions, ...cplMappingSuggestions];
     const subCpmkAiSuggestions = aiSuggestions.filter(
         (item: any) => item.suggestion_type === 'sub_cpmk',
     );
@@ -613,11 +616,19 @@ export default function RpsShow(props: any) {
                                             <div className="flex flex-wrap items-center justify-end gap-1.5 print:hidden">
                                                 <DocumentCpmkAdd rpsId={rps.id} />
                                                 <SectionAiButton
-                                                    label="Telaah CPMK + Bloom AI"
+                                                    label="Telaah CPMK AI"
                                                     busy={aiBusyType === 'cpmk_review'}
                                                     disabled={!ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('cpmk_review')}
                                                     suggestions={cpmkReviewSuggestions}
+                                                    rpsId={rps.id}
+                                                />
+                                                <SectionAiButton
+                                                    label="Pemetaan Bloom AI"
+                                                    busy={aiBusyType === 'bloom_mapping'}
+                                                    disabled={!ai.configured || cpmks.length === 0}
+                                                    onClick={() => generateAi('bloom_mapping')}
+                                                    suggestions={bloomMappingSuggestions}
                                                     rpsId={rps.id}
                                                 />
                                                 <SectionAiButton
@@ -2445,14 +2456,6 @@ function DocumentCpmkAdd({ rpsId }: any) {
                 className="min-h-20 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
             />
             <div className="mt-1 flex flex-wrap items-center gap-2">
-                <select
-                    value={form.data.bloom_level}
-                    onChange={(e) => form.setData('bloom_level', e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-                >
-                    <option value="">Bloom</option>
-                    {['C1','C2','C3','C4','C5','C6'].map((level) => <option key={level}>{level}</option>)}
-                </select>
                 <button
                     type="button"
                     disabled={form.processing}
@@ -4789,12 +4792,13 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
     const standardSelectable = [
         'cpmk_review',
+        'bloom_mapping',
         'cpl_mapping',
         'material_plan',
         'sub_cpmk',
     ].includes(suggestion.suggestion_type);
 
-    const sourceItems = suggestion.suggestion_type === 'cpmk_review'
+    const sourceItems = ['cpmk_review', 'bloom_mapping'].includes(suggestion.suggestion_type)
         ? safeList(payload.recommendations)
         : suggestion.suggestion_type === 'cpl_mapping'
           ? safeList(payload.mappings)
@@ -4822,6 +4826,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
     const labels: Record<string, string> = {
         cpmk_review: 'Telaah CPMK',
+        bloom_mapping: 'Pemetaan Bloom CPMK',
         cpl_mapping: 'Rekomendasi Pemetaan CPMK ↔ CPL',
         material_plan: 'Bahan Kajian',
         sub_cpmk: 'Sub-CPMK',
@@ -4831,6 +4836,8 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
     const countText = suggestion.suggestion_type === 'cpmk_review'
         ? `${safeList(payload.recommendations).length} rekomendasi CPMK`
+        : suggestion.suggestion_type === 'bloom_mapping'
+          ? `${safeList(payload.recommendations).length} rekomendasi Bloom`
         : suggestion.suggestion_type === 'cpl_mapping'
           ? `${safeList(payload.mappings).length} rekomendasi pemetaan`
           : suggestion.suggestion_type === 'material_plan'
@@ -5034,6 +5041,38 @@ function AiPayloadPreview({
     onToggleAssessment,
     onToggleTask,
 }: any) {
+    if (type === 'bloom_mapping') {
+        return (
+            <div className="mt-3 space-y-2">
+                {safeList(payload.recommendations).map((item: any, index: number) => {
+                    const action = safeText(item?.action, 'keep').toLowerCase();
+                    const actionable = action !== 'keep';
+                    return (
+                        <div key={index} className="rounded-lg bg-white p-3 text-xs">
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 size-4 accent-indigo-700"
+                                    disabled={!actionable}
+                                    checked={actionable && selectedIndices.includes(index)}
+                                    onChange={() => actionable && onToggle?.(index)}
+                                />
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-slate-800">
+                                        {safeText(item?.target_code)} → {safeText(item?.bloom_level)}
+                                    </div>
+                                    <div className="mt-1 leading-5 text-slate-600">{safeText(item?.description)}</div>
+                                    <div className="mt-1 text-slate-400">{safeText(item?.rationale, '')}</div>
+                                    {!actionable && <div className="mt-1 text-[10px] font-bold text-emerald-600">Level Bloom sudah sesuai.</div>}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
     if (type === 'cpmk_review') {
         return (
             <div className="mt-3 space-y-2">
