@@ -35,31 +35,32 @@ class RpsSmartDraftService
 
         $weeklyColumns = array_flip(Schema::getColumnListing('rps_weekly_plans'));
 
-        // Sinkronisasi silabus hanya memperkaya draft. Jika data master bermasalah,
-        // proses utama tetap dapat mengisi minggu dari Sub-CPMK yang tersedia.
-        try {
-            $importedExists = DB::table('rps_materials')
-                ->where('rps_version_id', $version->id)
-                ->where('source_type', 'curriculum_syllabus')
-                ->exists();
-
-            if (! $importedExists || $this->syllabus->importedMaterialsLookLikeReferences($version->id)) {
-                $this->syllabus->syncMaterials(
-                    $rps->course_id,
-                    $version->id,
-                    true
-                );
-            }
-        } catch (\Throwable $exception) {
-            report($exception);
-        }
-
+        // Lengkapi RPS Otomatis hanya mengisi tabel mingguan/asesmen dasar.
+        // Bahan Kajian dan Pustaka adalah data akademik yang dikelola eksplisit
+        // melalui Edit, Ambil dari Kurikulum, atau Telaah AI masing-masing.
+        // Karena itu proses otomatis TIDAK BOLEH menyinkronkan atau menulis ulang
+        // rps_materials maupun pustaka yang sudah diputuskan dosen.
         $this->ensureExamAssessments($version->id, $userId);
 
         $materials = DB::table('rps_materials')
             ->where('rps_version_id', $version->id)
             ->orderBy('sequence_no')
             ->get();
+
+        // Jika daftar Bahan Kajian benar-benar kosong, topik silabus hanya dipakai
+        // sebagai fallback sementara untuk mengisi kolom Materi pada tabel pekan.
+        // Fallback ini TIDAK disimpan ke rps_materials sehingga daftar Bahan Kajian
+        // milik dosen tetap tidak berubah.
+        if ($materials->isEmpty()) {
+            $materials = collect($this->syllabus->topics($rps->course_id))
+                ->map(fn (string $title) => (object) [
+                    'id' => null,
+                    'rps_sub_cpmk_id' => null,
+                    'title' => $title,
+                    'source_type' => 'syllabus_fallback_readonly',
+                ])
+                ->values();
+        }
 
         $referenceCodes = $this->referenceCodes(
             $rps->course_id,

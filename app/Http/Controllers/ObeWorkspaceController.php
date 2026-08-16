@@ -433,7 +433,7 @@ class ObeWorkspaceController extends Controller
             ->update([
                 'title' => trim($data['title']),
                 'rps_sub_cpmk_id' => null,
-                'source_type' => $row->source_type === 'curriculum'
+                'source_type' => in_array($row->source_type, ['curriculum', 'curriculum_syllabus'], true)
                     ? 'adapted'
                     : 'manual',
                 'updated_at' => now(),
