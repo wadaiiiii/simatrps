@@ -1,0 +1,38 @@
+name: Patch weekly evidence sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-weekly-evidence-sync.py'
+      - '.github/workflows/patch-weekly-evidence-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply weekly evidence synchronization patch
+        run: python .github/scripts/patch-weekly-evidence-sync.py
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Services/Rps/RpsAssessmentSyncService.php
+          php -l app/Services/Rps/ObeWorkspaceService.php
+          php -l app/Http/Controllers/RpsAutomationController.php
+          php -l app/Http/Controllers/RpsTaskController.php
+      - name: Validate frontend marker
+        run: grep -q "Bentuk penilaian pekan:" resources/js/pages/rps/show.tsx
+      - name: Commit implementation and cleanup
+        run: |
+          rm .github/scripts/patch-weekly-evidence-sync.py
+          rm .github/workflows/patch-weekly-evidence-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Align weekly evidence RTM and assessment synchronization"
+          git push
