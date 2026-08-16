@@ -188,7 +188,7 @@ class RpsSmartDraftService
                         'time_estimate',
                     ], true);
 
-                if ($refreshGeneratedField && filled($value)) {
+                if ($refreshGeneratedField) {
                     $merged[$key] = $value;
                     if ($existing != $value) {
                         $changed = true;
@@ -411,91 +411,276 @@ class RpsSmartDraftService
 
     private function buildTeachingSequence($subCpmks, $materials): array
     {
-        $subs = $subCpmks->values()->take(count(self::TEACHING_WEEKS));
+        $subs = $subCpmks->values();
+        $weekTotal = count(self::TEACHING_WEEKS);
+
         if ($subs->isEmpty()) {
             return [];
         }
 
-        $materialRows = $materials->values();
-        $relevant = [];
+        if ($subs->count() > $weekTotal) {
+            throw ValidationException::withMessages([
+                'smart_draft' => 'Jumlah Sub-CPMK ('.$subs->count().') melebihi '.$weekTotal.' pertemuan efektif. Gabungkan atau rapikan Sub-CPMK terlebih dahulu agar setiap Sub-CPMK dapat memperoleh minimal satu pertemuan.',
+            ]);
+        }
 
-        foreach ($subs as $subIndex => $sub) {
-            $ranked = $materialRows
-                ->map(function ($material, $materialIndex) use ($sub): array {
-                    return [
-                        'title' => trim((string) ($material->title ?? '')),
+        $materialRows = $materials
+            ->filter(fn ($material) => filled($material->title ?? null))
+            ->values();
+
+        $subIndexById = [];
+        foreach ($subs as $index => $sub) {
+            $subIndexById[(string) $sub->id] = (int) $index;
+        }
+
+        // Relasi eksplisit selalu menjadi prioritas. Jika pivot many-to-many
+        // tersedia, satu Bahan Kajian boleh memang dipakai oleh lebih dari satu
+        // Sub-CPMK. Bahan Kajian tanpa relasi eksplisit dipetakan satu kali ke
+        // Sub-CPMK yang paling relevan secara semantik.
+        $pivotLinks = collect();
+        $materialIds = $materialRows
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+
+        if (
+            $materialIds !== []
+            && Schema::hasTable('rps_material_subcpmks')
+        ) {
+            $pivotLinks = DB::table('rps_material_subcpmks')
+                ->whereIn('rps_material_id', $materialIds)
+                ->get(['rps_material_id', 'rps_sub_cpmk_id'])
+                ->groupBy('rps_material_id');
+        }
+
+        $assignments = array_fill(0, $subs->count(), []);
+        $materialCount = max(1, $materialRows->count());
+
+        foreach ($materialRows as $materialIndex => $material) {
+            $title = trim((string) $material->title);
+            $explicitIndexes = [];
+
+            if (filled($material->rps_sub_cpmk_id ?? null)) {
+                $direct = $subIndexById[(string) $material->rps_sub_cpmk_id] ?? null;
+                if ($direct !== null) {
+                    $explicitIndexes[] = $direct;
+                }
+            }
+
+            if (filled($material->id ?? null) && $pivotLinks->has((string) $material->id)) {
+                foreach ($pivotLinks->get((string) $material->id) as $link) {
+                    $linked = $subIndexById[(string) $link->rps_sub_cpmk_id] ?? null;
+                    if ($linked !== null) {
+                        $explicitIndexes[] = $linked;
+                    }
+                }
+            }
+
+            $explicitIndexes = array_values(array_unique($explicitIndexes));
+            if ($explicitIndexes !== []) {
+                foreach ($explicitIndexes as $subIndex) {
+                    $assignments[$subIndex][] = [
+                        'title' => $title,
                         'index' => (int) $materialIndex,
-                        'score' => $this->materialRelevanceScore(
-                            (string) ($sub->description ?? ''),
-                            (string) ($material->title ?? '')
-                        ),
-                        'linked' => filled($material->rps_sub_cpmk_id ?? null)
-                            && (string) $material->rps_sub_cpmk_id === (string) $sub->id,
                     ];
-                })
-                ->filter(fn (array $item) => $item['title'] !== '' && ($item['linked'] || $item['score'] > 0))
-                ->sort(function (array $a, array $b): int {
-                    if ($a['linked'] !== $b['linked']) {
-                        return $a['linked'] ? -1 : 1;
-                    }
-                    if ($a['score'] !== $b['score']) {
-                        return $b['score'] <=> $a['score'];
-                    }
-                    return $a['index'] <=> $b['index'];
-                })
+                }
+                continue;
+            }
+
+            $scores = [];
+            foreach ($subs as $subIndex => $sub) {
+                $scores[$subIndex] = $this->materialRelevanceScore(
+                    (string) ($sub->description ?? ''),
+                    $title
+                );
+            }
+
+            $bestScore = $scores === [] ? 0 : max($scores);
+            $expectedIndex = $materialRows->count() <= 1
+                ? 0.0
+                : ((float) $materialIndex / (float) ($materialCount - 1)) * max(0, $subs->count() - 1);
+
+            $candidateIndexes = array_keys(
+                array_filter(
+                    $scores,
+                    fn ($score) => $score === $bestScore
+                )
+            );
+
+            if ($candidateIndexes === []) {
+                $candidateIndexes = range(0, $subs->count() - 1);
+            }
+
+            usort($candidateIndexes, function (int $a, int $b) use ($expectedIndex): int {
+                $distanceA = abs($a - $expectedIndex);
+                $distanceB = abs($b - $expectedIndex);
+                return $distanceA <=> $distanceB ?: $a <=> $b;
+            });
+
+            $targetIndex = (int) $candidateIndexes[0];
+            $assignments[$targetIndex][] = [
+                'title' => $title,
+                'index' => (int) $materialIndex,
+            ];
+        }
+
+        $titlesBySub = [];
+        foreach ($assignments as $subIndex => $rows) {
+            $titlesBySub[$subIndex] = collect($rows)
+                ->sortBy('index')
                 ->pluck('title')
+                ->filter()
                 ->unique()
                 ->values()
                 ->all();
-
-            $relevant[$subIndex] = $ranked;
         }
 
-        // Setiap Sub-CPMK memperoleh minimal satu minggu. Sisa minggu terlebih
-        // dahulu diberikan kepada Sub-CPMK yang masih memiliki bahan kajian
-        // relevan yang belum digunakan; setelah itu baru untuk pendalaman.
-        $counts = array_fill(0, $subs->count(), 1);
-        $remaining = count(self::TEACHING_WEEKS) - $subs->count();
+        // Setiap Sub-CPMK minimal satu minggu. Sisa minggu TIDAK dibagi rata.
+        // Alokasi tambahan mempertimbangkan beban Bahan Kajian dan tingkat Bloom.
+        // Karena itu satu Sub-CPMK boleh 1 minggu, sementara yang lebih kompleks
+        // dapat memperoleh beberapa minggu.
+        $weekCounts = array_fill(0, $subs->count(), 1);
+        $demand = [];
 
+        foreach ($subs as $subIndex => $sub) {
+            $materialLoad = count($titlesBySub[$subIndex] ?? []);
+            $materialFactor = $materialLoad === 0
+                ? 0.35
+                : min(3.25, $materialLoad * 0.65);
+
+            $demand[$subIndex] = 1.0
+                + $materialFactor
+                + $this->bloomComplexityWeight((string) ($sub->bloom_level ?? ''));
+        }
+
+        $remaining = $weekTotal - $subs->count();
         while ($remaining > 0) {
-            $allocated = false;
+            $bestIndex = 0;
+            $bestPriority = -INF;
+
             foreach ($subs as $subIndex => $_sub) {
-                if ($remaining <= 0) break;
-                if ($counts[$subIndex] < max(1, count($relevant[$subIndex] ?? []))) {
-                    $counts[$subIndex]++;
-                    $remaining--;
-                    $allocated = true;
+                $priority = $demand[$subIndex] / max(1, $weekCounts[$subIndex]);
+                if ($priority > $bestPriority) {
+                    $bestPriority = $priority;
+                    $bestIndex = (int) $subIndex;
                 }
             }
-            if (! $allocated) break;
-        }
 
-        $cursor = 0;
-        while ($remaining > 0) {
-            $counts[$cursor % $subs->count()]++;
+            $weekCounts[$bestIndex]++;
             $remaining--;
-            $cursor++;
         }
 
         $sequence = [];
         foreach ($subs as $subIndex => $sub) {
-            $titles = $relevant[$subIndex] ?? [];
-            for ($occurrence = 0; $occurrence < $counts[$subIndex]; $occurrence++) {
-                $material = null;
-                if (isset($titles[$occurrence])) {
-                    $material = $titles[$occurrence];
-                } elseif ($titles !== []) {
-                    $material = 'Pendalaman dan latihan: '.$titles[count($titles) - 1];
-                }
+            $groups = $this->splitMaterialsAcrossWeeks(
+                $titlesBySub[$subIndex] ?? [],
+                $weekCounts[$subIndex],
+                $sub
+            );
 
+            foreach ($groups as $materialText) {
                 $sequence[] = [
                     'sub' => $sub,
-                    'material' => $material,
+                    'material' => $materialText,
                 ];
             }
         }
 
-        return array_slice($sequence, 0, count(self::TEACHING_WEEKS));
+        return array_slice($sequence, 0, $weekTotal);
+    }
+
+    private function bloomComplexityWeight(string $level): float
+    {
+        return match (strtoupper(trim($level))) {
+            'C1' => 0.00,
+            'C2' => 0.15,
+            'C3' => 0.35,
+            'C4' => 0.65,
+            'C5' => 0.90,
+            'C6' => 1.15,
+            default => 0.25,
+        };
+    }
+
+    private function splitMaterialsAcrossWeeks(array $titles, int $weekCount, object $sub): array
+    {
+        $weekCount = max(1, $weekCount);
+        $titles = array_values(array_filter(array_map(
+            fn ($title) => trim((string) $title),
+            $titles
+        )));
+
+        if ($titles === []) {
+            return array_fill(0, $weekCount, null);
+        }
+
+        $materialCount = count($titles);
+        $groups = [];
+
+        // Jika Bahan Kajian lebih banyak daripada minggu yang dialokasikan,
+        // beberapa Bahan Kajian yang berurutan digabung dalam satu pertemuan.
+        if ($materialCount >= $weekCount) {
+            for ($week = 0; $week < $weekCount; $week++) {
+                $start = (int) floor(($week * $materialCount) / $weekCount);
+                $end = (int) floor((($week + 1) * $materialCount) / $weekCount);
+                $chunk = array_slice($titles, $start, max(1, $end - $start));
+                $groups[] = implode('; ', $chunk);
+            }
+
+            return $groups;
+        }
+
+        // Jika minggu lebih banyak daripada Bahan Kajian, materi tidak diputar
+        // mentah. Minggu tambahan diberi tujuan pedagogis eksplisit sesuai Bloom.
+        foreach ($titles as $title) {
+            $groups[] = $title;
+        }
+
+        $baseTitle = $titles[count($titles) - 1];
+        while (count($groups) < $weekCount) {
+            $groups[] = $this->pedagogicalExtension(
+                (string) ($sub->bloom_level ?? ''),
+                $baseTitle,
+                count($groups) - $materialCount
+            );
+        }
+
+        return $groups;
+    }
+
+    private function pedagogicalExtension(string $bloom, string $title, int $extensionIndex): string
+    {
+        $prefixes = match (strtoupper(trim($bloom))) {
+            'C1', 'C2' => [
+                'Penguatan konsep dan latihan',
+                'Pendalaman pemahaman dan pembahasan',
+            ],
+            'C3' => [
+                'Latihan penerapan dan pemecahan masalah',
+                'Pendalaman penerapan melalui latihan terarah',
+            ],
+            'C4' => [
+                'Analisis kasus dan pembahasan',
+                'Pendalaman analisis dan perbandingan kasus',
+            ],
+            'C5' => [
+                'Evaluasi kasus dan pembahasan kritis',
+                'Pendalaman evaluasi dan argumentasi',
+            ],
+            'C6' => [
+                'Perancangan/pengembangan dan umpan balik',
+                'Penyempurnaan rancangan dan refleksi',
+            ],
+            default => [
+                'Pendalaman dan latihan',
+                'Penguatan dan pembahasan lanjutan',
+            ],
+        };
+
+        $prefix = $prefixes[$extensionIndex % count($prefixes)];
+        return $prefix.': '.$title;
     }
 
     private function materialRelevanceScore(string $subDescription, string $materialTitle): int

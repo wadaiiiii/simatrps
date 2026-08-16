@@ -257,6 +257,30 @@ class RpsAiContextService
                 ->all();
         }
 
+        if ($targetMaterials === [] && $materials !== []) {
+            $targetTokens = $this->semanticTokens((string) $targetSub->description);
+            $ranked = collect($materials)
+                ->map(function (string $title) use ($targetTokens): array {
+                    return [
+                        'title' => $title,
+                        'score' => count(array_intersect(
+                            $targetTokens,
+                            $this->semanticTokens($title)
+                        )),
+                    ];
+                })
+                ->filter(fn (array $item) => $item['score'] > 0)
+                ->sortByDesc('score')
+                ->pluck('title')
+                ->take(6)
+                ->values()
+                ->all();
+
+            if ($ranked !== []) {
+                $targetMaterials = $ranked;
+            }
+        }
+
         $targetAssessments = DB::table('assessment_subcpmks')
             ->join('assessments', 'assessments.id', '=', 'assessment_subcpmks.assessment_id')
             ->where('assessment_subcpmks.rps_sub_cpmk_id', $targetSub->id)
@@ -647,6 +671,23 @@ Pendukung:
                 'category' => $item['category'],
                 'text' => $this->clip($item['text'], 420),
             ])
+            ->all();
+    }
+
+    private function semanticTokens(string $value): array
+    {
+        $value = mb_strtolower($value);
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+        $stopwords = [
+            'yang','dan','atau','untuk','dengan','dalam','pada','dari','ke',
+            'serta','melalui','mahasiswa','mampu','dapat','konsep','materi',
+            'pembelajaran','dasar','contoh','masalah','permasalahan','sesuai',
+        ];
+
+        return collect(preg_split('/\s+/u', trim($value)) ?: [])
+            ->filter(fn ($token) => mb_strlen($token) >= 3 && ! in_array($token, $stopwords, true))
+            ->unique()
+            ->values()
             ->all();
     }
 

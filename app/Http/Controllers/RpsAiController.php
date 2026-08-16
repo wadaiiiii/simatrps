@@ -1004,12 +1004,110 @@ PROMPT;
             return null;
         }
 
-        $index = min(
-            $subs->count() - 1,
-            (int) floor(($position * $subs->count()) / count($teachingWeeks))
-        );
+        if ($subs->count() > count($teachingWeeks)) {
+            throw ValidationException::withMessages([
+                'ai' => 'Jumlah Sub-CPMK melebihi 14 pertemuan efektif. Rapikan Sub-CPMK terlebih dahulu sebelum menggunakan AI Pekan.',
+            ]);
+        }
 
-        return $subs->values()->get($index);
+        $materials = DB::table('rps_materials')
+            ->where('rps_version_id', $versionId)
+            ->orderBy('sequence_no')
+            ->get(['id', 'rps_sub_cpmk_id', 'title']);
+
+        $subIndexById = [];
+        foreach ($subs as $index => $sub) {
+            $subIndexById[(string) $sub->id] = (int) $index;
+        }
+
+        $pivotLinks = collect();
+        $materialIds = $materials->pluck('id')->filter()->map(fn ($id) => (string) $id)->all();
+        if ($materialIds !== [] && Schema::hasTable('rps_material_subcpmks')) {
+            $pivotLinks = DB::table('rps_material_subcpmks')
+                ->whereIn('rps_material_id', $materialIds)
+                ->get(['rps_material_id', 'rps_sub_cpmk_id'])
+                ->groupBy('rps_material_id');
+        }
+
+        $materialLoads = array_fill(0, $subs->count(), 0);
+        $materialCount = max(1, $materials->count());
+
+        foreach ($materials as $materialIndex => $material) {
+            $explicit = [];
+            if (filled($material->rps_sub_cpmk_id ?? null)) {
+                $index = $subIndexById[(string) $material->rps_sub_cpmk_id] ?? null;
+                if ($index !== null) $explicit[] = $index;
+            }
+            if ($pivotLinks->has((string) $material->id)) {
+                foreach ($pivotLinks->get((string) $material->id) as $link) {
+                    $index = $subIndexById[(string) $link->rps_sub_cpmk_id] ?? null;
+                    if ($index !== null) $explicit[] = $index;
+                }
+            }
+            $explicit = array_values(array_unique($explicit));
+            if ($explicit !== []) {
+                foreach ($explicit as $index) $materialLoads[$index]++;
+                continue;
+            }
+
+            $titleTokens = $this->semanticTokens((string) ($material->title ?? ''));
+            $scores = [];
+            foreach ($subs as $subIndex => $sub) {
+                $scores[$subIndex] = count(array_intersect(
+                    $titleTokens,
+                    $this->semanticTokens((string) $sub->description)
+                ));
+            }
+            $bestScore = $scores === [] ? 0 : max($scores);
+            $expected = $materials->count() <= 1
+                ? 0.0
+                : ((float) $materialIndex / (float) ($materialCount - 1)) * max(0, $subs->count() - 1);
+            $candidates = array_keys(array_filter($scores, fn ($score) => $score === $bestScore));
+            if ($candidates === []) $candidates = range(0, $subs->count() - 1);
+            usort($candidates, fn ($a, $b) => abs($a - $expected) <=> abs($b - $expected) ?: $a <=> $b);
+            $materialLoads[(int) $candidates[0]]++;
+        }
+
+        $counts = array_fill(0, $subs->count(), 1);
+        $demand = [];
+        foreach ($subs as $subIndex => $sub) {
+            $load = $materialLoads[$subIndex];
+            $materialFactor = $load === 0 ? 0.35 : min(3.25, $load * 0.65);
+            $bloomWeight = match ($this->bloomRank((string) ($sub->bloom_level ?? ''))) {
+                1 => 0.00,
+                2 => 0.15,
+                3 => 0.35,
+                4 => 0.65,
+                5 => 0.90,
+                6 => 1.15,
+                default => 0.25,
+            };
+            $demand[$subIndex] = 1.0 + $materialFactor + $bloomWeight;
+        }
+
+        $remaining = count($teachingWeeks) - $subs->count();
+        while ($remaining > 0) {
+            $bestIndex = 0;
+            $bestPriority = -INF;
+            foreach ($subs as $subIndex => $_sub) {
+                $priority = $demand[$subIndex] / max(1, $counts[$subIndex]);
+                if ($priority > $bestPriority) {
+                    $bestPriority = $priority;
+                    $bestIndex = (int) $subIndex;
+                }
+            }
+            $counts[$bestIndex]++;
+            $remaining--;
+        }
+
+        $sequence = [];
+        foreach ($subs as $subIndex => $sub) {
+            for ($i = 0; $i < $counts[$subIndex]; $i++) {
+                $sequence[] = $sub;
+            }
+        }
+
+        return $sequence[$position] ?? $subs->last();
     }
 
     private function defaultTimeEstimate(int $credits): string
