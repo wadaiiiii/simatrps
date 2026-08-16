@@ -854,15 +854,15 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
-                                title="Mengisi otomatis bagian RPS yang masih kosong tanpa mengubah isian yang sudah ada."
+                                title="Mengisi otomatis bagian RPS yang belum terisi berdasarkan CPMK, Sub-CPMK, bahan kajian, SKS, dan data RPS yang tersedia, tanpa menimpa isian yang sudah ada."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
                                     { mode: 'fill_empty' },
-                                    actionOptions('Bagian RPS yang masih kosong berhasil dilengkapi tanpa mengubah isian yang sudah ada.'),
+                                    actionOptions('RPS berhasil dilengkapi otomatis pada bagian yang belum terisi tanpa mengubah isian yang sudah ada.'),
                                 )}
                                 className="rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white"
                             >
-                                Lengkapi Bagian Kosong
+                                Lengkapi RPS Otomatis
                             </button>
                         </div>
                     </div>

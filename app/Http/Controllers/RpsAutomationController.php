@@ -37,13 +37,13 @@ class RpsAutomationController extends Controller
             report($exception);
 
             throw ValidationException::withMessages([
-                'smart_draft' => 'Isi Kosong belum berhasil diproses. Coba ulangi setelah halaman dimuat ulang. Jika tetap terjadi, gunakan AI per pekan sementara proses otomatis diperiksa.',
+                'smart_draft' => 'RPS belum berhasil dilengkapi otomatis. Muat ulang halaman lalu coba kembali. Jika masih gagal, gunakan AI per pekan sementara proses otomatis diperiksa.',
             ]);
         }
 
         return back()->with(
             'success',
-            "Smart Draft selesai. {$result['updated_weeks']} pertemuan diperbarui."
+            "RPS berhasil dilengkapi otomatis. {$result['updated_weeks']} pertemuan diperbarui."
         );
     }
 
