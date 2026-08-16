@@ -91,6 +91,12 @@ function safeList(value: any): any[] {
     return Array.isArray(value) ? value : [];
 }
 
+function stripMaterialListPrefix(value: any) {
+    return String(value ?? '')
+        .replace(/^\s*(?:(?:[a-z]|\d{1,2})[.)]\s*)+/iu, '')
+        .trim();
+}
+
 function actionOptions(message: string, afterSuccess?: () => void) {
     return {
         preserveScroll: true,
@@ -753,7 +759,7 @@ export default function RpsShow(props: any) {
 
                                         <ol className="list-[lower-alpha] space-y-0.5 pl-5">
                                             {materials.map((item: any) => (
-                                                <li key={item.id}>{item.title}</li>
+                                                <li key={item.id}>{stripMaterialListPrefix(item.title)}</li>
                                             ))}
                                         </ol>
                                     </td>
@@ -2664,7 +2670,7 @@ function DocumentMaterialsManager({ rpsId, materials }: any) {
 
 function MaterialEditRow({ rpsId, material }: any) {
     const form = useForm({
-        title: material.title ?? '',
+        title: stripMaterialListPrefix(material.title),
     });
 
     return (
