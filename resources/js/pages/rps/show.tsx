@@ -3588,10 +3588,10 @@ function DocumentWeekRow({
                         type="button"
                         disabled={!aiConfigured || aiBusy}
                         onClick={() => onGenerateAi(info.count >= 7)}
-                        title="Buat rekomendasi AI khusus untuk pekan ini"
+                        title="Susun rekomendasi AI untuk pekan ini"
                         className="rounded-lg border border-violet-700 bg-violet-600 px-2 py-1.5 text-[10px] font-extrabold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                        {aiBusy ? 'AI...' : '✨ AI Pekan'}
+                        {aiBusy ? 'AI...' : '✨ Susun AI'}
                     </button>
                 </div>
             </td>
