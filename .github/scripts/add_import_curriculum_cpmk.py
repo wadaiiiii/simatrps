@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# One-time implementation script for restoring missing CPMK from curriculum master.
 # 1) Route
 p = Path('routes/web.php')
 s = p.read_text(encoding='utf-8')
