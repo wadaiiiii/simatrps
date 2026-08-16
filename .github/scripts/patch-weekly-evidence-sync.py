@@ -7,14 +7,12 @@ root = Path('.')
 p = root / 'app/Services/Rps/RpsAssessmentSyncService.php'
 s = p.read_text(encoding='utf-8')
 
-# Use exact weekly RTM/task titles as the evidence names shown in Simulation.
 needle = """        $actualSubBudgets = $weeks
             ->filter(fn ($week) =>
 """
-insert = """        // Nama bukti pada Simulasi harus spesifik terhadap pekan. Jika ada
-        // RTM/tugas yang jatuh pada pekan tersebut, gunakan judul RTM sebagai
-        // nama bentuk penilaian. Nama asesmen agregat tetap digunakan sebagai
-        // sumber anggaran bobot dan tampil pada matriks/RTM.
+insert = """        // Simulasi menampilkan bukti/penugasan yang benar-benar jatuh
+        // pada pekan tersebut. Asesmen agregat tetap menjadi sumber anggaran
+        // bobot pada matriks, sedangkan judul RTM menjadi nama bukti per pekan.
         $taskEvidenceByWeek = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
             ->whereNotNull('due_week')
@@ -43,7 +41,6 @@ if needle not in s:
     raise SystemExit('snapshot insertion marker missing')
 s = s.replace(needle, insert, 1)
 
-# syncVersion: normalize stale indicators and orphan RTMs before weights snapshot.
 old = """    public function syncVersion(string $versionId): array
     {
         $this->syncTaskMappings($versionId);
@@ -67,7 +64,6 @@ if old not in s:
     raise SystemExit('syncVersion message marker missing')
 s = s.replace(old, new, 1)
 
-# Replace syncTaskMappings with orphan auto-link + due-week authoritative mapping.
 pattern = re.compile(r"    public function syncTaskMappings\(string \$versionId\): int\n    \{.*?\n    \}\n\n    public function taskAlignment", re.S)
 replacement = r'''    public function syncTaskMappings(string $versionId): int
     {
@@ -119,8 +115,6 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
                         ? (string) $task->assessment_id
                         : null;
 
-                // Jika asesmen lama tidak lagi mengukur Sub-CPMK pekan RTM,
-                // lepaskan terlebih dahulu agar dapat dipasangkan ulang.
                 if ($assessmentId && $weekSubId && in_array($dueWeek, self::TEACHING_WEEKS, true)) {
                     $currentLinks = collect($assessmentLinks->get($assessmentId, []))
                         ->pluck('rps_sub_cpmk_id')
@@ -135,8 +129,6 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
                 if (! $assessmentId) {
                     $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
 
-                    // Prioritas pertama: nama asesmen sama persis dan cakupannya
-                    // cocok dengan Sub-CPMK pekan (atau merupakan UTS/UAS).
                     $exact = $assessments->first(function ($assessment) use (
                         $normalizedTaskTitle,
                         $weekSubId,
@@ -164,11 +156,7 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
                         $taskType = strtolower((string) ($task->type ?? 'other'));
 
                         $candidates = $assessments
-                            ->filter(function ($assessment) use (
-                                $weekSubId,
-                                $dueWeek,
-                                $assessmentLinks
-                            ): bool {
+                            ->filter(function ($assessment) use ($weekSubId, $dueWeek, $assessmentLinks): bool {
                                 $type = strtolower((string) $assessment->type);
                                 if ($dueWeek === 8) return $type === 'uts';
                                 if ($dueWeek === 16) return $type === 'uas';
@@ -182,15 +170,11 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
                             ->sort(function ($a, $b) use ($taskType, $dueWeek): int {
                                 $aTypePenalty = strtolower((string) $a->type) === $taskType ? 0 : 1;
                                 $bTypePenalty = strtolower((string) $b->type) === $taskType ? 0 : 1;
-                                if ($aTypePenalty !== $bTypePenalty) {
-                                    return $aTypePenalty <=> $bTypePenalty;
-                                }
+                                if ($aTypePenalty !== $bTypePenalty) return $aTypePenalty <=> $bTypePenalty;
 
                                 $aDistance = abs(((int) ($a->week_number ?? 99)) - $dueWeek);
                                 $bDistance = abs(((int) ($b->week_number ?? 99)) - $dueWeek);
-                                if ($aDistance !== $bDistance) {
-                                    return $aDistance <=> $bDistance;
-                                }
+                                if ($aDistance !== $bDistance) return $aDistance <=> $bDistance;
 
                                 return ((int) ($a->week_number ?? 99)) <=> ((int) ($b->week_number ?? 99));
                             })
@@ -242,12 +226,6 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
         return $linkedCount;
     }
 
-    /**
-     * Memperbaiki kasus stale-generated: kolom Sub-CPMK pekan sudah berubah,
-     * tetapi indikator masih persis menggunakan rumusan Sub-CPMK lain.
-     * Hanya kecocokan persis dengan rumusan Sub-CPMK lain yang disentuh agar
-     * indikator manual/AI bebas tetap terlindungi.
-     */
     public function syncWeeklyIndicators(string $versionId): int
     {
         $subs = DB::table('rps_sub_cpmks')
@@ -255,16 +233,12 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
             ->get(['id', 'description'])
             ->keyBy(fn ($sub) => (string) $sub->id);
 
-        if ($subs->isEmpty()) {
-            return 0;
-        }
+        if ($subs->isEmpty()) return 0;
 
         $descriptionOwner = [];
         foreach ($subs as $sub) {
             $normalized = $this->normalizeLabel((string) $sub->description);
-            if ($normalized !== '') {
-                $descriptionOwner[$normalized] = (string) $sub->id;
-            }
+            if ($normalized !== '') $descriptionOwner[$normalized] = (string) $sub->id;
         }
 
         $fixed = 0;
@@ -280,9 +254,7 @@ replacement = r'''    public function syncTaskMappings(string $versionId): int
             $currentSub = $subs->get($currentSubId);
             if (! $currentSub) continue;
 
-            $indicatorNormalized = $this->normalizeLabel((string) $week->assessment_indicator);
-            $ownerId = $descriptionOwner[$indicatorNormalized] ?? null;
-
+            $ownerId = $descriptionOwner[$this->normalizeLabel((string) $week->assessment_indicator)] ?? null;
             if ($ownerId && $ownerId !== $currentSubId) {
                 DB::table('rps_weekly_plans')
                     ->where('id', $week->id)
@@ -310,7 +282,6 @@ if count != 1:
     raise SystemExit(f'syncTaskMappings replacement count {count}')
 s = new_s
 
-# Enhance taskAlignment with due-week and unlinked weighted task validation.
 s = s.replace(
     "->get(['id', 'assessment_id']);\n\n        $linkedTasks = $tasks->filter",
     "->get(['id', 'assessment_id', 'due_week']);\n\n        $linkedTasks = $tasks->filter",
@@ -331,13 +302,10 @@ insert = """        $missingRequired = $requiredAssessmentIds->diff($coveredAsse
 
         $unlinkedWeightedTaskCount = 0;
         $dueWeekMismatchCount = 0;
-
         foreach ($tasks as $task) {
             $dueWeek = (int) ($task->due_week ?? 0);
             $week = $weekRows->get($dueWeek);
-            if (! $week || (float) ($week->assessment_weight ?? 0) <= 0) {
-                continue;
-            }
+            if (! $week || (float) ($week->assessment_weight ?? 0) <= 0) continue;
 
             if (! filled($task->assessment_id ?? null)) {
                 $unlinkedWeightedTaskCount++;
@@ -346,13 +314,8 @@ insert = """        $missingRequired = $requiredAssessmentIds->diff($coveredAsse
 
             if (filled($week->rps_sub_cpmk_id ?? null)) {
                 $expected = collect($assessmentLinks->get($task->assessment_id, []))
-                    ->pluck('rps_sub_cpmk_id')
-                    ->map('strval')
-                    ->unique();
-
-                if (! $expected->contains((string) $week->rps_sub_cpmk_id)) {
-                    $dueWeekMismatchCount++;
-                }
+                    ->pluck('rps_sub_cpmk_id')->map('strval')->unique();
+                if (! $expected->contains((string) $week->rps_sub_cpmk_id)) $dueWeekMismatchCount++;
             }
         }
 
@@ -374,18 +337,15 @@ new = """            'mapping_mismatch_count' => $mismatchCount,
                 && $dueWeekMismatchCount === 0,
 """
 if old not in s:
-    raise SystemExit('taskAlignment is_aligned marker missing')
+    raise SystemExit('taskAlignment aligned marker missing')
 s = s.replace(old, new, 1)
-
 p.write_text(s, encoding='utf-8')
 
-# --- ObeWorkspaceService validator messages ---------------------------------
+# --- Validator ---------------------------------------------------------------
 p = root / 'app/Services/Rps/ObeWorkspaceService.php'
 s = p.read_text(encoding='utf-8')
-old = """                    .\"RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']} dan asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.\",
-"""
-new = """                    .\"RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']}; RTM berbobot tanpa asesmen {$taskAlignment['unlinked_weighted_task_count']}; ketidaksesuaian Sub-CPMK RTM dengan pekan {$taskAlignment['due_week_subcpmk_mismatch_count']}; asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.\",
-"""
+old = ".\"RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']} dan asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.\"," 
+new = ".\"RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']}; RTM berbobot tanpa asesmen {$taskAlignment['unlinked_weighted_task_count']}; ketidaksesuaian Sub-CPMK RTM dengan pekan {$taskAlignment['due_week_subcpmk_mismatch_count']}; asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.\"," 
 if old not in s:
     raise SystemExit('assessment chain message marker missing')
 s = s.replace(old, new, 1)
@@ -398,18 +358,16 @@ new = """                    'rtm_mapping_mismatch' => $taskAlignment['mapping_m
                     'rtm_required_missing' => $taskAlignment['missing_required_assessment_count'],
 """
 if old not in s:
-    raise SystemExit('assessment chain details marker missing')
+    raise SystemExit('validator details marker missing')
 s = s.replace(old, new, 1)
-old = """                    : \"{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag Sub-CPMK yang berbeda dari asesmennya.\",
-"""
-new = """                    : \"{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['unlinked_weighted_task_count']} RTM berbobot belum terhubung asesmen; {$taskAlignment['due_week_subcpmk_mismatch_count']} RTM tidak cocok dengan Sub-CPMK pekannya; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag berbeda dari asesmennya.\",
-"""
+old = ": \"{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag Sub-CPMK yang berbeda dari asesmennya.\"," 
+new = ": \"{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['unlinked_weighted_task_count']} RTM berbobot belum terhubung asesmen; {$taskAlignment['due_week_subcpmk_mismatch_count']} RTM tidak cocok dengan Sub-CPMK pekannya; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag berbeda dari asesmennya.\"," 
 if old not in s:
     raise SystemExit('RTM message marker missing')
 s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8')
 
-# --- RpsAutomationController: Isi Bagian Kosong must finish with canonical sync
+# --- Isi Bagian Kosong ends with canonical assessment sync ------------------
 p = root / 'app/Http/Controllers/RpsAutomationController.php'
 s = p.read_text(encoding='utf-8')
 old = """        RpsSmartDraftService $service
@@ -441,38 +399,11 @@ new = """            \"Bagian kosong berhasil diisi. {$result['updated_weeks']} 
                 .($syncMessage !== '' ? ' '.$syncMessage : '')
 """
 if old not in s:
-    raise SystemExit('smartDraft success message marker missing')
+    raise SystemExit('smartDraft message marker missing')
 s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8')
 
-# --- RpsTaskController: all task edits re-enter canonical assessment sync ------
-p = root / 'app/Http/Controllers/RpsTaskController.php'
-s = p.read_text(encoding='utf-8')
-if 'use App\\Services\\Rps\\RpsAssessmentSyncService;' not in s:
-    s = s.replace('namespace App\\Http\\Controllers;\n\n', 'namespace App\\Http\\Controllers;\n\nuse App\\Services\\Rps\\RpsAssessmentSyncService;\n')
-s = s.replace(
-    'public function store(Request $request, string $rps): RedirectResponse',
-    'public function store(Request $request, string $rps, RpsAssessmentSyncService $assessmentSync): RedirectResponse',
-    1,
-)
-s = s.replace(
-    "        return back()->with('success', 'RTM berhasil ditambahkan.');",
-    "        $assessmentSync->syncVersion($version->id);\n\n        return back()->with('success', 'RTM berhasil ditambahkan dan disinkronkan dengan asesmen/Sub-CPMK pekannya.');",
-    1,
-)
-s = s.replace(
-    "        string $task\n    ): RedirectResponse {",
-    "        string $task,\n        RpsAssessmentSyncService $assessmentSync\n    ): RedirectResponse {",
-    1,
-)
-s = s.replace(
-    "        return back()->with('success', 'RTM berhasil diperbarui.');",
-    "        $assessmentSync->syncVersion($version->id);\n\n        return back()->with('success', 'RTM berhasil diperbarui dan disinkronkan dengan asesmen/Sub-CPMK pekannya.');",
-    1,
-)
-p.write_text(s, encoding='utf-8')
-
-# --- RTM print/UI: distinguish weekly evidence from aggregate assessment ------
+# --- RTM display --------------------------------------------------------------
 p = root / 'resources/js/pages/rps/show.tsx'
 s = p.read_text(encoding='utf-8')
 old = """                                                    <div><strong>Asesmen:</strong> {assessment?.name || '-'}</div>
@@ -482,20 +413,14 @@ new = """                                                    <div><strong>Bentuk
                                                     <div><strong>Kriteria:</strong> {assessment?.description || '-'}</div>
 """
 if old not in s:
-    raise SystemExit('RTM assessment display marker missing')
+    raise SystemExit('RTM display marker missing')
 s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8')
 
-# Validation markers
 checks = {
-    'app/Services/Rps/RpsAssessmentSyncService.php': [
-        'RTM/tugas yang jatuh pada pekan tersebut',
-        'unlinked_weighted_task_count',
-        'syncWeeklyIndicators',
-    ],
+    'app/Services/Rps/RpsAssessmentSyncService.php': ['unlinked_weighted_task_count', 'syncWeeklyIndicators', 'taskEvidenceByWeek'],
     'app/Services/Rps/ObeWorkspaceService.php': ['RTM berbobot tanpa asesmen'],
-    'app/Http/Controllers/RpsAutomationController.php': ['$assessmentSync->syncVersion($version->id);'],
-    'app/Http/Controllers/RpsTaskController.php': ['disinkronkan dengan asesmen/Sub-CPMK pekannya'],
+    'app/Http/Controllers/RpsAutomationController.php': ['$syncResult = $assessmentSync->syncVersion($version->id);'],
     'resources/js/pages/rps/show.tsx': ['Bentuk penilaian pekan:'],
 }
 for path, markers in checks.items():
