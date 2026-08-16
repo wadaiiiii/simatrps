@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Rps\RpsSyllabusService;
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -534,7 +535,8 @@ class ObeWorkspaceController extends Controller
 
     public function alignSubCpmkSequence(
         Request $request,
-        string $rps
+        string $rps,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
@@ -581,9 +583,11 @@ class ObeWorkspaceController extends Controller
                 ]);
         }
 
+        $assessmentSync->syncVersion($version->id);
+
         return back()->with(
             'success',
-            'Alur Sub-CPMK minggu pembelajaran dirapikan secara berurutan. UTS/UAS tidak diubah.'
+            'Alur Sub-CPMK minggu pembelajaran dirapikan dan rantai asesmen disinkronkan. UTS/UAS tidak diubah.'
         );
     }
 
@@ -684,7 +688,7 @@ Pendukung:
         );
     }
 
-    public function updateWeek(Request $request, string $rps, int $week): RedirectResponse
+    public function updateWeek(Request $request, string $rps, int $week, RpsAssessmentSyncService $assessmentSync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -767,6 +771,10 @@ Pendukung:
         DB::table('rps_weekly_plans')
             ->where('id', $weekly->id)
             ->update($payload);
+
+        if (! $isExam) {
+            $assessmentSync->syncVersion($version->id);
+        }
 
         return back()->with(
             'success',

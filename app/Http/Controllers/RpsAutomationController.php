@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Rps\ObeWorkspaceService;
 use App\Services\Rps\RpsSmartDraftService;
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,8 @@ class RpsAutomationController extends Controller
 
     public function allocateSubCpmkMeetings(
         Request $request,
-        string $rps
+        string $rps,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
@@ -185,9 +187,11 @@ class RpsAutomationController extends Controller
             }
         });
 
+        $assessmentSync->syncVersion($version->id);
+
         return back()->with(
             'success',
-            'Alokasi pertemuan Sub-CPMK disimpan. Isi otomatis dapat disegarkan langsung dengan Lengkapi RPS Otomatis tanpa mengosongkan 14 pertemuan; edit manual dan AI tetap dilindungi.'
+            'Alokasi pertemuan Sub-CPMK disimpan. Tag asesmen, bobot pekan, RTM, matriks, dan simulasi langsung disinkronkan ke alokasi terbaru.'
         );
     }
 
@@ -195,13 +199,15 @@ class RpsAutomationController extends Controller
         Request $request,
         string $rps,
         int $week,
-        RpsSmartDraftService $service
+        RpsSmartDraftService $service,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
         $service->copyPreviousWeek($version->id, $week);
+        $assessmentSync->syncVersion($version->id);
 
-        return back()->with('success', "Minggu {$week} menyalin draft minggu sebelumnya.");
+        return back()->with('success', "Minggu {$week} menyalin draft minggu sebelumnya dan rantai asesmen disinkronkan.");
     }
 
     public function applyMethod(

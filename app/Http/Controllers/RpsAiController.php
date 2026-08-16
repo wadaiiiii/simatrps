@@ -1832,9 +1832,11 @@ PROMPT;
             }
         }
 
+        app(RpsAssessmentSyncService::class)->syncVersion($version->id);
+
         return [
             'changed' => 14,
-            'message' => 'Rencana 14 minggu AI diterapkan ke workspace.',
+            'message' => 'Rencana 14 minggu AI diterapkan ke workspace dan rantai asesmen disinkronkan.',
         ];
     }
 
