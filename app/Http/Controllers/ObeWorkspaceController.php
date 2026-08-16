@@ -538,6 +538,18 @@ class ObeWorkspaceController extends Controller
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
+        $manualAllocationActive = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $version->id)
+            ->whereIn('week_number', [1,2,3,4,5,6,7,9,10,11,12,13,14,15])
+            ->where('source_type', 'manual_allocation')
+            ->exists();
+
+        if ($manualAllocationActive) {
+            throw ValidationException::withMessages([
+                'sub_cpmk' => 'Alokasi pertemuan manual sedang aktif. Ubah jumlah pertemuan melalui tombol Atur Pertemuan agar keputusan dosen tidak tertimpa.',
+            ]);
+        }
+
         $subs = DB::table('rps_sub_cpmks')
             ->where('rps_version_id', $version->id)
             ->orderBy('sequence_no')

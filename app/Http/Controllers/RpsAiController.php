@@ -994,6 +994,24 @@ PROMPT;
             return null;
         }
 
+
+        $manualSubId = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->where('week_number', $week)
+            ->where('source_type', 'manual_allocation')
+            ->value('rps_sub_cpmk_id');
+
+        if ($manualSubId) {
+            $manualSub = DB::table('rps_sub_cpmks')
+                ->where('rps_version_id', $versionId)
+                ->where('id', $manualSubId)
+                ->first(['id', 'code', 'sequence_no', 'description', 'bloom_level']);
+
+            if ($manualSub) {
+                return $manualSub;
+            }
+        }
+
         $subs = DB::table('rps_sub_cpmks')
             ->where('rps_version_id', $versionId)
             ->orderBy('sequence_no')

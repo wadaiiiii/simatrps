@@ -170,6 +170,7 @@ export default function RpsShow(props: any) {
     const [aiBusyType, setAiBusyType] = useState<string | null>(null);
     const [aiBusyWeek, setAiBusyWeek] = useState<number | null>(null);
     const [selectedBatchWeeks, setSelectedBatchWeeks] = useState<number[]>(TEACHING_WEEKS);
+    const [meetingPlannerOpen, setMeetingPlannerOpen] = useState(false);
 
     const aiPreferenceKey = useMemo(
         () => `simatrps:ai-preference:${rps.id}`,
@@ -412,6 +413,14 @@ export default function RpsShow(props: any) {
         <>
             <Head title={`RPS ${rps.course_name}`} />
             <ActionNotifications />
+            {meetingPlannerOpen && (
+                <SubCpmkMeetingPlanner
+                    rpsId={rps.id}
+                    subCpmks={subCpmks}
+                    weeks={weeks}
+                    onClose={() => setMeetingPlannerOpen(false)}
+                />
+            )}
 
             <div className="p-3 md:p-5">
                 {/* Workspace toolbar: compact, non-print */}
@@ -829,6 +838,14 @@ export default function RpsShow(props: any) {
                                 className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-700"
                             >
                                 Rapikan Sub-CPMK
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMeetingPlannerOpen(true)}
+                                className="rounded-lg border border-emerald-600 bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700"
+                                title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK"
+                            >
+                                Atur Pertemuan
                             </button>
                             <button
                                 type="button"
@@ -3354,6 +3371,153 @@ function InlineWeightInput({ rpsId, week }: any) {
                 {Number(form.data.weight || 0) || '-'}
             </span>
         </>
+    );
+}
+
+function SubCpmkMeetingPlanner({ rpsId, subCpmks, weeks, onClose }: any) {
+    const currentAllocations = useMemo(() => {
+        const counts: Record<string, number> = {};
+        subCpmks.forEach((sub: any) => { counts[sub.id] = 0; });
+
+        weeks
+            .filter((week: any) => TEACHING_WEEKS.includes(Number(week.week_number)))
+            .forEach((week: any) => {
+                if (week.rps_sub_cpmk_id && counts[week.rps_sub_cpmk_id] !== undefined) {
+                    counts[week.rps_sub_cpmk_id] += 1;
+                }
+            });
+
+        // Untuk RPS yang belum pernah dialokasikan, setiap Sub-CPMK diberi
+        // nilai awal 1 agar dosen tinggal membagi sisa pertemuan.
+        subCpmks.forEach((sub: any) => {
+            if (counts[sub.id] < 1) counts[sub.id] = 1;
+        });
+
+        return counts;
+    }, [subCpmks, weeks]);
+
+    const [allocations, setAllocations] = useState<Record<string, number>>(currentAllocations);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        setAllocations(currentAllocations);
+    }, [currentAllocations]);
+
+    const total = Object.values(allocations).reduce((sum, value) => sum + Number(value || 0), 0);
+    const remaining = 14 - total;
+
+    const save = () => {
+        if (total !== 14 || saving) return;
+        setSaving(true);
+
+        router.post(
+            `/rps/${rpsId}/weeks/allocate-subcpmk`,
+            { allocations },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    notify('success', 'Jumlah pertemuan per Sub-CPMK berhasil disimpan.');
+                    onClose();
+                },
+                onError: (errors) => notify('error', firstError(errors)),
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4 print:hidden">
+            <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="sticky top-0 z-10 flex items-start justify-between border-b border-slate-200 bg-white px-5 py-4">
+                    <div>
+                        <h3 className="text-base font-extrabold text-slate-900">Atur Pertemuan Sub-CPMK</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Tetapkan jumlah pertemuan pembelajaran untuk setiap Sub-CPMK. UTS dan UAS tidak dihitung.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                    >
+                        Tutup
+                    </button>
+                </div>
+
+                <div className="p-5">
+                    <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                        Jumlah yang ditetapkan dosen menjadi acuan utama. <strong>Lengkapi RPS Otomatis</strong> dan <strong>Susun AI</strong> akan mengikuti alokasi ini, bukan membagi ulang Sub-CPMK.
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                        <table className="w-full border-collapse text-xs">
+                            <thead className="bg-slate-50 text-slate-700">
+                                <tr>
+                                    <th className="border-b border-slate-200 px-3 py-2 text-left">Sub-CPMK</th>
+                                    <th className="border-b border-slate-200 px-3 py-2 text-left">Rumusan</th>
+                                    <th className="w-36 border-b border-slate-200 px-3 py-2 text-center">Pertemuan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {subCpmks.map((sub: any) => (
+                                    <tr key={sub.id} className="align-top">
+                                        <td className="border-b border-slate-100 px-3 py-2 font-bold text-slate-800">{sub.code}</td>
+                                        <td className="border-b border-slate-100 px-3 py-2 text-slate-600">{sub.description}</td>
+                                        <td className="border-b border-slate-100 px-3 py-2 text-center">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="14"
+                                                value={allocations[sub.id] ?? 1}
+                                                onChange={(e) => setAllocations((current) => ({
+                                                    ...current,
+                                                    [sub.id]: Math.max(1, Math.min(14, Number(e.target.value || 1))),
+                                                }))}
+                                                className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-center font-bold text-slate-800"
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className={`mt-4 flex items-center justify-between rounded-xl border px-4 py-3 ${total === 14 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+                        <div>
+                            <div className="text-xs font-bold text-slate-700">Total pertemuan</div>
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                                {total === 14
+                                    ? 'Sudah tepat 14 pertemuan efektif.'
+                                    : remaining > 0
+                                      ? `Masih perlu dialokasikan ${remaining} pertemuan.`
+                                      : `Kelebihan ${Math.abs(remaining)} pertemuan.`}
+                            </div>
+                        </div>
+                        <div className={`text-2xl font-extrabold ${total === 14 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {total}/14
+                        </div>
+                    </div>
+
+                    <div className="mt-5 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="button"
+                            disabled={total !== 14 || saving}
+                            onClick={save}
+                            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            {saving ? 'Menyimpan...' : 'Simpan Alokasi'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 

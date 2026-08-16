@@ -91,6 +91,23 @@ class RpsSmartDraftService
         // eksplisit agar tidak terlihat sebagai pengulangan tanpa alasan.
         $teachingSequence = $this->buildTeachingSequence($subCpmks, $materials);
 
+        // Jika dosen sudah menetapkan jumlah pertemuan melalui Atur Pertemuan,
+        // alokasi itu menjadi hard constraint. Smart Draft hanya melengkapi isi
+        // tiap minggu dan tidak boleh membagi ulang Sub-CPMK.
+        $manualAllocationCounts = [];
+        foreach (self::TEACHING_WEEKS as $manualWeek) {
+            $manualRow = $currentWeeks->get($manualWeek);
+            if (
+                $manualRow
+                && ($manualRow->source_type ?? null) === 'manual_allocation'
+                && filled($manualRow->rps_sub_cpmk_id ?? null)
+            ) {
+                $key = (string) $manualRow->rps_sub_cpmk_id;
+                $manualAllocationCounts[$key] = ($manualAllocationCounts[$key] ?? 0) + 1;
+            }
+        }
+        $manualOccurrence = [];
+
         foreach (self::TEACHING_WEEKS as $position => $weekNumber) {
             $current = $currentWeeks->get($weekNumber);
 
@@ -105,6 +122,27 @@ class RpsSmartDraftService
 
             $sub = $slot['sub'];
             $materialText = $slot['material'];
+            $manualAllocation = ($current->source_type ?? null) === 'manual_allocation'
+                && filled($current->rps_sub_cpmk_id ?? null);
+
+            if ($manualAllocation) {
+                $manualSub = $subCpmks->first(
+                    fn ($candidate) => (string) $candidate->id === (string) $current->rps_sub_cpmk_id
+                );
+
+                if ($manualSub) {
+                    $sub = $manualSub;
+                    $subKey = (string) $sub->id;
+                    $occurrence = $manualOccurrence[$subKey] ?? 0;
+                    $manualOccurrence[$subKey] = $occurrence + 1;
+                    $materialText = $this->materialForAllocatedWeek(
+                        $sub,
+                        $materials,
+                        $occurrence,
+                        max(1, (int) ($manualAllocationCounts[$subKey] ?? 1))
+                    );
+                }
+            }
 
             $method = $hasPracticum
                 ? 'Ceramah interaktif, demonstrasi, latihan terbimbing, diskusi, dan praktikum.'
@@ -139,7 +177,7 @@ class RpsSmartDraftService
                     $referenceCodes,
                     $position
                 ),
-                'source_type' => 'smart_draft',
+                'source_type' => $manualAllocation ? 'manual_allocation' : 'smart_draft',
             ];
 
             // Deployment lama mungkin belum memiliki seluruh kolom tambahan.
@@ -681,6 +719,66 @@ class RpsSmartDraftService
 
         $prefix = $prefixes[$extensionIndex % count($prefixes)];
         return $prefix.': '.$title;
+    }
+
+    private function materialForAllocatedWeek(
+        object $sub,
+        $materials,
+        int $occurrence,
+        int $weekCount
+    ): ?string {
+        $linkedMaterialIds = [];
+
+        if (Schema::hasTable('rps_material_subcpmks')) {
+            $linkedMaterialIds = DB::table('rps_material_subcpmks')
+                ->where('rps_sub_cpmk_id', $sub->id)
+                ->pluck('rps_material_id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+        }
+
+        $titles = $materials
+            ->values()
+            ->map(function ($material, $index) use ($sub, $linkedMaterialIds): array {
+                $title = trim((string) ($material->title ?? ''));
+                $direct = filled($material->rps_sub_cpmk_id ?? null)
+                    && (string) $material->rps_sub_cpmk_id === (string) $sub->id;
+                $pivot = filled($material->id ?? null)
+                    && in_array((string) $material->id, $linkedMaterialIds, true);
+
+                return [
+                    'title' => $title,
+                    'index' => (int) $index,
+                    'linked' => $direct || $pivot,
+                    'score' => $this->materialRelevanceScore(
+                        (string) ($sub->description ?? ''),
+                        $title
+                    ),
+                ];
+            })
+            ->filter(fn (array $item) =>
+                $item['title'] !== '' && ($item['linked'] || $item['score'] > 0)
+            )
+            ->sort(function (array $a, array $b): int {
+                if ($a['linked'] !== $b['linked']) {
+                    return $a['linked'] ? -1 : 1;
+                }
+                if ($a['score'] !== $b['score']) {
+                    return $b['score'] <=> $a['score'];
+                }
+                return $a['index'] <=> $b['index'];
+            })
+            ->pluck('title')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($titles === []) {
+            return null;
+        }
+
+        $groups = $this->splitMaterialsAcrossWeeks($titles, max(1, $weekCount), $sub);
+        return $groups[$occurrence] ?? end($groups) ?: null;
     }
 
     private function materialRelevanceScore(string $subDescription, string $materialTitle): int
