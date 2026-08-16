@@ -830,17 +830,6 @@ export default function RpsShow(props: any) {
                         <div className="flex flex-wrap gap-1.5">
                             <button
                                 type="button"
-                                onClick={() => router.post(
-                                    `/rps/${rps.id}/weeks/align-subcpmk`,
-                                    {},
-                                    actionOptions('Alur Sub-CPMK berhasil dirapikan.'),
-                                )}
-                                className="rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-bold text-violet-700"
-                            >
-                                Rapikan Sub-CPMK
-                            </button>
-                            <button
-                                type="button"
                                 onClick={() => setMeetingPlannerOpen(true)}
                                 className="rounded-lg border border-emerald-600 bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700"
                                 title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK"
