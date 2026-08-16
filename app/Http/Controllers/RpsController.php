@@ -236,7 +236,10 @@ class RpsController extends Controller
 
         $subById = $subCpmks->keyBy('id');
         $assessmentWeightsByWeek = $assessments
-            ->filter(fn ($assessment) => filled($assessment->week_number))
+            ->filter(fn ($assessment) =>
+                filled($assessment->week_number)
+                && in_array(strtolower((string) $assessment->type), ['uts', 'uas'], true)
+            )
             ->groupBy(fn ($assessment) => (int) $assessment->week_number)
             ->map(fn ($items) => round(
                 (float) $items->sum(
@@ -263,13 +266,14 @@ class RpsController extends Controller
             $storedWeight = $week->assessment_weight ?? null;
             $weekNumber = (int) $week->week_number;
 
-            // Jika ada asesmen detail pada pekan ini, bobot asesmen adalah
-            // sumber kebenaran. Ini memastikan perubahan dari
-            // "Edit Detail Asesmen, RTM & Validator OBE" langsung tampil
-            // kembali pada kolom Bobot Penilaian di tabel RPS.
-            $week->assessment_weight = $assessmentWeightsByWeek->has($weekNumber)
-                ? (float) $assessmentWeightsByWeek->get($weekNumber, 0)
-                : (float) ($storedWeight ?? 0);
+            // Untuk 14 pekan pembelajaran, assessment_weight yang tersimpan
+            // pada rps_weekly_plans adalah distribusi bobot pengukuran per pekan.
+            // UTS/UAS tetap mengikuti bobot asesmen sistem dan disinkronkan ke
+            // pekan 8/16 agar kedua representasi konsisten.
+            $week->assessment_weight = in_array($weekNumber, [8, 16], true)
+                && $assessmentWeightsByWeek->has($weekNumber)
+                    ? (float) $assessmentWeightsByWeek->get($weekNumber, 0)
+                    : (float) ($storedWeight ?? 0);
 
             $week->assessment_names = $assessmentNamesByWeek->get($weekNumber, '');
 

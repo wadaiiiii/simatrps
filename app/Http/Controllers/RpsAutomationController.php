@@ -41,9 +41,12 @@ class RpsAutomationController extends Controller
             ]);
         }
 
+        $weightMessage = trim((string) ($result['weight_message'] ?? ''));
+
         return back()->with(
             'success',
-            "RPS berhasil dilengkapi otomatis. {$result['updated_weeks']} pertemuan diperbarui."
+            "Bagian kosong berhasil diisi. {$result['updated_weeks']} pertemuan diperbarui."
+                .($weightMessage !== '' ? ' '.$weightMessage : '')
         );
     }
 

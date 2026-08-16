@@ -1938,7 +1938,9 @@ PROMPT;
             }
 
             $changedAssessments++;
-            $affectedWeeks[] = $week;
+            if (in_array($type, ['uts', 'uas'], true)) {
+                $affectedWeeks[] = $week;
+            }
         }
 
         foreach ($selectedTaskIndices as $index) {
@@ -2032,6 +2034,7 @@ PROMPT;
                 (float) DB::table('assessments')
                     ->where('rps_version_id', $version->id)
                     ->where('week_number', $affectedWeek)
+                    ->whereIn('type', ['uts', 'uas'])
                     ->sum('weight'),
                 2
             );
@@ -2059,9 +2062,11 @@ PROMPT;
         }
 
         if ($changedAssessments > 0 && $totalWeight > 100.0) {
-            $message .= " PERINGATAN: total bobot asesmen saat ini {$totalWeight}% (>100%). Rekomendasi tetap diterapkan; Validator OBE akan menandainya sampai dosen menyesuaikan total menjadi tepat 100%.";
+            $message .= " PERINGATAN: total bobot asesmen agregat saat ini {$totalWeight}% (>100%). Validator OBE akan menandainya sampai total tepat 100%.";
         } elseif ($changedAssessments > 0 && abs($totalWeight - 100.0) >= 0.01) {
-            $message .= " Total bobot asesmen saat ini {$totalWeight}%; Validator OBE akan meminta penyesuaian hingga tepat 100%.";
+            $message .= " Total bobot asesmen agregat saat ini {$totalWeight}%; sesuaikan hingga tepat 100%.";
+        } elseif ($changedAssessments > 0) {
+            $message .= ' Total bobot asesmen agregat 100%. Gunakan Isi Bagian Kosong untuk membagi anggaran non-UTS/UAS ke pekan yang belum memiliki bobot.';
         }
 
         return [

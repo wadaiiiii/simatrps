@@ -49,7 +49,10 @@ class RpsAssessmentController extends Controller
             );
         });
 
-        if (filled($validated['week_number'] ?? null)) {
+        if (
+            in_array($validated['type'], ['uts', 'uas'], true)
+            && filled($validated['week_number'] ?? null)
+        ) {
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
@@ -108,11 +111,13 @@ class RpsAssessmentController extends Controller
             );
         });
 
-        if ($oldWeek) {
+        $isExamAssessment = in_array($validated['type'], ['uts', 'uas'], true);
+
+        if ($isExamAssessment && $oldWeek) {
             $this->syncWeekPrintWeight($version->id, $oldWeek);
         }
 
-        if (filled($validated['week_number'] ?? null)) {
+        if ($isExamAssessment && filled($validated['week_number'] ?? null)) {
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
@@ -138,14 +143,9 @@ class RpsAssessmentController extends Controller
 
         abort_unless($row, 404);
 
-        if ($request->has('weight')) {
-            throw ValidationException::withMessages([
-                'weight' => 'Bobot hanya dapat diubah melalui Edit Detail Asesmen. Tabel Penilaian dan Evaluasi CPL hanya menampilkan bobot hasil sinkronisasi.',
-            ]);
-        }
-
         $validated = $request->validate([
             'name' => ['nullable', 'string', 'max:500'],
+            'weight' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'sub_cpmk_ids' => ['sometimes', 'array', 'min:1'],
             'sub_cpmk_ids.*' => [
                 'uuid',
@@ -163,6 +163,15 @@ class RpsAssessmentController extends Controller
 
         if (array_key_exists('name', $validated) && filled($validated['name'])) {
             $updates['name'] = trim((string) $validated['name']);
+        }
+
+        if (array_key_exists('weight', $validated)) {
+            $this->assertWeightWithinLimit(
+                $version->id,
+                $validated['weight'],
+                $assessment
+            );
+            $updates['weight'] = round((float) ($validated['weight'] ?? 0), 2);
         }
 
         DB::transaction(function () use ($assessment, $version, $validated, $updates): void {
@@ -184,9 +193,18 @@ class RpsAssessmentController extends Controller
             }
         });
 
+        if (array_key_exists('weight', $validated) && in_array($row->type, ['uts', 'uas'], true)) {
+            $this->syncWeekPrintWeight(
+                $version->id,
+                $row->type === 'uts' ? 8 : 16
+            );
+        }
+
         return back()->with(
             'success',
-            'Pemetaan Sub-CPMK pada Tabel Penilaian dan Evaluasi CPL berhasil diperbarui.'
+            array_key_exists('weight', $validated)
+                ? 'Bobot asesmen agregat diperbarui. Jalankan Isi Bagian Kosong bila distribusi bobot pekan perlu dilengkapi.'
+                : 'Pemetaan Sub-CPMK pada Tabel Penilaian dan Evaluasi CPL berhasil diperbarui.'
         );
     }
 
@@ -209,11 +227,11 @@ class RpsAssessmentController extends Controller
 
         DB::table('assessments')->where('id', $assessment)->delete();
 
-        if ($oldWeek) {
-            $this->syncWeekPrintWeight($version->id, $oldWeek);
-        }
+        // Asesmen non-UTS/UAS adalah rekap/instrumen agregat dan tidak lagi
+        // menjadi sumber langsung bobot pekan. Karena UTS/UAS tidak dapat
+        // dihapus, penghapusan asesmen biasa tidak perlu menyentuh bobot pekan.
 
-        return back()->with('success', 'Asesmen dihapus.');
+        return back()->with('success', 'Asesmen dihapus. Distribusi bobot pekan tidak diubah.');
     }
 
     private function syncWeekPrintWeight(
@@ -224,6 +242,7 @@ class RpsAssessmentController extends Controller
             (float) DB::table('assessments')
                 ->where('rps_version_id', $versionId)
                 ->where('week_number', $week)
+                ->whereIn('type', ['uts', 'uas'])
                 ->sum(DB::raw('COALESCE(weight, 0)')),
             2
         );

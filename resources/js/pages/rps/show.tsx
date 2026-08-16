@@ -844,7 +844,7 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
-                                title="Mengisi bagian RPS yang masih kosong dan menyegarkan isian otomatis tanpa menimpa edit manual atau hasil Susun AI."
+                                title="Mengisi bagian RPS yang masih kosong. Jika total asesmen agregat sudah 100%, bobot non-UTS/UAS juga dibagi ke pekan kosong berdasarkan Sub-CPMK dan jumlah pertemuannya, tanpa menimpa bobot yang sudah diisi dosen."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
                                     { mode: 'fill_empty' },
@@ -924,7 +924,7 @@ export default function RpsShow(props: any) {
                             <div>
                                 <div className="font-bold text-slate-900">Asesmen Detail & RTM</div>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Edit manual asesmen, bobot, cakupan Sub-CPMK, dan RTM sebelum melihat Tabel Penilaian dan Evaluasi CPL.
+                                    Asesmen menyimpan bobot agregat/anggaran penilaian (total 100%). Bobot non-UTS/UAS kemudian didistribusikan ke 14 pekan pada tabel RPS; keduanya adalah dua representasi yang sama dan tidak dijumlahkan dua kali.
                                 </p>
                             </div>
 
@@ -1024,6 +1024,7 @@ export default function RpsShow(props: any) {
                         assessments={assessments}
                         subCpmks={subCpmks}
                         bibliography={bibliography}
+                        weeks={weeks}
                     />
                 </section>
 
@@ -1804,6 +1805,10 @@ function AssessmentMatrixNameInput({ rpsId, assessment, compactLabel }: any) {
 }
 
 function SimulationWeightInput({ rpsId, week, value }: any) {
+    if ([8, 16].includes(Number(week))) {
+        return <span className="font-bold text-slate-700">{Number(value || 0) || '—'}</span>;
+    }
+
     const numericOriginal = Number(value || 0);
     const original = numericOriginal > 0 ? String(numericOriginal) : '';
     const [weight, setWeight] = useState(original);
@@ -1851,7 +1856,7 @@ function SimulationWeightInput({ rpsId, week, value }: any) {
                 }}
                 placeholder="—"
                 className="mx-auto w-16 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] font-bold print:hidden"
-                title="Kosong = tidak masuk bobot nilai akhir"
+                title="Bobot pengukuran pekan. Setiap pekan pembelajaran yang memuat Sub-CPMK sebaiknya memiliki bobot positif."
             />
             <span className="hidden print:inline">{Number(value || 0) > 0 ? Number(value) : ''}</span>
         </>
@@ -2026,7 +2031,7 @@ function AssessmentEvaluationSection({
                             </tbody>
                         </table>
                         <div className="mt-1 text-[9px] text-slate-400 print:hidden">
-                            Klik sel matriks untuk menghubungkan/melepas Sub-CPMK. Nama asesmen dan bobot pada baris Total dapat diedit langsung; perubahan memakai data yang sama dengan panel Edit Detail Asesmen, RTM & Validator OBE.
+                            Klik sel matriks untuk menghubungkan/melepas Sub-CPMK. Nama dan bobot pada matriks adalah rekap asesmen agregat. Bobot 14 pekan pada tabel RPS adalah distribusi dari bobot non-UTS/UAS tersebut; jangan menjumlahkan kedua tabel sebagai dua bobot terpisah.
                         </div>
                     </div>
                 ) : (
@@ -2037,9 +2042,9 @@ function AssessmentEvaluationSection({
 
                 <div className="mt-5 text-center text-xs font-black text-slate-900">Simulasi</div>
                 <div className="mx-auto mt-1 max-w-4xl text-center text-[9px] leading-4 text-slate-500 print:hidden">
-                    Bobot hanya perlu diisi pada pekan yang benar-benar menghasilkan komponen nilai akhir.
-                    Pekan tanpa bobot ditampilkan <strong>—</strong> pada Nilai Mhs dan tidak memengaruhi nilai akhir.
-                    Nilai contoh 72–95 hanya diberikan pada pekan yang memiliki bobot.
+                    Setiap pekan pembelajaran yang memuat Sub-CPMK harus memiliki bobot sebagai bukti pengukuran.
+                    Bobot non-UTS/UAS merupakan distribusi dari anggaran asesmen agregat; bila satu Sub-CPMK digunakan beberapa pekan, anggarannya dibagi ke pekan-pekan tersebut.
+                    UTS dan UAS tetap mengikuti bobot asesmen sistem.
                 </div>
 
                 <div className="mt-2 overflow-x-auto">
@@ -2204,8 +2209,10 @@ function RtmDocumentSection({
     assessments,
     subCpmks,
     bibliography,
+    weeks,
 }: any) {
     const assessmentById = new Map(assessments.map((item: any) => [item.id, item]));
+    const weekByNumber = new Map(weeks.map((item: any) => [Number(item.week_number), item]));
     const subById = new Map(subCpmks.map((item: any) => [item.id, item]));
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
@@ -2385,7 +2392,10 @@ function RtmDocumentSection({
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
                                                     <div><strong>Asesmen:</strong> {assessment?.name || '-'}</div>
                                                     <div><strong>Kriteria:</strong> {assessment?.description || '-'}</div>
-                                                    <div><strong>Bobot:</strong> {assessment ? `${Number(assessment.weight || 0)}%` : '-'}</div>
+                                                    <div><strong>Bobot pekan:</strong> {`${Number(weekByNumber.get(Number(task.due_week))?.assessment_weight || 0)}%`}</div>
+                                                    {assessment && (
+                                                        <div className="text-[10px] text-slate-500"><strong>Asesmen agregat:</strong> {assessment.name} ({Number(assessment.weight || 0)}%)</div>
+                                                    )}
                                                 </td>
                                             </tr>
                                             <tr>
@@ -3338,7 +3348,8 @@ function InlineWeightInput({ rpsId, week }: any) {
                         (e.currentTarget as HTMLInputElement).blur();
                     }
                 }}
-                className="w-full rounded border border-slate-200 bg-white px-1 py-1 text-center text-xs font-bold text-slate-700 print:hidden"
+                className="w-full rounded border border-sky-200 bg-sky-50/40 px-1 py-1 text-center text-xs font-bold text-sky-800 print:hidden"
+                title="Bobot pengukuran Sub-CPMK pada pekan ini"
             />
             <span className="hidden font-bold print:inline">
                 {Number(form.data.weight || 0) || '-'}
@@ -3717,9 +3728,9 @@ function DocumentWeekRow({
                     <button
                         type="button"
                         onClick={() => setEditing(true)}
-                        className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[9px] font-bold text-slate-600"
+                        className="rounded-lg border border-sky-700 bg-sky-600 px-2 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition hover:bg-sky-700"
                     >
-                        Edit
+                        Edit Pekan
                     </button>
                     <button
                         type="button"

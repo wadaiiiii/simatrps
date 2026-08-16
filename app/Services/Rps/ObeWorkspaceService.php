@@ -113,6 +113,27 @@ class ObeWorkspaceService
             fn ($week) => (float) ($week->assessment_weight ?? 0)
         ), 2);
 
+        $teachingWeeks = $weeks->filter(
+            fn ($week) => ! in_array((int) $week->week_number, [8, 16], true)
+        );
+        $weightedTeachingWeeks = $teachingWeeks->filter(
+            fn ($week) => (float) ($week->assessment_weight ?? 0) > 0
+        );
+        $teachingWeightTotal = round((float) $teachingWeeks->sum(
+            fn ($week) => (float) ($week->assessment_weight ?? 0)
+        ), 2);
+        $assessmentWeightTotal = round((float) $assessments->sum(
+            fn ($assessment) => (float) ($assessment->weight ?? 0)
+        ), 2);
+        $nonExamAssessmentWeight = round((float) $assessments
+            ->reject(fn ($assessment) => in_array(strtolower((string) $assessment->type), ['uts', 'uas'], true))
+            ->sum(fn ($assessment) => (float) ($assessment->weight ?? 0)), 2);
+        $weightedWeeklySubCount = $weightedTeachingWeeks
+            ->pluck('rps_sub_cpmk_id')
+            ->filter()
+            ->unique()
+            ->count();
+
         $assessedSubCount = ($subCpmkIds->isEmpty() || $assessmentIds->isEmpty())
             ? 0
             : DB::table('assessment_subcpmks')
@@ -198,22 +219,31 @@ class ObeWorkspaceService
             [
                 'key' => 'assessment_weight',
                 'label' => 'Bobot Penilaian',
-                'done' => abs($weightTotal - 100.0) < 0.01,
-                'message' => "Total bobot pada tabel RPS {$weightTotal}%.",
+                'done' => abs($assessmentWeightTotal - 100.0) < 0.01
+                    && $weightedTeachingWeeks->count() === 14
+                    && abs($teachingWeightTotal - $nonExamAssessmentWeight) < 0.01
+                    && abs($weightTotal - 100.0) < 0.01,
+                'message' => "{$weightedTeachingWeeks->count()}/14 pekan pembelajaran memiliki bobot; distribusi pekan non-ujian {$teachingWeightTotal}% dari anggaran asesmen non-UTS/UAS {$nonExamAssessmentWeight}%; total tabel RPS {$weightTotal}% dan total asesmen agregat {$assessmentWeightTotal}%.",
+                'details' => [
+                    'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
+                    'teaching_week_total' => $teachingWeightTotal,
+                    'non_exam_assessment_budget' => $nonExamAssessmentWeight,
+                    'weekly_total' => $weightTotal,
+                    'aggregate_assessment_total' => $assessmentWeightTotal,
+                ],
             ],
             [
                 'key' => 'subcpmk_assessed',
-                'label' => 'Asesmen ↔ Sub-CPMK',
+                'label' => 'Pengukuran Sub-CPMK per Pekan',
                 'done' => $subCpmks->isNotEmpty()
-                    && $assessments->isNotEmpty()
-                    && $allAssessmentsMapped
-                    && $assessedSubCount === $subCpmks->count(),
-                'message' => "{$mappedAssessmentCount}/{$assessments->count()} asesmen terhubung ke minimal satu Sub-CPMK; {$assessedSubCount}/{$subCpmks->count()} Sub-CPMK tercakup asesmen.",
+                    && $weightedTeachingWeeks->count() === 14
+                    && $weightedWeeklySubCount === $subCpmks->count(),
+                'message' => "{$weightedTeachingWeeks->count()}/14 pekan pembelajaran memiliki bobot; {$weightedWeeklySubCount}/{$subCpmks->count()} Sub-CPMK tercakup oleh pekan berbobot.",
                 'details' => [
-                    'assessment_total' => $assessments->count(),
-                    'assessment_mapped' => $mappedAssessmentCount,
                     'sub_cpmk_total' => $subCpmks->count(),
-                    'sub_cpmk_assessed' => $assessedSubCount,
+                    'sub_cpmk_measured_in_weighted_weeks' => $weightedWeeklySubCount,
+                    'assessment_mapping_count' => $mappedAssessmentCount,
+                    'assessment_total' => $assessments->count(),
                 ],
             ],
             [

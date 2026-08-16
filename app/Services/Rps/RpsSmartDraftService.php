@@ -186,7 +186,7 @@ class RpsSmartDraftService
                 'assessment_indicator' => $indicator,
                 'assessment_criteria' => 'Ketepatan, kelengkapan, dan kesesuaian jawaban/kinerja terhadap indikator '
                     .$sub->code.'.',
-                'assessment_method' => 'Latihan/kuis formatif atau observasi kinerja sesuai aktivitas pembelajaran.',
+                'assessment_method' => 'Tugas/latihan terukur, kuis, atau observasi kinerja sesuai aktivitas pembelajaran.',
                 'reference_text' => $this->referencesForPosition(
                     $referenceCodes,
                     $position
@@ -313,10 +313,13 @@ class RpsSmartDraftService
         }
 
         $this->fillExamWeeks($version->id, $currentWeeks);
+        $this->syncExamWeekWeights($version->id);
+        $weightMessage = $this->fillEmptyTeachingWeights($version->id);
 
         return [
             'updated_weeks' => $updated,
             'mode' => $mode,
+            'weight_message' => $weightMessage,
         ];
     }
 
@@ -921,6 +924,177 @@ class RpsSmartDraftService
         return "Tatap muka: 1 × ({$credits} × 50 menit); "
             ."Tugas terstruktur: 1 × ({$credits} × 60 menit); "
             ."Belajar mandiri: 1 × ({$credits} × 60 menit)";
+    }
+
+    private function syncExamWeekWeights(string $versionId): void
+    {
+        $weights = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('type', ['uts', 'uas'])
+            ->get(['type', 'weight'])
+            ->mapWithKeys(fn ($row) => [strtolower((string) $row->type) => round((float) ($row->weight ?? 0), 2)]);
+
+        foreach ([8 => 'uts', 16 => 'uas'] as $week => $type) {
+            DB::table('rps_weekly_plans')
+                ->where('rps_version_id', $versionId)
+                ->where('week_number', $week)
+                ->update([
+                    'assessment_weight' => (float) $weights->get($type, 0),
+                    'updated_at' => now(),
+                ]);
+        }
+    }
+
+    private function fillEmptyTeachingWeights(string $versionId): string
+    {
+        $assessments = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->get(['type', 'weight']);
+
+        $assessmentTotal = round((float) $assessments->sum(
+            fn ($row) => (float) ($row->weight ?? 0)
+        ), 2);
+        $examTotal = round((float) $assessments
+            ->filter(fn ($row) => in_array(strtolower((string) $row->type), ['uts', 'uas'], true))
+            ->sum(fn ($row) => (float) ($row->weight ?? 0)), 2);
+        $teachingBudget = round($assessmentTotal - $examTotal, 2);
+
+        if (abs($assessmentTotal - 100.0) >= 0.01 || $teachingBudget <= 0) {
+            return 'Bobot 14 pekan belum dibagi otomatis karena total bobot asesmen agregat belum tepat 100% atau belum tersedia anggaran asesmen non-UTS/UAS.';
+        }
+
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->orderBy('week_number')
+            ->get(['id', 'week_number', 'rps_sub_cpmk_id', 'assessment_weight']);
+
+        if ($weeks->count() !== count(self::TEACHING_WEEKS)) {
+            return 'Distribusi bobot pekan menunggu struktur 14 pekan pembelajaran yang lengkap.';
+        }
+
+        if ($weeks->contains(fn ($week) => ! filled($week->rps_sub_cpmk_id ?? null))) {
+            return 'Distribusi bobot pekan menunggu setiap pekan memiliki Sub-CPMK.';
+        }
+
+        $emptyWeeks = $weeks->filter(
+            fn ($week) => (float) ($week->assessment_weight ?? 0) <= 0
+        )->values();
+
+        if ($emptyWeeks->isEmpty()) {
+            return 'Bobot seluruh pekan pembelajaran sudah terisi; isian manual tidak diubah.';
+        }
+
+        $existingCents = (int) round($weeks->sum(
+            fn ($week) => max(0, (float) ($week->assessment_weight ?? 0))
+        ) * 100);
+        $budgetCents = (int) round($teachingBudget * 100);
+        $remainingCents = $budgetCents - $existingCents;
+
+        if ($remainingCents <= 0) {
+            return 'Anggaran bobot pekan sudah habis oleh isian yang ada; pekan kosong tidak diubah.';
+        }
+
+        if ($remainingCents < $emptyWeeks->count()) {
+            return 'Sisa bobot terlalu kecil untuk memberi bobot positif pada setiap pekan kosong. Sesuaikan bobot manual terlebih dahulu.';
+        }
+
+        // Setiap pekan yang mengukur Sub-CPMK harus memperoleh bobot positif.
+        // Beri minimum 0,01% terlebih dahulu, lalu distribusikan sisanya menurut
+        // target bobot per Sub-CPMK. Target Sub-CPMK dibagi rata, kemudian target
+        // Sub-CPMK dibagi lagi menurut jumlah pertemuannya.
+        $allocations = [];
+        foreach ($emptyWeeks as $week) {
+            $allocations[(string) $week->id] = 1;
+        }
+        $remainingCents -= $emptyWeeks->count();
+
+        $groups = $weeks->groupBy(fn ($week) => (string) $week->rps_sub_cpmk_id);
+        $subIds = $groups->keys()->values();
+        $subCount = max(1, $subIds->count());
+        $baseTarget = intdiv($budgetCents, $subCount);
+        $targetRemainder = $budgetCents % $subCount;
+        $desiredBySub = [];
+
+        foreach ($subIds as $index => $subId) {
+            $group = $groups->get($subId);
+            $target = $baseTarget + ($index < $targetRemainder ? 1 : 0);
+            $existing = 0;
+            $emptyIds = [];
+
+            foreach ($group as $week) {
+                $id = (string) $week->id;
+                $weightCents = (int) round(max(0, (float) ($week->assessment_weight ?? 0)) * 100);
+                if ($weightCents > 0) {
+                    $existing += $weightCents;
+                } else {
+                    $emptyIds[] = $id;
+                    $existing += $allocations[$id] ?? 0;
+                }
+            }
+
+            if ($emptyIds !== []) {
+                $desiredBySub[$subId] = [
+                    'ids' => $emptyIds,
+                    'desired' => max(0, $target - $existing),
+                ];
+            }
+        }
+
+        $totalDesired = array_sum(array_column($desiredBySub, 'desired'));
+        $groupPool = min($remainingCents, $totalDesired);
+        $assignedGroupPool = 0;
+        $entries = array_values($desiredBySub);
+
+        foreach ($entries as $index => $entry) {
+            if ($groupPool <= 0 || $entry['desired'] <= 0) {
+                continue;
+            }
+
+            $isLast = $index === count($entries) - 1;
+            $groupAllocation = $totalDesired > 0
+                ? ($isLast
+                    ? $groupPool - $assignedGroupPool
+                    : (int) floor($groupPool * ($entry['desired'] / $totalDesired)))
+                : 0;
+            $groupAllocation = max(0, min($groupAllocation, $remainingCents - $assignedGroupPool));
+
+            $count = count($entry['ids']);
+            $base = $count > 0 ? intdiv($groupAllocation, $count) : 0;
+            $remainder = $count > 0 ? $groupAllocation % $count : 0;
+
+            foreach ($entry['ids'] as $position => $id) {
+                $allocations[$id] += $base + ($position < $remainder ? 1 : 0);
+            }
+
+            $assignedGroupPool += $groupAllocation;
+        }
+
+        $remainingCents -= $assignedGroupPool;
+
+        // Jika ada bobot manual yang membuat satu Sub-CPMK melebihi target rata,
+        // sisa anggaran tidak boleh hilang. Sebarkan sisa ke semua pekan kosong
+        // tanpa mengubah bobot yang sudah diputuskan dosen.
+        if ($remainingCents > 0) {
+            $ids = array_keys($allocations);
+            $base = intdiv($remainingCents, count($ids));
+            $remainder = $remainingCents % count($ids);
+
+            foreach ($ids as $index => $id) {
+                $allocations[$id] += $base + ($index < $remainder ? 1 : 0);
+            }
+        }
+
+        foreach ($allocations as $id => $cents) {
+            DB::table('rps_weekly_plans')
+                ->where('id', $id)
+                ->update([
+                    'assessment_weight' => round($cents / 100, 2),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        return 'Bobot pekan kosong dibagi dari anggaran asesmen non-UTS/UAS: bobot per Sub-CPMK dibagi lagi sesuai jumlah pertemuannya.';
     }
 
     private function ensureExamAssessments(string $versionId, int $userId): void
