@@ -844,28 +844,6 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => router.post(
-                                    `/rps/${rps.id}/weeks/apply-time-standard`,
-                                    {},
-                                    actionOptions('Estimasi waktu sesuai SKS diterapkan.'),
-                                )}
-                                className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[11px] font-bold text-sky-700"
-                            >
-                                Waktu {rps.credits} SKS
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => router.post(
-                                    `/rps/${rps.id}/weeks/normalize-references`,
-                                    {},
-                                    actionOptions('Pustaka mingguan dinormalisasi menjadi nomor [n].'),
-                                )}
-                                className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-700"
-                            >
-                                Pustaka [n]
-                            </button>
-                            <button
-                                type="button"
                                 title="Mengisi otomatis bagian RPS yang belum terisi berdasarkan CPMK, Sub-CPMK, bahan kajian, SKS, dan data RPS yang tersedia, tanpa menimpa isian yang sudah ada."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
