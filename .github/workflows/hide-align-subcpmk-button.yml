@@ -1,0 +1,33 @@
+name: Hide Rapikan Sub-CPMK button
+on:
+  push:
+    paths:
+      - '.github/workflows/hide-align-subcpmk-button.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hide button only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('resources/js/pages/rps/show.tsx')
+          s = p.read_text(encoding='utf-8')
+          pattern = re.compile(r'''\n\s*<button\n\s*type="button"\n\s*onClick=\{\(\) => router\.post\(\n\s*`/rps/\$\{rps\.id\}/weeks/align-subcpmk`,\n.*?\n\s*>\n\s*Rapikan Sub-CPMK\n\s*</button>''', re.S)
+          s2, n = pattern.subn('', s, count=1)
+          if n != 1:
+              raise SystemExit(f'Expected to remove exactly one Rapikan Sub-CPMK button, removed {n}')
+          p.write_text(s2, encoding='utf-8')
+          PY
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/hide-align-subcpmk-button.yml
+          git add resources/js/pages/rps/show.tsx .github/workflows/hide-align-subcpmk-button.yml
+          git commit -m "Hide Rapikan Sub-CPMK from RPS workspace"
+          git push
