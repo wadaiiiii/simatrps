@@ -1,0 +1,35 @@
+name: Patch assessment chain triggers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-assessment-chain-triggers.py'
+      - '.github/workflows/patch-assessment-chain-triggers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply resync triggers
+        run: python .github/scripts/patch-assessment-chain-triggers.py
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsAutomationController.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+          php -l app/Http/Controllers/RpsAiController.php
+      - name: Commit implementation and cleanup
+        run: |
+          rm .github/scripts/patch-assessment-chain-triggers.py
+          rm .github/workflows/patch-assessment-chain-triggers.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Resync assessment chain after weekly Sub-CPMK changes"
+          git push
