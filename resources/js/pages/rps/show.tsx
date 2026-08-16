@@ -844,15 +844,15 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
-                                title="Mengisi otomatis bagian RPS yang belum terisi berdasarkan CPMK, Sub-CPMK, bahan kajian, SKS, dan data RPS yang tersedia, tanpa menimpa isian yang sudah ada."
+                                title="Mengisi bagian RPS yang masih kosong dan menyegarkan isian otomatis tanpa menimpa edit manual atau hasil Susun AI."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
                                     { mode: 'fill_empty' },
-                                    actionOptions('RPS berhasil dilengkapi otomatis pada bagian yang belum terisi tanpa mengubah isian yang sudah ada.'),
+                                    actionOptions('Bagian RPS yang masih kosong berhasil diisi tanpa menimpa edit manual atau hasil Susun AI.'),
                                 )}
                                 className="rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white"
                             >
-                                Lengkapi RPS Otomatis
+                                Isi Bagian Kosong
                             </button>
                         </div>
                     </div>
@@ -4529,9 +4529,9 @@ function InlineWeekRow({
                         <button
                             type="button"
                             onClick={() => setEditing(true)}
-                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-600"
+                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-sky-700 bg-sky-600 px-2.5 py-1.5 text-[10px] font-extrabold text-white shadow-sm transition hover:bg-sky-700"
                         >
-                            <Pencil className="size-3.5" /> Edit
+                            <Pencil className="size-3.5" /> Edit Pekan
                         </button>
                         <button
                             type="button"
