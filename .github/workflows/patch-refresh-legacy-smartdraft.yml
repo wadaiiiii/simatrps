@@ -1,0 +1,33 @@
+name: Patch Legacy SmartDraft Refresh
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply patch
+        run: |
+          python3 .github/scripts/patch_refresh_legacy_smartdraft.py
+          php -l app/Services/Rps/RpsSmartDraftService.php
+          php -l app/Http/Controllers/RpsAiController.php
+
+      - name: Commit implementation and cleanup
+        run: |
+          rm -f .github/scripts/patch_refresh_legacy_smartdraft.py
+          rm -f .github/workflows/patch-refresh-legacy-smartdraft.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refresh legacy SmartDraft weeks with aligned materials and valid times"
+          git push
