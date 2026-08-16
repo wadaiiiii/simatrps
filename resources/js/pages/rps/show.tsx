@@ -3030,7 +3030,7 @@ function DocumentCpmkRow({
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                             <span className="text-[9px] font-bold uppercase text-slate-400">CPL terkait:</span>
                             {selectedCodes.length > 0 ? selectedCodes.map((code: string) => (
-                                <span key={code} className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700">
+                                <span key={code} className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700 print:hidden">
                                     {code}
                                 </span>
                             )) : (
