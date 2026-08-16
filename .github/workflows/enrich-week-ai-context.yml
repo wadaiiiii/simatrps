@@ -1,0 +1,36 @@
+name: Enrich Weekly AI Context
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Improve weekly AI context and indicator prompt
+        run: |
+          python3 .github/scripts/enrich_week_ai_context.py
+          php -l app/Services/Rps/RpsAiContextService.php
+          php -l app/Http/Controllers/RpsAiController.php
+
+      - name: Commit improvements
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/Rps/RpsAiContextService.php app/Http/Controllers/RpsAiController.php
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Enrich weekly AI recommendations beyond Sub-CPMK paraphrase"
+          git push
