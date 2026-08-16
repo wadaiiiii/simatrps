@@ -1,0 +1,33 @@
+name: Patch SmartDraft Material Protection
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply material protection patch
+        run: |
+          python3 .github/scripts/patch_smartdraft_material_protection.py
+          php -l app/Services/Rps/RpsSmartDraftService.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+
+      - name: Commit implementation and cleanup
+        run: |
+          rm -f .github/scripts/patch_smartdraft_material_protection.py
+          rm -f .github/workflows/patch-smartdraft-material-protection.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Protect edited materials from automatic RPS completion"
+          git push
