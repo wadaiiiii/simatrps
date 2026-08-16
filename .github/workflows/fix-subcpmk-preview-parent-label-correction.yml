@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Correct preview-only label visibility
+      - name: Restore CPL badges and keep parent badge hidden in preview
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -26,22 +26,15 @@ jobs:
 
           wrong = '<span key={code} className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700 print:hidden">'
           right = '<span key={code} className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700">'
-          if wrong not in s:
-              raise SystemExit('CPL badge correction target not found')
-          s = s.replace(wrong, right, 1)
+          if wrong in s:
+              s = s.replace(wrong, right, 1)
 
-          parent_old = '''{parentCode && (\n                        <span className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700">\n                            {parentCode}\n                        </span>\n                    )}'''
-          parent_new = '''{parentCode && (\n                        <span className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700 print:hidden">\n                            {parentCode}\n                        </span>\n                    )}'''
-          if parent_old not in s:
-              raise SystemExit('Sub-CPMK parent badge target not found')
-          s = s.replace(parent_old, parent_new, 1)
+          parent_expected = '<span className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700 print:hidden">\n                            {parentCode}'
+          if parent_expected not in s:
+              raise SystemExit('Sub-CPMK parent badge is not hidden for preview')
 
           p.write_text(s, encoding='utf-8')
           PY
-
-      - name: Verify focused change
-        run: |
-          grep -n -A5 -B2 'parentCode &&' resources/js/pages/rps/show.tsx
 
       - name: Commit patch
         run: |
@@ -52,5 +45,5 @@ jobs:
             echo "No changes"
             exit 0
           fi
-          git commit -m "Hide only Sub-CPMK parent badge in preview"
+          git commit -m "Restore CPL badges while hiding Sub-CPMK parent in preview"
           git push
