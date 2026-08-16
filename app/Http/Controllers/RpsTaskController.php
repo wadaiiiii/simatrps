@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class RpsTaskController extends Controller
 {
-    public function store(Request $request, string $rps): RedirectResponse
+    public function store(Request $request, string $rps, RpsAssessmentSyncService $sync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -81,11 +82,13 @@ class RpsTaskController extends Controller
             }
         });
 
-        return back()->with('success', 'RTM berhasil ditambahkan.');
+        $sync->syncTaskMappings($version->id);
+
+        return back()->with('success', 'RTM berhasil ditambahkan. Jika terhubung ke asesmen, tag Sub-CPMK otomatis mengikuti asesmen.');
     }
 
 
-    public function update(Request $request, string $rps, string $task): RedirectResponse
+    public function update(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -162,7 +165,9 @@ class RpsTaskController extends Controller
             }
         });
 
-        return back()->with('success', 'RTM berhasil diperbarui.');
+        $sync->syncTaskMappings($version->id);
+
+        return back()->with('success', 'RTM berhasil diperbarui dan tag Sub-CPMK disinkronkan dengan asesmen terkait.');
     }
 
     public function destroy(Request $request, string $rps, string $task): RedirectResponse

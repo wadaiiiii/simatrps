@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class RpsAssessmentController extends Controller
 {
-    public function store(Request $request, string $rps): RedirectResponse
+    public function store(Request $request, string $rps, RpsAssessmentSyncService $sync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -56,13 +57,16 @@ class RpsAssessmentController extends Controller
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
-        return back()->with('success', 'Asesmen berhasil ditambahkan.');
+        $sync->syncVersion($version->id);
+
+        return back()->with('success', 'Asesmen berhasil ditambahkan; tag Sub-CPMK, bobot pekan, RTM, matriks, dan simulasi tersinkron.');
     }
 
     public function update(
         Request $request,
         string $rps,
-        string $assessment
+        string $assessment,
+        RpsAssessmentSyncService $sync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
@@ -121,6 +125,8 @@ class RpsAssessmentController extends Controller
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
+        $sync->syncVersion($version->id);
+
         return back()->with(
             'success',
             in_array($row->code, ['UTS', 'UAS'], true)
@@ -132,7 +138,8 @@ class RpsAssessmentController extends Controller
     public function updateMatrix(
         Request $request,
         string $rps,
-        string $assessment
+        string $assessment,
+        RpsAssessmentSyncService $sync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
@@ -200,15 +207,15 @@ class RpsAssessmentController extends Controller
             );
         }
 
+        $sync->syncVersion($version->id);
+
         return back()->with(
             'success',
-            array_key_exists('weight', $validated)
-                ? 'Bobot asesmen agregat diperbarui. Jalankan Isi Bagian Kosong bila distribusi bobot pekan perlu dilengkapi.'
-                : 'Pemetaan Sub-CPMK pada Tabel Penilaian dan Evaluasi CPL berhasil diperbarui.'
+            'Asesmen diperbarui; Detail Asesmen, tabel RPS, RTM, Tabel Penilaian, dan Simulasi langsung tersinkron.'
         );
     }
 
-    public function destroy(Request $request, string $rps, string $assessment): RedirectResponse
+    public function destroy(Request $request, string $rps, string $assessment, RpsAssessmentSyncService $sync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -227,11 +234,9 @@ class RpsAssessmentController extends Controller
 
         DB::table('assessments')->where('id', $assessment)->delete();
 
-        // Asesmen non-UTS/UAS adalah rekap/instrumen agregat dan tidak lagi
-        // menjadi sumber langsung bobot pekan. Karena UTS/UAS tidak dapat
-        // dihapus, penghapusan asesmen biasa tidak perlu menyentuh bobot pekan.
+        $sync->syncVersion($version->id);
 
-        return back()->with('success', 'Asesmen dihapus. Distribusi bobot pekan tidak diubah.');
+        return back()->with('success', 'Asesmen dihapus dan distribusi bobot pekan serta RTM terkait disinkronkan ulang.');
     }
 
     private function syncWeekPrintWeight(

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Rps\RpsAssessmentSyncService;
 use App\Services\Rps\AiRpsProviderService;
 use App\Services\Rps\RpsAiContextService;
 use Illuminate\Http\RedirectResponse;
@@ -2021,13 +2022,9 @@ PROMPT;
             $changedTasks++;
         }
 
+        // RTM yang terhubung ke asesmen harus mengikuti cakupan asesmennya;
+        // jangan menambahkan Sub-CPMK lain hanya demi mengejar cakupan global.
         $autoCoveredTaskSubs = 0;
-
-        if ($changedTasks > 0) {
-            $autoCoveredTaskSubs = $this->ensureAllSubCpmksCoveredByTasks(
-                $version->id
-            );
-        }
 
         foreach (array_unique($affectedWeeks) as $affectedWeek) {
             // Asesmen non-UTS/UAS adalah rekap/agregat. Jangan pernah menulis
@@ -2055,6 +2052,8 @@ PROMPT;
                 ]);
         }
 
+        app(RpsAssessmentSyncService::class)->syncVersion($version->id);
+
         $totalWeight = round(
             (float) DB::table('assessments')
                 ->where('rps_version_id', $version->id)
@@ -2073,7 +2072,7 @@ PROMPT;
         } elseif ($changedAssessments > 0 && abs($totalWeight - 100.0) >= 0.01) {
             $message .= " Total bobot asesmen agregat saat ini {$totalWeight}%; sesuaikan hingga tepat 100%.";
         } elseif ($changedAssessments > 0) {
-            $message .= ' Total bobot asesmen agregat 100%. Gunakan Isi Bagian Kosong untuk membagi anggaran non-UTS/UAS ke pekan yang belum memiliki bobot.';
+            $message .= ' Total bobot asesmen agregat 100%. Distribusi bobot pekan, RTM, matriks, dan simulasi langsung disinkronkan.';
         }
 
         return [

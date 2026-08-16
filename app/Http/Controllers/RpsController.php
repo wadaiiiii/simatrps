@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\Rps\AiRpsProviderService;
 use App\Services\Rps\ObeWorkspaceService;
 use App\Services\Rps\RpsDraftService;
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -112,7 +113,8 @@ class RpsController extends Controller
         Request $request,
         string $rps,
         ObeWorkspaceService $workspace,
-        AiRpsProviderService $aiProvider
+        AiRpsProviderService $aiProvider,
+        RpsAssessmentSyncService $assessmentSync
     ): Response {
         $record = DB::table('rps')
             ->join('courses', 'courses.id', '=', 'rps.course_id')
@@ -247,10 +249,10 @@ class RpsController extends Controller
                 ),
                 2
             ));
-        $assessmentNamesByWeek = $assessments
-            ->filter(fn ($assessment) => filled($assessment->week_number))
-            ->groupBy(fn ($assessment) => (int) $assessment->week_number)
-            ->map(fn ($items) => $items->pluck('name')->filter()->implode('; '));
+        $assessmentSyncSnapshot = $assessmentSync->snapshot($version->id);
+        $assessmentNamesByWeek = collect(
+            $assessmentSyncSnapshot['assessment_names_by_week'] ?? []
+        );
 
         $weeks = $weeks->map(function ($week) use (
             $subById,

@@ -2043,7 +2043,7 @@ function AssessmentEvaluationSection({
                 <div className="mt-5 text-center text-xs font-black text-slate-900">Simulasi</div>
                 <div className="mx-auto mt-1 max-w-4xl text-center text-[9px] leading-4 text-slate-500 print:hidden">
                     Setiap pekan pembelajaran yang memuat Sub-CPMK harus memiliki bobot sebagai bukti pengukuran.
-                    Bobot non-UTS/UAS merupakan distribusi dari anggaran asesmen agregat; bila satu Sub-CPMK digunakan beberapa pekan, anggarannya dibagi ke pekan-pekan tersebut.
+                    Bobot non-UTS/UAS merupakan distribusi dari tag Sub-CPMK pada asesmen agregat; bila satu Sub-CPMK digunakan beberapa pekan, anggarannya dibagi ke pekan-pekan tersebut. Nama asesmen pada simulasi mengikuti tag yang sama.
                     UTS dan UAS tetap mengikuti bobot asesmen sistem.
                 </div>
 
@@ -2141,7 +2141,7 @@ function AssessmentEvaluationSection({
                                 <td className="border border-slate-300 px-2 py-1.5 text-center">
                                     {Math.abs(totalWeeklyWeight - 100) < 0.01
                                         ? gradeLetter(totalSimulationScore)
-                                        : '—'}
+                                        : `Menunggu 100% (${Number(totalWeeklyWeight.toFixed(2))}%)`}
                                 </td>
                             </tr>
                         </tbody>
@@ -2884,7 +2884,19 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                         </select>
                         <select
                             value={form.data.assessment_id}
-                            onChange={(e) => form.setData('assessment_id', e.target.value)}
+                            onChange={(e) => {
+                                const assessmentId = e.target.value;
+                                form.setData('assessment_id', assessmentId);
+                                const selectedAssessment = assessments.find(
+                                    (item: any) => item.id === assessmentId,
+                                );
+                                if (selectedAssessment) {
+                                    form.setData(
+                                        'sub_cpmk_ids',
+                                        safeList(selectedAssessment.sub_cpmk_ids),
+                                    );
+                                }
+                            }}
                             className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
                         >
                             <option value="">Tanpa asesmen khusus</option>
@@ -4348,7 +4360,19 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                     <span className="mb-1.5 block text-xs font-bold text-slate-500">Asesmen Terkait</span>
                     <select
                         value={form.data.assessment_id}
-                        onChange={(e) => form.setData('assessment_id', e.target.value)}
+                        onChange={(e) => {
+                                const assessmentId = e.target.value;
+                                form.setData('assessment_id', assessmentId);
+                                const selectedAssessment = assessments.find(
+                                    (item: any) => item.id === assessmentId,
+                                );
+                                if (selectedAssessment) {
+                                    form.setData(
+                                        'sub_cpmk_ids',
+                                        safeList(selectedAssessment.sub_cpmk_ids),
+                                    );
+                                }
+                            }}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
                     >
                         <option value="">Tanpa asesmen khusus</option>

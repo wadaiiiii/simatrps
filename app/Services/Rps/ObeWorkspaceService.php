@@ -201,21 +201,27 @@ class ObeWorkspaceService
             && $mappedAssessmentCount === $assessments->count();
 
         $taskAssessments = $assessments
-            ->whereIn('type', ['assignment', 'project', 'practicum']);
+            ->whereIn('type', ['assignment', 'project', 'practicum', 'presentation']);
 
-        $taskRows = DB::table('rps_tasks')
-            ->where('rps_version_id', $versionId)
-            ->get(['id']);
+        $assessmentSync = app(RpsAssessmentSyncService::class);
+        $taskAlignment = $assessmentSync->taskAlignment($versionId);
+        $tasks = (int) $taskAlignment['task_total'];
 
-        $tasks = $taskRows->count();
-
-        $taskCoveredSubCount = ($tasks > 0 && $subCpmkIds->isNotEmpty())
-            ? DB::table('rps_task_subcpmks')
-                ->whereIn('rps_task_id', $taskRows->pluck('id'))
-                ->whereIn('rps_sub_cpmk_id', $subCpmkIds)
-                ->distinct()
-                ->count('rps_sub_cpmk_id')
-            : 0;
+        $positiveNonExamAssessments = $nonExamAssessments->filter(
+            fn ($assessment) => (float) ($assessment->weight ?? 0) > 0
+        );
+        $positiveNonExamMappedCount = $positiveNonExamAssessments->filter(
+            fn ($assessment) => DB::table('assessment_subcpmks')
+                ->where('assessment_id', $assessment->id)
+                ->exists()
+        )->count();
+        $allPositiveNonExamMapped = $positiveNonExamAssessments->isNotEmpty()
+            && $positiveNonExamMappedCount === $positiveNonExamAssessments->count();
+        $assessmentChainAligned = $allPositiveNonExamMapped
+            && $weightedTeachingWeeks->count() === 14
+            && $weightedWeeklySubCount === $subCpmks->count()
+            && $subBudgetAligned
+            && (bool) $taskAlignment['is_aligned'];
 
         $cplMessage = $scopeCplCount === 0
             ? "{$mappedCpmkCount}/{$cpmks->count()} CPMK memiliki CPL; scope CPL RPS belum tersedia."
@@ -298,17 +304,30 @@ class ObeWorkspaceService
                 ],
             ],
             [
+                'key' => 'assessment_chain_sync',
+                'label' => 'Sinkronisasi Rantai Asesmen',
+                'done' => $assessmentChainAligned,
+                'message' => "{$positiveNonExamMappedCount}/{$positiveNonExamAssessments->count()} asesmen non-UTS/UAS berbobot memiliki tag Sub-CPMK; "
+                    ."{$weightedTeachingWeeks->count()}/14 pekan berbobot; "
+                    ."kecocokan anggaran per Sub-CPMK ".($subBudgetAligned ? 'sesuai' : 'belum sesuai')."; "
+                    ."RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']} dan asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.",
+                'details' => [
+                    'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
+                    'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
+                    'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
+                    'sub_budget_aligned' => $subBudgetAligned,
+                    'rtm_mapping_mismatch' => $taskAlignment['mapping_mismatch_count'],
+                    'rtm_required_missing' => $taskAlignment['missing_required_assessment_count'],
+                ],
+            ],
+            [
                 'key' => 'rtm',
                 'label' => 'RTM',
-                'done' => $taskAssessments->isEmpty()
-                    || (
-                        $tasks > 0
-                        && $subCpmks->isNotEmpty()
-                        && $taskCoveredSubCount === $subCpmks->count()
-                    ),
+                'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
                 'message' => $taskAssessments->isEmpty()
-                    ? 'Belum ada asesmen tugas/proyek yang mewajibkan RTM.'
-                    : "{$tasks} RTM tersedia; {$taskCoveredSubCount}/{$subCpmks->count()} Sub-CPMK terakomodir dalam Rencana Tugas Mahasiswa.",
+                    ? 'Belum ada asesmen tugas/proyek/presentasi yang mewajibkan RTM.'
+                    : "{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag Sub-CPMK yang berbeda dari asesmennya.",
+                'details' => $taskAlignment,
             ],
         ];
 

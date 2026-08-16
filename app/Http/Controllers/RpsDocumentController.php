@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Rps\RpsAssessmentSyncService;
 use App\Services\Rps\AiRpsProviderService;
 use App\Services\Rps\RpsAiContextService;
 use Illuminate\Http\RedirectResponse;
@@ -157,93 +158,29 @@ class RpsDocumentController extends Controller
     public function updateWeekWeight(
         Request $request,
         string $rps,
-        int $week
+        int $week,
+        RpsAssessmentSyncService $sync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
         abort_unless($week >= 1 && $week <= 16, 422);
 
-        if (in_array($week, [8, 16], true)) {
-            throw ValidationException::withMessages([
-                'weight' => 'Bobot UTS/UAS diatur pada asesmen sistem. Bobot pekan 8 dan 16 akan tersinkron otomatis.',
-            ]);
-        }
-
         $data = $request->validate([
             'weight' => ['required', 'numeric', 'min:0', 'max:100'],
         ]);
 
-        $row = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $version->id)
-            ->where('week_number', $week)
-            ->first(['id', 'assessment_weight']);
-
-        abort_unless($row, 404);
-
         $newWeight = round((float) $data['weight'], 2);
-        $oldWeight = round((float) ($row->assessment_weight ?? 0), 2);
-
-        $nonExamAssessmentBudget = round(
-            (float) DB::table('assessments')
-                ->where('rps_version_id', $version->id)
-                ->whereNotIn('type', ['uts', 'uas'])
-                ->sum(DB::raw('COALESCE(weight, 0)')),
-            2
+        $result = $sync->rebalanceTeachingWeek(
+            $version->id,
+            $week,
+            $newWeight
         );
-
-        $examWeight = round(
-            (float) DB::table('assessments')
-                ->where('rps_version_id', $version->id)
-                ->whereIn('type', ['uts', 'uas'])
-                ->sum(DB::raw('COALESCE(weight, 0)')),
-            2
-        );
-
-        $teachingTotal = round(
-            (float) DB::table('rps_weekly_plans')
-                ->where('rps_version_id', $version->id)
-                ->whereNotIn('week_number', [8, 16])
-                ->sum(DB::raw('COALESCE(assessment_weight, 0)')),
-            2
-        );
-
-        // Jika asesmen agregat non-ujian sudah disusun, itulah plafon distribusi
-        // 14 pekan. Selama belum disusun, gunakan sisa dari 100% agar dosen tetap
-        // dapat mengisi bobot pekan lebih dulu. Validator akan menandai mismatch.
-        $teachingBudget = $nonExamAssessmentBudget > 0
-            ? $nonExamAssessmentBudget
-            : max(0, round(100 - $examWeight, 2));
-
-        $currentTeachingTotal = $teachingTotal;
-        $projectedTeachingTotal = round(
-            $teachingTotal - $oldWeight + $newWeight,
-            2
-        );
-
-        if (
-            $projectedTeachingTotal > ($teachingBudget + 0.001)
-            && $projectedTeachingTotal > ($currentTeachingTotal + 0.001)
-        ) {
-            throw ValidationException::withMessages([
-                'weight' => "Total bobot 14 pekan akan menjadi {$projectedTeachingTotal}%, melebihi anggaran asesmen non-UTS/UAS {$teachingBudget}%. Turunkan bobot pekan lain atau sesuaikan rekap asesmen terlebih dahulu.",
-            ]);
-        }
-
-        $updates = [
-            'assessment_weight' => $newWeight,
-            'updated_at' => now(),
-        ];
-        if (Schema::hasColumn('rps_weekly_plans', 'assessment_weight_source')) {
-            $updates['assessment_weight_source'] = 'manual';
-        }
-
-        DB::table('rps_weekly_plans')
-            ->where('id', $row->id)
-            ->update($updates);
 
         return back()->with(
             'success',
-            "Bobot pengukuran minggu {$week} disimpan {$newWeight}%."
+            "Bobot pengukuran minggu {$week} disimpan {$newWeight}%. "
+                ."Pekan lain pada Sub-CPMK yang sama otomatis diseimbangkan "
+                ."agar total tetap {$result['sub_budget']}%."
         );
     }
 
