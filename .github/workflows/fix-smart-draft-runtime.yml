@@ -1,8 +1,10 @@
 name: Fix Smart Draft Runtime
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -11,122 +13,19 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Harden smart draft for production schema
+      - name: Patch service
+        shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          p = Path('app/Services/Rps/RpsSmartDraftService.php')
-          s = p.read_text(encoding='utf-8')
-
-          old = """        $importedExists = DB::table('rps_materials')
-            ->where('rps_version_id', $version->id)
-            ->where('source_type', 'curriculum_syllabus')
-            ->exists();
-
-        if (! $importedExists || $this->syllabus->importedMaterialsLookLikeReferences($version->id)) {
-            $this->syllabus->syncMaterials(
-                $rps->course_id,
-                $version->id,
-                true
-            );
-        }
-
-        $this->ensureExamAssessments($version->id, $userId);
-"""
-          new = """        $weeklyColumns = array_flip(Schema::getColumnListing('rps_weekly_plans'));
-
-        // Sinkronisasi silabus hanya memperkaya draft. Jika data master bermasalah,
-        // proses utama tetap dapat mengisi minggu dari Sub-CPMK yang tersedia.
-        try {
-            $importedExists = DB::table('rps_materials')
-                ->where('rps_version_id', $version->id)
-                ->where('source_type', 'curriculum_syllabus')
-                ->exists();
-
-            if (! $importedExists || $this->syllabus->importedMaterialsLookLikeReferences($version->id)) {
-                $this->syllabus->syncMaterials(
-                    $rps->course_id,
-                    $version->id,
-                    true
-                );
-            }
-        } catch (\\Throwable $exception) {
-            report($exception);
-        }
-
-        $this->ensureExamAssessments($version->id, $userId);
-"""
-          if old not in s:
-              raise SystemExit('sync block target not found')
-          s = s.replace(old, new, 1)
-
-          old2 = """            $payload = [
-                'rps_sub_cpmk_id' => $sub->id,
-                'material_text' => $materialText,
-                'learning_form' => $hasPracticum
-                    ? 'Tatap Muka / Praktikum'
-                    : 'Tatap Muka',
-                'learning_method' => $method,
-                'time_estimate' => $this->timeEstimate($credits),
-                'face_to_face_sessions' => 1,
-                'learning_activity' => $activity,
-                'independent_study_sessions' => 1,
-                'student_assignment' => 'Latihan/tugas terstruktur yang selaras dengan '.$sub->code.'.',
-                'structured_task_sessions' => 1,
-                'online_activity' => 'Pengumpulan tugas atau diskusi melalui LMS bila diperlukan.',
-                'assessment_indicator' => $indicator,
-                'assessment_criteria' => 'Ketepatan, kelengkapan, dan kesesuaian jawaban/kinerja terhadap indikator '
-                    .$sub->code.'.',
-                'assessment_method' => 'Latihan/kuis formatif atau observasi kinerja sesuai aktivitas pembelajaran.',
-                'reference_text' => $this->referencesForPosition(
-                    $referenceCodes,
-                    $position
-                ),
-                'source_type' => 'smart_draft',
-            ];
-"""
-          new2 = old2 + """
-            // Deployment lama mungkin belum memiliki seluruh kolom tambahan.
-            // Jangan biarkan satu kolom opsional membuat seluruh proses gagal.
-            $payload = array_intersect_key($payload, $weeklyColumns);
-"""
-          if old2 not in s:
-              raise SystemExit('payload target not found')
-          s = s.replace(old2, new2, 1)
-
-          old3 = """        if ($rows !== []) {
-            DB::table('assessments')->insert($rows);
-        }
-"""
-          new3 = """        if ($rows !== []) {
-            DB::table('assessments')->insertOrIgnore($rows);
-        }
-"""
-          if old3 not in s:
-              raise SystemExit('assessment insert target not found')
-          s = s.replace(old3, new3, 1)
-
-          p.write_text(s, encoding='utf-8')
-          PY
-
-      - name: PHP syntax check
-        run: php -l app/Services/Rps/RpsSmartDraftService.php
-
-      - name: Commit fix
-        run: |
+          python3 .github/scripts/fix_smart_draft_runtime.py
+          php -l app/Services/Rps/RpsSmartDraftService.php
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add app/Services/Rps/RpsSmartDraftService.php
-          if git diff --cached --quiet; then
-            echo "No changes"
-            exit 0
+          if ! git diff --cached --quiet; then
+            git commit -m "Harden automatic RPS completion on production"
+            git push
           fi
-          git commit -m "Harden automatic RPS completion on production"
-          git push
