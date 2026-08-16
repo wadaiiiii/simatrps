@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import {
     BarChart3,
@@ -170,7 +170,6 @@ export default function RpsShow(props: any) {
     const [aiBusyType, setAiBusyType] = useState<string | null>(null);
     const [aiBusyWeek, setAiBusyWeek] = useState<number | null>(null);
     const [selectedBatchWeeks, setSelectedBatchWeeks] = useState<number[]>(TEACHING_WEEKS);
-    const isPreviewMode = usePage().url.startsWith('/rps/preview/');
 
     const aiPreferenceKey = useMemo(
         () => `simatrps:ai-preference:${rps.id}`,
@@ -411,41 +410,10 @@ export default function RpsShow(props: any) {
 
     return (
         <>
-            <Head title={`${isPreviewMode ? 'Preview RPS' : 'RPS'} ${rps.course_name}`} />
+            <Head title={`RPS ${rps.course_name}`} />
             <ActionNotifications />
 
-            {isPreviewMode && (
-                <style>{`
-                    .rps-preview .print\:hidden { display: none !important; }
-                    .rps-preview section button,
-                    .rps-preview section input,
-                    .rps-preview section textarea,
-                    .rps-preview section select { display: none !important; }
-                `}</style>
-            )}
-
-            <div className={`p-3 md:p-5 ${isPreviewMode ? 'rps-preview' : ''}`}>
-                {isPreviewMode && (
-                    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-teal-100 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                            <SidebarTrigger
-                                className="size-9 shrink-0 rounded-xl border border-slate-200 bg-white shadow-sm"
-                                title="Minimalkan / tampilkan menu"
-                            />
-                            <div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-teal-700">Preview RPS</div>
-                                <div className="mt-0.5 font-bold text-slate-900">{rps.course_name}</div>
-                                <div className="text-xs text-slate-500">Mode lihat saja — isian RPS tidak dapat diubah dari halaman ini.</div>
-                            </div>
-                        </div>
-                        <Link
-                            href="/rps/preview"
-                            className="inline-flex w-fit items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                        >
-                            Kembali ke Daftar Preview
-                        </Link>
-                    </div>
-                )}
+            <div className="p-3 md:p-5">
                 {/* Workspace toolbar: compact, non-print */}
                 <div className="mb-4 flex flex-col gap-3 print:hidden xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex items-start gap-2">

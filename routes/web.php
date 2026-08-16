@@ -24,8 +24,6 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
 
     Route::prefix('rps')->name('rps.')->group(function (): void {
         Route::get('/', [RpsController::class, 'index'])->name('index');
-        Route::get('preview', [RpsController::class, 'index'])->name('preview');
-        Route::get('preview/{rps}', [RpsController::class, 'show'])->name('preview.show');
         Route::get('baru', [RpsController::class, 'create'])->name('create');
         Route::post('/', [RpsController::class, 'store'])->name('store');
         Route::get('{rps}', [RpsController::class, 'show'])->name('show');

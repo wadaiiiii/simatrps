@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, FilePlus2, Files, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,7 +18,6 @@ type RpsRow = {
 export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
     const [notice, setNotice] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const isPreviewMode = usePage().url.startsWith('/rps/preview');
 
     const destroyRps = (row: RpsRow) => {
         const ok = window.confirm(
@@ -44,7 +43,7 @@ export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
 
     return (
         <>
-            <Head title={isPreviewMode ? 'Preview RPS' : 'RPS Saya'} />
+            <Head title="RPS Saya" />
 
             <div className="p-4 md:p-6">
                 {notice && (
@@ -55,25 +54,19 @@ export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
 
                 <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">
-                            {isPreviewMode ? 'Preview RPS' : 'RPS Saya'}
-                        </h1>
+                        <h1 className="text-2xl font-bold tracking-tight">RPS Saya</h1>
                         <p className="mt-1 text-sm text-slate-500">
-                            {isPreviewMode
-                                ? 'Pilih RPS yang ingin ditampilkan dalam mode lihat saja.'
-                                : 'Daftar RPS yang Anda susun di SiMatRPS.'}
+                            Daftar RPS yang Anda susun di SiMatRPS.
                         </p>
                     </div>
 
-                    {!isPreviewMode && (
-                        <Link
-                            href="/rps/baru"
-                            className="inline-flex w-fit items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
-                        >
-                            <FilePlus2 className="size-4" />
-                            Buat RPS
-                        </Link>
-                    )}
+                    <Link
+                        href="/rps/baru"
+                        className="inline-flex w-fit items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white"
+                    >
+                        <FilePlus2 className="size-4" />
+                        Buat RPS
+                    </Link>
                 </div>
 
                 <div className="sim-surface mt-6 overflow-hidden rounded-2xl">
@@ -81,11 +74,7 @@ export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
                         <div className="flex min-h-80 flex-col items-center justify-center p-8 text-center">
                             <Files className="size-10 text-slate-300" />
                             <p className="mt-4 font-semibold text-slate-900">Belum ada data RPS</p>
-                            <p className="mt-1 text-sm text-slate-500">
-                                {isPreviewMode
-                                    ? 'Belum ada RPS yang dapat dipreview.'
-                                    : 'Pilih Buat RPS untuk membuat dokumen pertama.'}
-                            </p>
+                            <p className="mt-1 text-sm text-slate-500">Pilih Buat RPS untuk membuat dokumen pertama.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -118,23 +107,21 @@ export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
                                             <td className="px-5 py-4">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link
-                                                        href={isPreviewMode ? `/rps/preview/${row.id}` : `/rps/${row.id}`}
+                                                        href={`/rps/${row.id}`}
                                                         className="inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-teal-800 hover:shadow-md"
                                                     >
-                                                        {isPreviewMode ? 'Lihat Preview' : 'Buka RPS'}
+                                                        Buka RPS
                                                         <ArrowRight className="size-3.5" />
                                                     </Link>
-                                                    {!isPreviewMode && (
-                                                        <button
-                                                            type="button"
-                                                            disabled={deletingId === row.id}
-                                                            onClick={() => destroyRps(row)}
-                                                            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-                                                        >
-                                                            <Trash2 className="size-3.5" />
-                                                            {deletingId === row.id ? 'Menghapus...' : 'Hapus'}
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        disabled={deletingId === row.id}
+                                                        onClick={() => destroyRps(row)}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                        {deletingId === row.id ? 'Menghapus...' : 'Hapus'}
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

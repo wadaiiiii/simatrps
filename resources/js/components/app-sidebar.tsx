@@ -1,7 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpenCheck,
-    Eye,
     FilePlus2,
     Files,
     LayoutDashboard,
@@ -35,7 +34,6 @@ const lecturerNavItems: NavItem[] = [
     { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { title: 'Buat RPS', href: '/rps/baru', icon: FilePlus2 },
     { title: 'RPS Saya', href: '/rps', icon: Files },
-    { title: 'Preview RPS', href: '/rps/preview', icon: Eye },
 ];
 
 const adminNavItems: NavItem[] = [

@@ -22,7 +22,6 @@ export function AppSidebarHeader({
     breadcrumbs?: BreadcrumbItemType[];
 }) {
     const page = usePage<SimatRpsHeaderPageProps>();
-    const isAdmin = page.props.auth?.user?.role === 'admin';
     const isRpsDetail = /^\/rps\/(?!baru(?:\/|$))[^/?#]+(?:[?#].*)?$/.test(page.url);
 
     const previewRps = async () => {
@@ -563,7 +562,7 @@ export function AppSidebarHeader({
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
 
-            {isAdmin && isRpsDetail && (
+            {isRpsDetail && (
                 <button
                     type="button"
                     onClick={previewRps}
