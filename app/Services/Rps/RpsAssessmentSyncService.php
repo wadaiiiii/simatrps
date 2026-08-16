@@ -15,7 +15,7 @@ class RpsAssessmentSyncService
         $weeks = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $versionId)
             ->orderBy('week_number')
-            ->get(['id', 'week_number', 'rps_sub_cpmk_id', 'assessment_weight']);
+            ->get(['id', 'week_number', 'rps_sub_cpmk_id', 'assessment_weight', 'assessment_method']);
 
         $assessments = DB::table('assessments')
             ->where('rps_version_id', $versionId)
@@ -103,9 +103,6 @@ class RpsAssessmentSyncService
                 foreach ($targetWeeks as $weekIndex => $week) {
                     $weekNumber = (int) $week->week_number;
                     $expectedCents[$weekNumber] += $baseWeek + ($weekIndex < $weekRemainder ? 1 : 0);
-                    if ($subShare > 0) {
-                        $namesByWeek[$weekNumber][] = (string) $assessment->name;
-                    }
                 }
             }
         }
@@ -165,27 +162,133 @@ class RpsAssessmentSyncService
             }
         }
 
-        // Simulasi menampilkan bukti/penugasan yang benar-benar jatuh
-        // pada pekan tersebut. Asesmen agregat tetap menjadi sumber anggaran
-        // bobot pada matriks, sedangkan judul RTM menjadi nama bukti per pekan.
-        $taskEvidenceByWeek = DB::table('rps_tasks')
+        // Simulasi harus menampilkan SATU bukti penilaian utama yang benar-benar
+        // relevan pada setiap pekan, bukan seluruh asesmen agregat yang men-tag
+        // Sub-CPMK yang sama. Prioritas:
+        // 1) RTM yang jatuh tepat pada pekan dan sesuai Sub-CPMK pekan;
+        // 2) asesmen agregat yang week_number-nya tepat pada pekan dan men-tag
+        //    Sub-CPMK pekan;
+        // 3) bentuk penilaian pada tabel RPS sebagai fallback formatif.
+        $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
             ->whereNotNull('due_week')
+            ->orderBy('due_week')
             ->orderBy('code')
-            ->get(['due_week', 'title'])
-            ->groupBy(fn ($task) => (int) $task->due_week);
+            ->get(['id', 'code', 'due_week', 'title', 'assessment_id']);
 
-        foreach ($taskEvidenceByWeek as $weekNumber => $taskItems) {
-            $titles = $taskItems
-                ->pluck('title')
-                ->map(fn ($title) => trim((string) $title))
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
+        $taskIds = $tasks->pluck('id')->all();
+        $taskLinks = $taskIds === []
+            ? collect()
+            : DB::table('rps_task_subcpmks')
+                ->whereIn('rps_task_id', $taskIds)
+                ->get(['rps_task_id', 'rps_sub_cpmk_id'])
+                ->groupBy('rps_task_id');
 
-            if ($titles !== [] && isset($namesByWeek[(int) $weekNumber])) {
-                $namesByWeek[(int) $weekNumber] = $titles;
+        $tasksByWeek = $tasks->groupBy(fn ($task) => (int) $task->due_week);
+        $evidenceSourceByWeek = array_fill_keys(range(1, 16), null);
+        $ambiguousEvidenceWeeks = [];
+        $missingEvidenceWeeks = [];
+
+        foreach ($weeks as $week) {
+            $weekNumber = (int) $week->week_number;
+
+            if (in_array($weekNumber, [8, 16], true)) {
+                $evidenceSourceByWeek[$weekNumber] = 'system_exam';
+                continue;
+            }
+
+            if (! in_array($weekNumber, self::TEACHING_WEEKS, true)) {
+                continue;
+            }
+
+            $subId = filled($week->rps_sub_cpmk_id ?? null)
+                ? (string) $week->rps_sub_cpmk_id
+                : null;
+
+            $taskCandidates = collect($tasksByWeek->get($weekNumber, []))
+                ->filter(function ($task) use ($taskLinks, $subId): bool {
+                    if (! $subId) {
+                        return false;
+                    }
+
+                    return collect($taskLinks->get($task->id, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map('strval')
+                        ->contains($subId);
+                })
+                ->values();
+
+            if ($taskCandidates->isNotEmpty()) {
+                $chosen = $taskCandidates->first();
+                $namesByWeek[$weekNumber] = [trim((string) $chosen->title)];
+                $evidenceSourceByWeek[$weekNumber] = 'rtm';
+
+                if ($taskCandidates->count() > 1) {
+                    $ambiguousEvidenceWeeks[] = [
+                        'week' => $weekNumber,
+                        'source' => 'rtm',
+                        'candidates' => $taskCandidates
+                            ->pluck('title')
+                            ->map(fn ($title) => trim((string) $title))
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all(),
+                    ];
+                }
+
+                continue;
+            }
+
+            $assessmentCandidates = $assessments
+                ->filter(function ($assessment) use ($weekNumber, $subId, $links): bool {
+                    if (! $subId || (int) ($assessment->week_number ?? 0) !== $weekNumber) {
+                        return false;
+                    }
+
+                    $type = strtolower((string) ($assessment->type ?? ''));
+                    if (in_array($type, ['uts', 'uas'], true) || (float) ($assessment->weight ?? 0) <= 0) {
+                        return false;
+                    }
+
+                    return collect($links->get($assessment->id, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map('strval')
+                        ->contains($subId);
+                })
+                ->values();
+
+            if ($assessmentCandidates->isNotEmpty()) {
+                $chosen = $assessmentCandidates->first();
+                $namesByWeek[$weekNumber] = [trim((string) $chosen->name)];
+                $evidenceSourceByWeek[$weekNumber] = 'assessment_week';
+
+                if ($assessmentCandidates->count() > 1) {
+                    $ambiguousEvidenceWeeks[] = [
+                        'week' => $weekNumber,
+                        'source' => 'assessment_week',
+                        'candidates' => $assessmentCandidates
+                            ->pluck('name')
+                            ->map(fn ($name) => trim((string) $name))
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all(),
+                    ];
+                }
+
+                continue;
+            }
+
+            $fallback = trim((string) ($week->assessment_method ?? ''));
+            if ($fallback !== '') {
+                $namesByWeek[$weekNumber] = [$fallback];
+                $evidenceSourceByWeek[$weekNumber] = 'weekly_method';
+                continue;
+            }
+
+            if ((float) ($week->assessment_weight ?? 0) > 0) {
+                $missingEvidenceWeeks[] = $weekNumber;
             }
         }
 
@@ -205,8 +308,11 @@ class RpsAssessmentSyncService
                 ->map(fn ($cents) => round($cents / 100, 2))
                 ->all(),
             'assessment_names_by_week' => collect($namesByWeek)
-                ->map(fn ($names) => collect($names)->filter()->unique()->values()->implode('; '))
+                ->map(fn ($names) => collect($names)->filter()->unique()->values()->first() ?: '')
                 ->all(),
+            'assessment_evidence_source_by_week' => $evidenceSourceByWeek,
+            'ambiguous_evidence_weeks' => $ambiguousEvidenceWeeks,
+            'missing_evidence_weeks' => array_values(array_unique($missingEvidenceWeeks)),
             'aggregate_sub_budgets' => collect($aggregateSubCents)
                 ->map(fn ($cents) => round($cents / 100, 2))
                 ->all(),

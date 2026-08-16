@@ -205,7 +205,28 @@ class ObeWorkspaceService
 
         $assessmentSync = app(RpsAssessmentSyncService::class);
         $taskAlignment = $assessmentSync->taskAlignment($versionId);
+        $assessmentSnapshot = $assessmentSync->snapshot($versionId);
         $tasks = (int) $taskAlignment['task_total'];
+
+        $evidenceNamesByWeek = collect($assessmentSnapshot['assessment_names_by_week'] ?? []);
+        $evidenceSourcesByWeek = collect($assessmentSnapshot['assessment_evidence_source_by_week'] ?? []);
+        $ambiguousEvidenceWeeks = collect($assessmentSnapshot['ambiguous_evidence_weeks'] ?? []);
+        $weightedTeachingWeekNumbers = $weightedTeachingWeeks
+            ->pluck('week_number')
+            ->map(fn ($week) => (int) $week)
+            ->values();
+        $coveredEvidenceWeeks = $weightedTeachingWeekNumbers
+            ->filter(fn ($week) => filled($evidenceNamesByWeek->get((int) $week)))
+            ->values();
+        $ambiguousWeightedWeeks = $ambiguousEvidenceWeeks
+            ->filter(fn ($item) => $weightedTeachingWeekNumbers->contains((int) ($item['week'] ?? 0)))
+            ->values();
+        $missingEvidenceWeeks = $weightedTeachingWeekNumbers
+            ->reject(fn ($week) => filled($evidenceNamesByWeek->get((int) $week)))
+            ->values();
+        $weeklyEvidenceAligned = $weightedTeachingWeeks->count() === 14
+            && $coveredEvidenceWeeks->count() === 14
+            && $ambiguousWeightedWeeks->isEmpty();
 
         $positiveNonExamAssessments = $nonExamAssessments->filter(
             fn ($assessment) => (float) ($assessment->weight ?? 0) > 0
@@ -221,6 +242,7 @@ class ObeWorkspaceService
             && $weightedTeachingWeeks->count() === 14
             && $weightedWeeklySubCount === $subCpmks->count()
             && $subBudgetAligned
+            && $weeklyEvidenceAligned
             && (bool) $taskAlignment['is_aligned'];
 
         $cplMessage = $scopeCplCount === 0
@@ -310,16 +332,34 @@ class ObeWorkspaceService
                 'message' => "{$positiveNonExamMappedCount}/{$positiveNonExamAssessments->count()} asesmen non-UTS/UAS berbobot memiliki tag Sub-CPMK; "
                     ."{$weightedTeachingWeeks->count()}/14 pekan berbobot; "
                     ."kecocokan anggaran per Sub-CPMK ".($subBudgetAligned ? 'sesuai' : 'belum sesuai')."; "
+                    ."bukti penilaian utama {$coveredEvidenceWeeks->count()}/14 pekan, ambigu {$ambiguousWeightedWeeks->count()}; "
                     ."RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']}; RTM berbobot tanpa asesmen {$taskAlignment['unlinked_weighted_task_count']}; ketidaksesuaian Sub-CPMK RTM dengan pekan {$taskAlignment['due_week_subcpmk_mismatch_count']}; asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.",
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
                     'sub_budget_aligned' => $subBudgetAligned,
+                    'weekly_evidence_aligned' => $weeklyEvidenceAligned,
+                    'weekly_evidence_covered' => $coveredEvidenceWeeks->count(),
+                    'weekly_evidence_ambiguous' => $ambiguousWeightedWeeks->count(),
                     'rtm_mapping_mismatch' => $taskAlignment['mapping_mismatch_count'],
                     'rtm_unlinked_weighted' => $taskAlignment['unlinked_weighted_task_count'],
                     'rtm_due_week_subcpmk_mismatch' => $taskAlignment['due_week_subcpmk_mismatch_count'],
                     'rtm_required_missing' => $taskAlignment['missing_required_assessment_count'],
+                ],
+            ],
+            [
+                'key' => 'weekly_assessment_evidence',
+                'label' => 'Bukti Penilaian per Pekan',
+                'done' => $weeklyEvidenceAligned,
+                'message' => "{$coveredEvidenceWeeks->count()}/14 pekan berbobot memiliki satu bukti penilaian utama; "
+                    .$ambiguousWeightedWeeks->count()." pekan ambigu; "
+                    .$missingEvidenceWeeks->count()." pekan belum memiliki bukti penilaian yang jelas.",
+                'details' => [
+                    'covered_weeks' => $coveredEvidenceWeeks->all(),
+                    'missing_weeks' => $missingEvidenceWeeks->all(),
+                    'ambiguous_weeks' => $ambiguousWeightedWeeks->all(),
+                    'source_by_week' => $evidenceSourcesByWeek->all(),
                 ],
             ],
             [

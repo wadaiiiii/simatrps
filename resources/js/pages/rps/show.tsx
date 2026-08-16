@@ -1995,7 +1995,8 @@ function AssessmentEvaluationSection({
                 <div className="mt-5 text-center text-xs font-black text-slate-900">Simulasi</div>
                 <div className="mx-auto mt-1 max-w-4xl text-center text-[9px] leading-4 text-slate-500 print:hidden">
                     Setiap pekan pembelajaran yang memuat Sub-CPMK harus memiliki bobot sebagai bukti pengukuran.
-                    Bobot non-UTS/UAS merupakan distribusi dari tag Sub-CPMK pada asesmen agregat; bila satu Sub-CPMK digunakan beberapa pekan, anggarannya dibagi ke pekan-pekan tersebut. Nama asesmen pada simulasi mengikuti tag yang sama.
+                    Bobot non-UTS/UAS merupakan distribusi dari tag Sub-CPMK pada asesmen agregat; bila satu Sub-CPMK digunakan beberapa pekan, anggarannya dibagi ke pekan-pekan tersebut.
+                    Nama asesmen/bentuk penilaian memakai satu bukti utama per pekan: RTM pada pekan tersebut, lalu asesmen yang memang dijadwalkan pada pekan yang sama, dan Bentuk Penilaian tabel RPS sebagai fallback.
                     UTS dan UAS tetap mengikuti bobot asesmen sistem.
                 </div>
 
