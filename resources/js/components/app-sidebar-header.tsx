@@ -147,7 +147,7 @@ export function AppSidebarHeader({
 
                 html.rps-print-mode th,
                 html.rps-print-mode td {
-                    border-width: 1px !important;
+                    border-width: 1.2px !important;
                     border-style: solid !important;
                 }
 
@@ -430,6 +430,14 @@ export function AppSidebarHeader({
 
         normalizeDocumentTable(mainRpsTable);
         normalizeDocumentTable(weeklyTable);
+
+        // Kop tabel RPS harus tetap terbaca pada zoom normal/PDF.
+        weeklyTable?.querySelectorAll<HTMLElement>('thead th').forEach((cell) => {
+            setPrintStyle(cell, 'border', '1.6px solid #111827');
+        });
+        if (weeklyTable) {
+            setPrintStyle(weeklyTable, 'border', '1.6px solid #111827');
+        }
 
         const mainTitleCell = mainRpsTable?.querySelector<HTMLElement>(
             'tbody > tr:nth-child(2) th',
