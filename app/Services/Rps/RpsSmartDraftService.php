@@ -173,6 +173,29 @@ class RpsSmartDraftService
                     continue;
                 }
 
+                // Data minggu yang dibuat Smart Draft versi lama boleh
+                // dinormalisasi ke algoritme penyelarasan baru. Ini hanya berlaku
+                // bila source_type masih smart_draft; edit manual/AI tidak disentuh.
+                $refreshGeneratedField = ($current->source_type ?? null) === 'smart_draft'
+                    && in_array($key, [
+                        'rps_sub_cpmk_id',
+                        'material_text',
+                        'learning_activity',
+                        'student_assignment',
+                        'assessment_indicator',
+                        'assessment_criteria',
+                        'assessment_method',
+                        'time_estimate',
+                    ], true);
+
+                if ($refreshGeneratedField && filled($value)) {
+                    $merged[$key] = $value;
+                    if ($existing != $value) {
+                        $changed = true;
+                    }
+                    continue;
+                }
+
                 // Nilai 0 pada frekuensi hasil generator lama bukan estimasi
                 // pembelajaran yang valid. Lengkapi RPS Otomatis boleh
                 // memperbaikinya menjadi minimal 1 tanpa menyentuh angka

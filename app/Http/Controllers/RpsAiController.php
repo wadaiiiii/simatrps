@@ -386,11 +386,15 @@ PROMPT;
                 'structured_task_sessions',
                 'independent_study_sessions',
             ], true);
+            $invalidLegacyTime = $key === 'time_estimate'
+                && is_string($weekly->{$key} ?? null)
+                && preg_match('/(?:^|[;\s])0\s*[×x]\s*\(/u', (string) $weekly->{$key}) === 1;
 
             if (
                 $overwrite
                 || ! filled($weekly->{$key} ?? null)
                 || ($sessionField && (int) ($weekly->{$key} ?? 0) < 1)
+                || $invalidLegacyTime
             ) {
                 $updates[$key] = $value;
             }
