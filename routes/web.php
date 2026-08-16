@@ -35,6 +35,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
         Route::put('{rps}/weeks/{week}/weight', [RpsDocumentController::class, 'updateWeekWeight'])->name('weeks.weight.update');
 
         Route::post('{rps}/cpmk', [ObeWorkspaceController::class, 'storeCpmk'])->name('cpmk.store');
+        Route::post('{rps}/cpmk/import-curriculum', [ObeWorkspaceController::class, 'importCurriculumCpmks'])->name('cpmk.import-curriculum');
         Route::put('{rps}/cpmk/{cpmk}', [ObeWorkspaceController::class, 'updateCpmk'])->name('cpmk.update');
         Route::post('{rps}/cpmk/{cpmk}/reset', [ObeWorkspaceController::class, 'resetCpmk'])->name('cpmk.reset');
         Route::delete('{rps}/cpmk/{cpmk}', [ObeWorkspaceController::class, 'destroyCpmk'])->name('cpmk.destroy');

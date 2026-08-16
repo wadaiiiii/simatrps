@@ -42,6 +42,73 @@ class ObeWorkspaceController extends Controller
         return back()->with('success', 'CPMK baru berhasil ditambahkan ke RPS.');
     }
 
+    public function importCurriculumCpmks(Request $request, string $rps): RedirectResponse
+    {
+        [$record, $version] = $this->context($request, $rps);
+
+        $masters = DB::table('curriculum_cpmks')
+            ->where('course_id', $record->course_id)
+            ->orderBy('sequence_no')
+            ->get();
+
+        if ($masters->isEmpty()) {
+            throw ValidationException::withMessages([
+                'cpmk' => 'CPMK master kurikulum belum tersedia untuk mata kuliah ini.',
+            ]);
+        }
+
+        $existing = DB::table('rps_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->get(['source_cpmk_id', 'code']);
+
+        $existingSourceIds = $existing
+            ->pluck('source_cpmk_id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $existingCodes = $existing
+            ->pluck('code')
+            ->filter()
+            ->map(fn ($code) => strtoupper(trim((string) $code)))
+            ->all();
+
+        $missing = $masters
+            ->filter(fn ($master) =>
+                ! in_array((string) $master->id, $existingSourceIds, true)
+                && ! in_array(strtoupper(trim((string) $master->code)), $existingCodes, true)
+            )
+            ->values();
+
+        if ($missing->isEmpty()) {
+            return back()->with(
+                'success',
+                'CPMK kurikulum sudah lengkap. Tidak ada CPMK master yang perlu dipulihkan.'
+            );
+        }
+
+        $timestamp = now();
+        $rows = $missing->map(fn ($master): array => [
+            'id' => (string) Str::uuid(),
+            'rps_version_id' => $version->id,
+            'code' => $master->code,
+            'description' => $master->description,
+            'bloom_level' => null,
+            'source_type' => 'curriculum',
+            'source_cpmk_id' => $master->id,
+            'sequence_no' => $master->sequence_no,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ])->all();
+
+        DB::table('rps_cpmks')->insert($rows);
+
+        return back()->with(
+            'success',
+            count($rows).' CPMK berhasil dipulihkan dari master kurikulum.'
+        );
+    }
+
     public function updateCpmk(Request $request, string $rps, string $cpmk): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);

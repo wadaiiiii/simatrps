@@ -2432,20 +2432,59 @@ function RtmDocumentSection({
 
 function DocumentCpmkAdd({ rpsId }: any) {
     const [open, setOpen] = useState(false);
+    const [restoringMaster, setRestoringMaster] = useState(false);
     const form = useForm({
         description: '',
         bloom_level: '',
     });
 
     if (!open) {
+        const restoreFromCurriculum = () => {
+            if (restoringMaster) return;
+
+            const confirmed = confirm(
+                'Pulihkan CPMK resmi dari master kurikulum yang belum ada di RPS? CPMK yang sudah ada tidak akan diubah.',
+            );
+
+            if (!confirmed) return;
+
+            setRestoringMaster(true);
+            router.post(
+                `/rps/${rpsId}/cpmk/import-curriculum`,
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: (page: any) => {
+                        const message = page?.props?.flash?.success
+                            || 'Sinkronisasi CPMK dengan master kurikulum selesai.';
+                        notify('success', message);
+                    },
+                    onError: (errors: any) => notify('error', firstError(errors)),
+                    onFinish: () => setRestoringMaster(false),
+                },
+            );
+        };
+
         return (
-            <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[10px] font-bold text-teal-700"
-            >
-                <Plus className="size-3" /> Tambah CPMK
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                    type="button"
+                    disabled={restoringMaster}
+                    onClick={restoreFromCurriculum}
+                    title="Pulihkan CPMK resmi yang hilang dari master kurikulum tanpa menimpa CPMK yang sudah ada"
+                    className="inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <RotateCcw className={`size-3 ${restoringMaster ? 'animate-spin' : ''}`} />
+                    {restoringMaster ? 'Mengambil...' : 'Ambil CPMK Kurikulum'}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setOpen(true)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-[10px] font-bold text-teal-700"
+                >
+                    <Plus className="size-3" /> Tambah CPMK
+                </button>
+            </div>
         );
     }
 
