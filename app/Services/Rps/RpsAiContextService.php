@@ -216,10 +216,16 @@ class RpsAiContextService
 
         abort_unless($targetSub, 404);
 
-        $parentCode = DB::table('rps_cpmk_subcpmks')
+        $parentCpmk = DB::table('rps_cpmk_subcpmks')
             ->join('rps_cpmks', 'rps_cpmks.id', '=', 'rps_cpmk_subcpmks.rps_cpmk_id')
             ->where('rps_cpmk_subcpmks.rps_sub_cpmk_id', $targetSub->id)
-            ->value('rps_cpmks.code');
+            ->first([
+                'rps_cpmks.code',
+                'rps_cpmks.description',
+                'rps_cpmks.bloom_level',
+            ]);
+
+        $parentCode = $parentCpmk?->code;
 
         $materials = DB::table('rps_materials')
             ->where('rps_version_id', $version->id)
@@ -228,6 +234,55 @@ class RpsAiContextService
             ->pluck('title')
             ->all();
 
+        $targetMaterials = [];
+
+        if (Schema::hasTable('rps_material_subcpmks')) {
+            $targetMaterials = DB::table('rps_material_subcpmks')
+                ->join('rps_materials', 'rps_materials.id', '=', 'rps_material_subcpmks.rps_material_id')
+                ->where('rps_material_subcpmks.rps_sub_cpmk_id', $targetSub->id)
+                ->where('rps_materials.rps_version_id', $version->id)
+                ->orderBy('rps_materials.sequence_no')
+                ->limit(10)
+                ->pluck('rps_materials.title')
+                ->all();
+        }
+
+        if ($targetMaterials === [] && Schema::hasColumn('rps_materials', 'rps_sub_cpmk_id')) {
+            $targetMaterials = DB::table('rps_materials')
+                ->where('rps_version_id', $version->id)
+                ->where('rps_sub_cpmk_id', $targetSub->id)
+                ->orderBy('sequence_no')
+                ->limit(10)
+                ->pluck('title')
+                ->all();
+        }
+
+        $targetAssessments = DB::table('assessment_subcpmks')
+            ->join('assessments', 'assessments.id', '=', 'assessment_subcpmks.assessment_id')
+            ->where('assessment_subcpmks.rps_sub_cpmk_id', $targetSub->id)
+            ->where('assessments.rps_version_id', $version->id)
+            ->orderByRaw('COALESCE(assessments.week_number, 99)')
+            ->get([
+                'assessments.name',
+                'assessments.type',
+                'assessments.week_number',
+                'assessments.description',
+                'assessments.weight',
+            ])
+            ->map(fn ($assessment): array => [
+                'name' => $assessment->name,
+                'type' => $assessment->type,
+                'week_number' => $assessment->week_number,
+                'description' => $this->clip($assessment->description, 300),
+                'weight' => $assessment->weight,
+            ])
+            ->values()
+            ->all();
+
+        $currentWeek = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $version->id)
+            ->where('week_number', $week)
+            ->first();
 
         $syllabusItems = DB::table('course_syllabus_items')
             ->where('course_id', $rps->course_id)
@@ -285,7 +340,24 @@ Pendukung:
                 'bloom_level' => $targetSub->bloom_level,
                 'parent_cpmk_code' => $parentCode,
             ],
+            'parent_cpmk' => $parentCpmk ? [
+                'code' => $parentCpmk->code,
+                'description' => $this->clip($parentCpmk->description, 700),
+                'bloom_level' => $parentCpmk->bloom_level,
+            ] : null,
+            'target_materials' => $targetMaterials,
             'materials' => $materials,
+            'target_assessments' => $targetAssessments,
+            'current_week' => $currentWeek ? [
+                'material' => $this->clip($currentWeek->material_text, 300),
+                'learning_form' => $this->clip($currentWeek->learning_form ?? null, 160),
+                'learning_method' => $this->clip($currentWeek->learning_method, 220),
+                'learning_activity' => $this->clip($currentWeek->learning_activity, 500),
+                'student_assignment' => $this->clip($currentWeek->student_assignment ?? null, 400),
+                'assessment_indicator' => $this->clip($currentWeek->assessment_indicator, 500),
+                'assessment_criteria' => $this->clip($currentWeek->assessment_criteria, 400),
+                'assessment_method' => $this->clip($currentWeek->assessment_method, 250),
+            ] : null,
             'syllabus_items' => $syllabusItems,
             'bibliography' => $this->bibliographyEntries((string) $references),
             'previous_week' => $previous ? [

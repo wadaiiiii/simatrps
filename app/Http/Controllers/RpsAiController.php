@@ -270,11 +270,26 @@ class RpsAiController extends Controller
             $targetSub->code
         );
 
+        $indicatorInstruction = <<<'PROMPT'
+Untuk minggu ini, jangan menyalin, memendekkan, atau sekadar memparafrase rumusan `target_sub_cpmk` pada `assessment_indicator`.
+Turunkan indikator penilaian BARU sebagai bukti ketercapaian yang dapat diamati dan dinilai. Gunakan konteks `parent_cpmk`, `target_materials`, `target_assessments`, `current_week`, dan level Bloom untuk membuat indikator lebih spesifik terhadap materi minggu tersebut.
+Indikator ideal memuat 2-3 tindakan/bukti operasional, misalnya mengidentifikasi unsur pada contoh, menjelaskan hubungan/argumen, menerapkan prosedur pada kasus, membandingkan hasil, menganalisis kesalahan, atau menghasilkan produk yang relevan—sesuaikan dengan level Bloom dan bidang ilmu pada konteks.
+JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian", atau membuka kalimat dengan "Mahasiswa mampu/dapat". Mulai langsung dengan kata kerja operasional.
+Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
+Pastikan `assessment_criteria` menilai kualitas bukti tersebut dan `assessment_method` konsisten dengan asesmen yang tersedia.
+PROMPT;
+
+        $effectiveInstruction = filled($data['instruction'] ?? null)
+            ? trim((string) $data['instruction'])."
+
+".$indicatorInstruction
+            : $indicatorInstruction;
+
         try {
             $result = $aiProvider->generateWeek(
                 $context,
                 $week,
-                $data['instruction'] ?? null
+                $effectiveInstruction
             );
         } catch (ValidationException $error) {
             throw $error;
