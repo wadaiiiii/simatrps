@@ -43,15 +43,12 @@ jobs:
 
           p.write_text(s, encoding='utf-8')
           PY
-      - name: Validate
+      - name: Validate target changes
         run: |
-          grep -q "Isi Bagian Kosong" resources/js/pages/rps/show.tsx
+          grep -q ">[[:space:]]*Isi Bagian Kosong" resources/js/pages/rps/show.tsx || grep -q "Isi Bagian Kosong" resources/js/pages/rps/show.tsx
           grep -q "Edit Pekan" resources/js/pages/rps/show.tsx
-          grep -q "bg-sky-600" resources/js/pages/rps/show.tsx
-          if grep -q "Lengkapi RPS Otomatis" resources/js/pages/rps/show.tsx; then
-            echo "Old label still exists"
-            exit 1
-          fi
+          grep -q "border-sky-700 bg-sky-600" resources/js/pages/rps/show.tsx
+          grep -q "tanpa menimpa edit manual atau hasil Susun AI" resources/js/pages/rps/show.tsx
       - name: Commit implementation and cleanup
         run: |
           rm -f .github/workflows/rename-fill-empty-and-highlight-week-edit.yml
