@@ -2390,7 +2390,7 @@ function RtmDocumentSection({
                                             </tr>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
-                                                    <div><strong>Asesmen:</strong> {assessment?.name || '-'}</div>
+                                                    <div><strong>Bentuk penilaian pekan:</strong> {task.title}</div>
                                                     <div><strong>Kriteria:</strong> {assessment?.description || '-'}</div>
                                                     <div><strong>Bobot pekan:</strong> {`${Number(weekByNumber.get(Number(task.due_week))?.assessment_weight || 0)}%`}</div>
                                                     {assessment && (

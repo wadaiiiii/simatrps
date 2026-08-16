@@ -310,13 +310,15 @@ class ObeWorkspaceService
                 'message' => "{$positiveNonExamMappedCount}/{$positiveNonExamAssessments->count()} asesmen non-UTS/UAS berbobot memiliki tag Sub-CPMK; "
                     ."{$weightedTeachingWeeks->count()}/14 pekan berbobot; "
                     ."kecocokan anggaran per Sub-CPMK ".($subBudgetAligned ? 'sesuai' : 'belum sesuai')."; "
-                    ."RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']} dan asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.",
+                    ."RTM tidak sinkron {$taskAlignment['mapping_mismatch_count']}; RTM berbobot tanpa asesmen {$taskAlignment['unlinked_weighted_task_count']}; ketidaksesuaian Sub-CPMK RTM dengan pekan {$taskAlignment['due_week_subcpmk_mismatch_count']}; asesmen yang membutuhkan RTM tetapi belum memiliki RTM {$taskAlignment['missing_required_assessment_count']}.",
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
                     'sub_budget_aligned' => $subBudgetAligned,
                     'rtm_mapping_mismatch' => $taskAlignment['mapping_mismatch_count'],
+                    'rtm_unlinked_weighted' => $taskAlignment['unlinked_weighted_task_count'],
+                    'rtm_due_week_subcpmk_mismatch' => $taskAlignment['due_week_subcpmk_mismatch_count'],
                     'rtm_required_missing' => $taskAlignment['missing_required_assessment_count'],
                 ],
             ],
@@ -326,7 +328,7 @@ class ObeWorkspaceService
                 'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
                 'message' => $taskAssessments->isEmpty()
                     ? 'Belum ada asesmen tugas/proyek/presentasi yang mewajibkan RTM.'
-                    : "{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag Sub-CPMK yang berbeda dari asesmennya.",
+                    : "{$tasks} RTM tersedia; {$taskAlignment['missing_required_assessment_count']} asesmen tugas belum memiliki RTM; {$taskAlignment['unlinked_weighted_task_count']} RTM berbobot belum terhubung asesmen; {$taskAlignment['due_week_subcpmk_mismatch_count']} RTM tidak cocok dengan Sub-CPMK pekannya; {$taskAlignment['mapping_mismatch_count']} RTM memiliki tag berbeda dari asesmennya.",
                 'details' => $taskAlignment,
             ],
         ];

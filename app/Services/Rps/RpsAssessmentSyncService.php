@@ -110,6 +110,30 @@ class RpsAssessmentSyncService
             }
         }
 
+        // Simulasi menampilkan bukti/penugasan yang benar-benar jatuh
+        // pada pekan tersebut. Asesmen agregat tetap menjadi sumber anggaran
+        // bobot pada matriks, sedangkan judul RTM menjadi nama bukti per pekan.
+        $taskEvidenceByWeek = DB::table('rps_tasks')
+            ->where('rps_version_id', $versionId)
+            ->whereNotNull('due_week')
+            ->orderBy('code')
+            ->get(['due_week', 'title'])
+            ->groupBy(fn ($task) => (int) $task->due_week);
+
+        foreach ($taskEvidenceByWeek as $weekNumber => $taskItems) {
+            $titles = $taskItems
+                ->pluck('title')
+                ->map(fn ($title) => trim((string) $title))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($titles !== [] && isset($namesByWeek[(int) $weekNumber])) {
+                $namesByWeek[(int) $weekNumber] = $titles;
+            }
+        }
+
         $actualSubBudgets = $weeks
             ->filter(fn ($week) =>
                 in_array((int) $week->week_number, self::TEACHING_WEEKS, true)
@@ -142,7 +166,8 @@ class RpsAssessmentSyncService
 
     public function syncVersion(string $versionId): array
     {
-        $this->syncTaskMappings($versionId);
+        $indicatorFixes = $this->syncWeeklyIndicators($versionId);
+        $linkedTasks = $this->syncTaskMappings($versionId);
         $snapshot = $this->snapshot($versionId);
 
         DB::transaction(function () use ($versionId, $snapshot): void {
@@ -167,7 +192,7 @@ class RpsAssessmentSyncService
 
         return [
             ...$refreshed,
-            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot berdasarkan tag Sub-CPMK asesmen; RTM terkait mengikuti tag asesmennya.",
+            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot berdasarkan tag Sub-CPMK asesmen; {$linkedTasks} RTM terhubung ke asesmen; {$indicatorFixes} indikator pekan yang salah Sub-CPMK diperbaiki.",
         ];
     }
 
@@ -175,24 +200,139 @@ class RpsAssessmentSyncService
     {
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->whereNotNull('assessment_id')
-            ->get(['id', 'assessment_id']);
+            ->orderByRaw('COALESCE(due_week, 99)')
+            ->orderBy('code')
+            ->get(['id', 'assessment_id', 'title', 'type', 'due_week']);
 
         if ($tasks->isEmpty()) {
             return 0;
         }
 
-        $assessmentLinks = DB::table('assessment_subcpmks')
-            ->whereIn('assessment_id', $tasks->pluck('assessment_id')->filter()->unique()->all())
-            ->get(['assessment_id', 'rps_sub_cpmk_id'])
-            ->groupBy('assessment_id');
+        $assessments = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->orderByRaw('COALESCE(week_number, 99)')
+            ->orderBy('code')
+            ->get(['id', 'name', 'type', 'week_number']);
 
-        DB::transaction(function () use ($tasks, $assessmentLinks): void {
+        $assessmentLinks = $assessments->isEmpty()
+            ? collect()
+            : DB::table('assessment_subcpmks')
+                ->whereIn('assessment_id', $assessments->pluck('id')->all())
+                ->get(['assessment_id', 'rps_sub_cpmk_id'])
+                ->groupBy('assessment_id');
+
+        $weekSubs = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', array_merge(self::TEACHING_WEEKS, [8, 16]))
+            ->pluck('rps_sub_cpmk_id', 'week_number');
+
+        $linkedCount = 0;
+
+        DB::transaction(function () use (
+            $tasks,
+            $assessments,
+            $assessmentLinks,
+            $weekSubs,
+            &$linkedCount
+        ): void {
             foreach ($tasks as $task) {
-                $subIds = collect($assessmentLinks->get($task->assessment_id, []))
-                    ->pluck('rps_sub_cpmk_id')
-                    ->unique()
-                    ->values();
+                $dueWeek = (int) ($task->due_week ?? 0);
+                $weekSubId = filled($weekSubs->get($dueWeek))
+                    ? (string) $weekSubs->get($dueWeek)
+                    : null;
+
+                $assessmentId = filled($task->assessment_id ?? null)
+                    && $assessments->contains(fn ($assessment) => (string) $assessment->id === (string) $task->assessment_id)
+                        ? (string) $task->assessment_id
+                        : null;
+
+                if ($assessmentId && $weekSubId && in_array($dueWeek, self::TEACHING_WEEKS, true)) {
+                    $currentLinks = collect($assessmentLinks->get($assessmentId, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map('strval')
+                        ->unique();
+
+                    if (! $currentLinks->contains($weekSubId)) {
+                        $assessmentId = null;
+                    }
+                }
+
+                if (! $assessmentId) {
+                    $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
+
+                    $exact = $assessments->first(function ($assessment) use (
+                        $normalizedTaskTitle,
+                        $weekSubId,
+                        $dueWeek,
+                        $assessmentLinks
+                    ): bool {
+                        if ($this->normalizeLabel((string) $assessment->name) !== $normalizedTaskTitle) {
+                            return false;
+                        }
+
+                        $type = strtolower((string) $assessment->type);
+                        if ($dueWeek === 8) return $type === 'uts';
+                        if ($dueWeek === 16) return $type === 'uas';
+                        if (! $weekSubId) return true;
+
+                        return collect($assessmentLinks->get($assessment->id, []))
+                            ->pluck('rps_sub_cpmk_id')
+                            ->map('strval')
+                            ->contains($weekSubId);
+                    });
+
+                    if ($exact) {
+                        $assessmentId = (string) $exact->id;
+                    } else {
+                        $taskType = strtolower((string) ($task->type ?? 'other'));
+
+                        $candidates = $assessments
+                            ->filter(function ($assessment) use ($weekSubId, $dueWeek, $assessmentLinks): bool {
+                                $type = strtolower((string) $assessment->type);
+                                if ($dueWeek === 8) return $type === 'uts';
+                                if ($dueWeek === 16) return $type === 'uas';
+                                if (! $weekSubId || in_array($type, ['uts', 'uas'], true)) return false;
+
+                                return collect($assessmentLinks->get($assessment->id, []))
+                                    ->pluck('rps_sub_cpmk_id')
+                                    ->map('strval')
+                                    ->contains($weekSubId);
+                            })
+                            ->sort(function ($a, $b) use ($taskType, $dueWeek): int {
+                                $aTypePenalty = strtolower((string) $a->type) === $taskType ? 0 : 1;
+                                $bTypePenalty = strtolower((string) $b->type) === $taskType ? 0 : 1;
+                                if ($aTypePenalty !== $bTypePenalty) return $aTypePenalty <=> $bTypePenalty;
+
+                                $aDistance = abs(((int) ($a->week_number ?? 99)) - $dueWeek);
+                                $bDistance = abs(((int) ($b->week_number ?? 99)) - $dueWeek);
+                                if ($aDistance !== $bDistance) return $aDistance <=> $bDistance;
+
+                                return ((int) ($a->week_number ?? 99)) <=> ((int) ($b->week_number ?? 99));
+                            })
+                            ->values();
+
+                        if ($candidates->isNotEmpty()) {
+                            $assessmentId = (string) $candidates->first()->id;
+                        }
+                    }
+
+                    if ($assessmentId) {
+                        DB::table('rps_tasks')
+                            ->where('id', $task->id)
+                            ->update([
+                                'assessment_id' => $assessmentId,
+                                'updated_at' => now(),
+                            ]);
+                    }
+                }
+
+                $subIds = $assessmentId
+                    ? collect($assessmentLinks->get($assessmentId, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map('strval')
+                        ->unique()
+                        ->values()
+                    : collect($weekSubId ? [$weekSubId] : []);
 
                 DB::table('rps_task_subcpmks')
                     ->where('rps_task_id', $task->id)
@@ -207,17 +347,71 @@ class RpsAssessmentSyncService
                         'updated_at' => now(),
                     ]);
                 }
+
+                if ($assessmentId) {
+                    $linkedCount++;
+                }
             }
         });
 
-        return $tasks->count();
+        return $linkedCount;
+    }
+
+    public function syncWeeklyIndicators(string $versionId): int
+    {
+        $subs = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $versionId)
+            ->get(['id', 'description'])
+            ->keyBy(fn ($sub) => (string) $sub->id);
+
+        if ($subs->isEmpty()) return 0;
+
+        $descriptionOwner = [];
+        foreach ($subs as $sub) {
+            $normalized = $this->normalizeLabel((string) $sub->description);
+            if ($normalized !== '') $descriptionOwner[$normalized] = (string) $sub->id;
+        }
+
+        $fixed = 0;
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->whereNotNull('assessment_indicator')
+            ->get(['id', 'rps_sub_cpmk_id', 'assessment_indicator']);
+
+        foreach ($weeks as $week) {
+            $currentSubId = (string) $week->rps_sub_cpmk_id;
+            $currentSub = $subs->get($currentSubId);
+            if (! $currentSub) continue;
+
+            $ownerId = $descriptionOwner[$this->normalizeLabel((string) $week->assessment_indicator)] ?? null;
+            if ($ownerId && $ownerId !== $currentSubId) {
+                DB::table('rps_weekly_plans')
+                    ->where('id', $week->id)
+                    ->update([
+                        'assessment_indicator' => trim((string) $currentSub->description),
+                        'updated_at' => now(),
+                    ]);
+                $fixed++;
+            }
+        }
+
+        return $fixed;
+    }
+
+    private function normalizeLabel(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     public function taskAlignment(string $versionId): array
     {
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->get(['id', 'assessment_id']);
+            ->get(['id', 'assessment_id', 'due_week']);
 
         $linkedTasks = $tasks->filter(fn ($task) => filled($task->assessment_id ?? null));
         $assessmentIds = $linkedTasks->pluck('assessment_id')->filter()->unique()->values();
@@ -261,13 +455,43 @@ class RpsAssessmentSyncService
 
         $missingRequired = $requiredAssessmentIds->diff($coveredAssessmentIds)->values();
 
+        $weekRows = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->get(['week_number', 'rps_sub_cpmk_id', 'assessment_weight'])
+            ->keyBy('week_number');
+
+        $unlinkedWeightedTaskCount = 0;
+        $dueWeekMismatchCount = 0;
+        foreach ($tasks as $task) {
+            $dueWeek = (int) ($task->due_week ?? 0);
+            $week = $weekRows->get($dueWeek);
+            if (! $week || (float) ($week->assessment_weight ?? 0) <= 0) continue;
+
+            if (! filled($task->assessment_id ?? null)) {
+                $unlinkedWeightedTaskCount++;
+                continue;
+            }
+
+            if (filled($week->rps_sub_cpmk_id ?? null)) {
+                $expected = collect($assessmentLinks->get($task->assessment_id, []))
+                    ->pluck('rps_sub_cpmk_id')->map('strval')->unique();
+                if (! $expected->contains((string) $week->rps_sub_cpmk_id)) $dueWeekMismatchCount++;
+            }
+        }
+
         return [
             'task_total' => $tasks->count(),
             'linked_task_total' => $linkedTasks->count(),
             'required_assessment_total' => $requiredAssessmentIds->count(),
             'missing_required_assessment_count' => $missingRequired->count(),
             'mapping_mismatch_count' => $mismatchCount,
-            'is_aligned' => $missingRequired->isEmpty() && $mismatchCount === 0,
+            'unlinked_weighted_task_count' => $unlinkedWeightedTaskCount,
+            'due_week_subcpmk_mismatch_count' => $dueWeekMismatchCount,
+            'is_aligned' => $missingRequired->isEmpty()
+                && $mismatchCount === 0
+                && $unlinkedWeightedTaskCount === 0
+                && $dueWeekMismatchCount === 0,
         ];
     }
 

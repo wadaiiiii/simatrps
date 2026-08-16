@@ -17,7 +17,8 @@ class RpsAutomationController extends Controller
     public function smartDraft(
         Request $request,
         string $rps,
-        RpsSmartDraftService $service
+        RpsSmartDraftService $service,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [$record, $version] = $this->context($request, $rps);
 
@@ -43,11 +44,14 @@ class RpsAutomationController extends Controller
         }
 
         $weightMessage = trim((string) ($result['weight_message'] ?? ''));
+        $syncResult = $assessmentSync->syncVersion($version->id);
+        $syncMessage = trim((string) ($syncResult['message'] ?? ''));
 
         return back()->with(
             'success',
             "Bagian kosong berhasil diisi. {$result['updated_weeks']} pertemuan diperbarui."
                 .($weightMessage !== '' ? ' '.$weightMessage : '')
+                .($syncMessage !== '' ? ' '.$syncMessage : '')
         );
     }
 
