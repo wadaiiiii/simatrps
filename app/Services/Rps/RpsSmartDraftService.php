@@ -935,13 +935,18 @@ class RpsSmartDraftService
             ->mapWithKeys(fn ($row) => [strtolower((string) $row->type) => round((float) ($row->weight ?? 0), 2)]);
 
         foreach ([8 => 'uts', 16 => 'uas'] as $week => $type) {
+            $updates = [
+                'assessment_weight' => (float) $weights->get($type, 0),
+                'updated_at' => now(),
+            ];
+            if (Schema::hasColumn('rps_weekly_plans', 'assessment_weight_source')) {
+                $updates['assessment_weight_source'] = 'exam';
+            }
+
             DB::table('rps_weekly_plans')
                 ->where('rps_version_id', $versionId)
                 ->where('week_number', $week)
-                ->update([
-                    'assessment_weight' => (float) $weights->get($type, 0),
-                    'updated_at' => now(),
-                ]);
+                ->update($updates);
         }
     }
 
@@ -949,7 +954,7 @@ class RpsSmartDraftService
     {
         $assessments = DB::table('assessments')
             ->where('rps_version_id', $versionId)
-            ->get(['type', 'weight']);
+            ->get(['id', 'code', 'name', 'type', 'weight']);
 
         $assessmentTotal = round((float) $assessments->sum(
             fn ($row) => (float) ($row->weight ?? 0)
@@ -959,15 +964,21 @@ class RpsSmartDraftService
             ->sum(fn ($row) => (float) ($row->weight ?? 0)), 2);
         $teachingBudget = round($assessmentTotal - $examTotal, 2);
 
-        if (abs($assessmentTotal - 100.0) >= 0.01 || $teachingBudget <= 0) {
-            return 'Bobot 14 pekan belum dibagi otomatis karena total bobot asesmen agregat belum tepat 100% atau belum tersedia anggaran asesmen non-UTS/UAS.';
+        if ($teachingBudget <= 0) {
+            return 'Bobot 14 pekan belum dibagi karena anggaran asesmen non-UTS/UAS masih 0%.';
+        }
+
+        $hasWeightSource = Schema::hasColumn('rps_weekly_plans', 'assessment_weight_source');
+        $weekColumns = ['id', 'week_number', 'rps_sub_cpmk_id', 'assessment_weight'];
+        if ($hasWeightSource) {
+            $weekColumns[] = 'assessment_weight_source';
         }
 
         $weeks = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $versionId)
             ->whereIn('week_number', self::TEACHING_WEEKS)
             ->orderBy('week_number')
-            ->get(['id', 'week_number', 'rps_sub_cpmk_id', 'assessment_weight']);
+            ->get($weekColumns);
 
         if ($weeks->count() !== count(self::TEACHING_WEEKS)) {
             return 'Distribusi bobot pekan menunggu struktur 14 pekan pembelajaran yang lengkap.';
@@ -977,56 +988,35 @@ class RpsSmartDraftService
             return 'Distribusi bobot pekan menunggu setiap pekan memiliki Sub-CPMK.';
         }
 
-        $emptyWeeks = $weeks->filter(
-            fn ($week) => (float) ($week->assessment_weight ?? 0) <= 0
-        )->values();
-
-        if ($emptyWeeks->isEmpty()) {
-            return 'Bobot seluruh pekan pembelajaran sudah terisi; isian manual tidak diubah.';
-        }
-
-        $existingCents = (int) round($weeks->sum(
-            fn ($week) => max(0, (float) ($week->assessment_weight ?? 0))
-        ) * 100);
         $budgetCents = (int) round($teachingBudget * 100);
-        $remainingCents = $budgetCents - $existingCents;
-
-        if ($remainingCents <= 0) {
-            return 'Anggaran bobot pekan sudah habis oleh isian yang ada; pekan kosong tidak diubah.';
-        }
-
-        if ($remainingCents < $emptyWeeks->count()) {
-            return 'Sisa bobot terlalu kecil untuk memberi bobot positif pada setiap pekan kosong. Sesuaikan bobot manual terlebih dahulu.';
-        }
-
-        // Target bobot Sub-CPMK diturunkan dari pemetaan asesmen agregat.
-        // Contoh: asesmen 10% hanya terkait Sub-CPMK-1, maka target Sub-CPMK-1
-        // adalah 10%. Bila Sub-CPMK-1 muncul pada dua pekan yang masih kosong,
-        // pembagian default menjadi 5% + 5%. Jika satu asesmen terkait beberapa
-        // Sub-CPMK, bobot asesmen dibagi merata seperti matriks evaluasi CPL.
         $groups = $weeks->groupBy(fn ($week) => (string) $week->rps_sub_cpmk_id);
         $subIds = $groups->keys()->values();
-        $targetBySub = array_fill_keys($subIds->all(), 0);
 
-        $nonExamAssessments = DB::table('assessments')
-            ->where('rps_version_id', $versionId)
-            ->whereNotIn('type', ['uts', 'uas'])
-            ->whereRaw('COALESCE(weight, 0) > 0')
-            ->orderBy('code')
-            ->get(['id', 'code', 'name', 'weight']);
+        // Utamakan target yang benar-benar berasal dari pemetaan asesmen agregat.
+        // Jika rekap asesmen belum lengkap (mis. total baru 95% atau masih ada
+        // Sub-CPMK tanpa asesmen non-UTS/UAS), jangan biarkan tabel RPS kosong:
+        // gunakan fallback pembagian rata per Sub-CPMK dari anggaran yang saat ini
+        // tersedia. Validator tetap menandai kekurangan/mismatch agar dosen dapat
+        // menyempurnakan rekap asesmen kemudian.
+        $mappedTargetBySub = array_fill_keys($subIds->all(), 0);
+        $mappingComplete = true;
+        $nonExamAssessments = $assessments
+            ->reject(fn ($row) => in_array(strtolower((string) $row->type), ['uts', 'uas'], true))
+            ->filter(fn ($row) => (float) ($row->weight ?? 0) > 0)
+            ->values();
 
         foreach ($nonExamAssessments as $assessment) {
             $linkedSubIds = DB::table('assessment_subcpmks')
                 ->where('assessment_id', $assessment->id)
                 ->whereIn('rps_sub_cpmk_id', $subIds->all())
-                ->orderBy('rps_sub_cpmk_id')
                 ->pluck('rps_sub_cpmk_id')
                 ->map(fn ($id) => (string) $id)
                 ->unique()
                 ->values();
 
             if ($linkedSubIds->isEmpty()) {
-                return 'Bobot pekan belum dibagi: asesmen '.($assessment->code ?: $assessment->name).' belum dipetakan ke Sub-CPMK yang digunakan pada 14 pekan.';
+                $mappingComplete = false;
+                continue;
             }
 
             $assessmentCents = (int) round(max(0, (float) ($assessment->weight ?? 0)) * 100);
@@ -1034,78 +1024,151 @@ class RpsSmartDraftService
             $remainder = $assessmentCents % $linkedSubIds->count();
 
             foreach ($linkedSubIds as $index => $subId) {
-                $targetBySub[$subId] = ($targetBySub[$subId] ?? 0)
+                $mappedTargetBySub[$subId] = ($mappedTargetBySub[$subId] ?? 0)
                     + $base
                     + ($index < $remainder ? 1 : 0);
             }
         }
 
-        foreach ($subIds as $subId) {
-            if (($targetBySub[$subId] ?? 0) <= 0) {
-                return 'Bobot pekan belum dibagi: setiap Sub-CPMK yang digunakan pada pekan pembelajaran harus memiliki alokasi bobot dari asesmen non-UTS/UAS.';
+        if (
+            array_sum($mappedTargetBySub) !== $budgetCents
+            || collect($subIds)->contains(fn ($subId) => ($mappedTargetBySub[$subId] ?? 0) <= 0)
+        ) {
+            $mappingComplete = false;
+        }
+
+        if ($mappingComplete) {
+            $targetBySub = $mappedTargetBySub;
+            $distributionMode = 'pemetaan asesmen → Sub-CPMK';
+        } else {
+            $targetBySub = [];
+            $subCount = max(1, $subIds->count());
+            $base = intdiv($budgetCents, $subCount);
+            $remainder = $budgetCents % $subCount;
+
+            foreach ($subIds as $index => $subId) {
+                $targetBySub[$subId] = $base + ($index < $remainder ? 1 : 0);
             }
+
+            $distributionMode = 'fallback rata per Sub-CPMK karena rekap/pemetaan asesmen belum lengkap';
         }
 
-        if (array_sum($targetBySub) !== $budgetCents) {
-            return 'Bobot pekan belum dibagi karena pemetaan asesmen ke Sub-CPMK belum merepresentasikan seluruh anggaran asesmen non-UTS/UAS.';
-        }
+        $manualBySub = array_fill_keys($subIds->all(), 0);
+        $autoIdsBySub = array_fill_keys($subIds->all(), []);
+        $manualTotal = 0;
 
-        $allocations = [];
-
-        // Validasi seluruh kelompok lebih dulu agar proses bersifat atomik secara
-        // logis: bila satu Sub-CPMK sudah melebihi target akibat bobot manual,
-        // jangan mengisi kelompok lain lalu meninggalkan distribusi setengah jadi.
-        foreach ($subIds as $subId) {
-            $group = $groups->get($subId);
-            $target = (int) ($targetBySub[$subId] ?? 0);
-            $existing = 0;
-            $emptyIds = [];
-
+        foreach ($groups as $subId => $group) {
             foreach ($group as $week) {
-                $id = (string) $week->id;
-                $weightCents = (int) round(max(0, (float) ($week->assessment_weight ?? 0)) * 100);
-                if ($weightCents > 0) {
-                    $existing += $weightCents;
+                $source = $hasWeightSource
+                    ? strtolower(trim((string) ($week->assessment_weight_source ?? '')))
+                    : '';
+                $cents = (int) round(max(0, (float) ($week->assessment_weight ?? 0)) * 100);
+
+                if ($source === 'manual') {
+                    $manualBySub[$subId] += $cents;
+                    $manualTotal += $cents;
                 } else {
-                    $emptyIds[] = $id;
+                    // Data lama tanpa provenance dianggap distribusi otomatis/legacy
+                    // sehingga dapat dibangun ulang. Ini membersihkan kasus satu pekan
+                    // berisi bobot lama sementara 13 pekan lain tetap 0.
+                    $autoIdsBySub[$subId][] = (string) $week->id;
                 }
             }
+        }
 
-            if ($existing > $target) {
-                return 'Bobot pekan belum dibagi karena bobot manual pada salah satu Sub-CPMK sudah melebihi anggaran asesmen agregatnya. Turunkan bobot pekan terkait terlebih dahulu.';
-            }
+        if ($manualTotal > $budgetCents) {
+            return 'Bobot manual pekan sudah melebihi anggaran asesmen non-UTS/UAS. Turunkan bobot manual atau sesuaikan rekap asesmen terlebih dahulu.';
+        }
 
-            $needed = $target - $existing;
+        $allAutoIds = collect($autoIdsBySub)->flatten()->values()->all();
+        if ($allAutoIds === []) {
+            return 'Seluruh bobot pekan sudah ditetapkan manual; Isi Bagian Kosong tidak mengubahnya.';
+        }
 
-            if ($emptyIds === []) {
-                if ($needed !== 0) {
-                    return 'Distribusi bobot salah satu Sub-CPMK belum sama dengan anggaran asesmen agregatnya. Sesuaikan bobot pekan terkait terlebih dahulu.';
-                }
+        $remainingBudget = $budgetCents - $manualTotal;
+        if ($remainingBudget < count($allAutoIds)) {
+            return 'Anggaran bobot yang tersisa terlalu kecil untuk memberi bobot positif pada setiap pekan yang belum ditetapkan manual.';
+        }
+
+        // Minimum 0,01% untuk setiap pekan otomatis, lalu sisa anggaran dibagi
+        // menurut target Sub-CPMK. Dengan pemetaan lengkap, contoh target 10%
+        // pada Sub-CPMK yang muncul 2 pekan menghasilkan 5% + 5%.
+        $allocations = array_fill_keys($allAutoIds, 1);
+        $remaining = $remainingBudget - count($allAutoIds);
+        $desiredBySub = [];
+
+        foreach ($subIds as $subId) {
+            $autoIds = $autoIdsBySub[$subId] ?? [];
+            if ($autoIds === []) {
                 continue;
             }
 
-            if ($needed < count($emptyIds)) {
-                return 'Sisa anggaran salah satu Sub-CPMK terlalu kecil untuk memberi bobot positif pada setiap pekannya. Sesuaikan bobot manual terlebih dahulu.';
+            $target = (int) ($targetBySub[$subId] ?? 0);
+            $manual = (int) ($manualBySub[$subId] ?? 0);
+            $desiredAuto = max(0, $target - $manual);
+            $desiredBySub[$subId] = max(0, $desiredAuto - count($autoIds));
+        }
+
+        $totalDesired = array_sum($desiredBySub);
+        $groupPool = min($remaining, $totalDesired);
+        $assignedGroup = 0;
+        $entries = array_keys($desiredBySub);
+
+        foreach ($entries as $entryIndex => $subId) {
+            $desired = $desiredBySub[$subId];
+            $ids = $autoIdsBySub[$subId] ?? [];
+            if ($desired <= 0 || $ids === [] || $groupPool <= 0) {
+                continue;
             }
 
-            $base = intdiv($needed, count($emptyIds));
-            $remainder = $needed % count($emptyIds);
+            $isLast = $entryIndex === count($entries) - 1;
+            $groupAllocation = $totalDesired > 0
+                ? ($isLast
+                    ? $groupPool - $assignedGroup
+                    : (int) floor($groupPool * ($desired / $totalDesired)))
+                : 0;
+            $groupAllocation = max(0, min($groupAllocation, $remaining - $assignedGroup));
 
-            foreach ($emptyIds as $index => $id) {
-                $allocations[$id] = $base + ($index < $remainder ? 1 : 0);
+            $base = intdiv($groupAllocation, count($ids));
+            $remainder = $groupAllocation % count($ids);
+            foreach ($ids as $index => $id) {
+                $allocations[$id] += $base + ($index < $remainder ? 1 : 0);
+            }
+            $assignedGroup += $groupAllocation;
+        }
+
+        $remaining -= $assignedGroup;
+
+        // Bila bobot manual membuat target satu Sub-CPMK terlampaui, sisa anggaran
+        // tetap harus terdistribusi agar total pekan = anggaran non-UTS/UAS.
+        if ($remaining > 0) {
+            $base = intdiv($remaining, count($allAutoIds));
+            $remainder = $remaining % count($allAutoIds);
+            foreach ($allAutoIds as $index => $id) {
+                $allocations[$id] += $base + ($index < $remainder ? 1 : 0);
             }
         }
 
         foreach ($allocations as $id => $cents) {
+            $updates = [
+                'assessment_weight' => round($cents / 100, 2),
+                'updated_at' => now(),
+            ];
+            if ($hasWeightSource) {
+                $updates['assessment_weight_source'] = 'auto';
+            }
+
             DB::table('rps_weekly_plans')
                 ->where('id', $id)
-                ->update([
-                    'assessment_weight' => round($cents / 100, 2),
-                    'updated_at' => now(),
-                ]);
+                ->update($updates);
         }
 
-        return 'Bobot pekan kosong dibagi dari pemetaan asesmen non-UTS/UAS ke Sub-CPMK, lalu dibagi sesuai jumlah pertemuan masing-masing Sub-CPMK.';
+        $message = "Bobot 14 pekan didistribusikan dari anggaran non-UTS/UAS {$teachingBudget}% menggunakan {$distributionMode}.";
+        if (abs($assessmentTotal - 100.0) >= 0.01) {
+            $message .= " Total asesmen agregat saat ini {$assessmentTotal}%; Validator OBE tetap menandainya sampai tepat 100%.";
+        }
+
+        return $message;
     }
 
     private function ensureExamAssessments(string $versionId, int $userId): void

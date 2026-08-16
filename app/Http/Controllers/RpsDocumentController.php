@@ -7,6 +7,7 @@ use App\Services\Rps\RpsAiContextService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -228,12 +229,17 @@ class RpsDocumentController extends Controller
             ]);
         }
 
+        $updates = [
+            'assessment_weight' => $newWeight,
+            'updated_at' => now(),
+        ];
+        if (Schema::hasColumn('rps_weekly_plans', 'assessment_weight_source')) {
+            $updates['assessment_weight_source'] = 'manual';
+        }
+
         DB::table('rps_weekly_plans')
             ->where('id', $row->id)
-            ->update([
-                'assessment_weight' => $newWeight,
-                'updated_at' => now(),
-            ]);
+            ->update($updates);
 
         return back()->with(
             'success',

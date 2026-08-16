@@ -2030,6 +2030,13 @@ PROMPT;
         }
 
         foreach (array_unique($affectedWeeks) as $affectedWeek) {
+            // Asesmen non-UTS/UAS adalah rekap/agregat. Jangan pernah menulis
+            // langsung ke satu pekan karena bobotnya harus didistribusikan
+            // melalui Sub-CPMK oleh Isi Bagian Kosong.
+            if (! in_array((int) $affectedWeek, [8, 16], true)) {
+                continue;
+            }
+
             $weekWeight = round(
                 (float) DB::table('assessments')
                     ->where('rps_version_id', $version->id)
