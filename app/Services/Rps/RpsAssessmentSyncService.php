@@ -110,6 +110,61 @@ class RpsAssessmentSyncService
             }
         }
 
+        // Distribusi manual dosen disimpan sebagai override per pekan pada
+        // metadata versi RPS. Anggaran tetap berasal dari asesmen agregat.
+        // Override hanya mengatur pembagian di dalam Sub-CPMK yang sama.
+        $weightOverrides = $this->weightOverrides($versionId);
+        $invalidWeightOverrideSubIds = [];
+
+        foreach ($weeksBySub as $subId => $targetWeeks) {
+            $targetCents = (int) ($aggregateSubCents[(string) $subId] ?? 0);
+            $orderedWeeks = collect($targetWeeks)
+                ->sortBy('week_number')
+                ->values();
+
+            $manual = $orderedWeeks
+                ->filter(fn ($week) => array_key_exists((int) $week->week_number, $weightOverrides))
+                ->mapWithKeys(fn ($week) => [
+                    (int) $week->week_number => (int) round(
+                        (float) $weightOverrides[(int) $week->week_number] * 100
+                    ),
+                ]);
+
+            if ($manual->isEmpty()) {
+                continue;
+            }
+
+            $autoWeeks = $orderedWeeks
+                ->reject(fn ($week) => $manual->has((int) $week->week_number))
+                ->values();
+            $manualTotal = (int) $manual->sum();
+            $remaining = $targetCents - $manualTotal;
+
+            $valid = $targetCents > 0
+                && $manual->every(fn ($cents) => (int) $cents >= 1)
+                && $remaining >= $autoWeeks->count()
+                && ($autoWeeks->isNotEmpty() || $remaining === 0);
+
+            if (! $valid) {
+                $invalidWeightOverrideSubIds[] = (string) $subId;
+                continue;
+            }
+
+            foreach ($manual as $weekNumber => $cents) {
+                $expectedCents[(int) $weekNumber] = (int) $cents;
+            }
+
+            if ($autoWeeks->isNotEmpty()) {
+                $base = intdiv($remaining, $autoWeeks->count());
+                $remainder = $remaining % $autoWeeks->count();
+
+                foreach ($autoWeeks as $index => $week) {
+                    $expectedCents[(int) $week->week_number] = $base
+                        + ($index < $remainder ? 1 : 0);
+                }
+            }
+        }
+
         // Simulasi menampilkan bukti/penugasan yang benar-benar jatuh
         // pada pekan tersebut. Asesmen agregat tetap menjadi sumber anggaran
         // bobot pada matriks, sedangkan judul RTM menjadi nama bukti per pekan.
@@ -158,6 +213,8 @@ class RpsAssessmentSyncService
             'actual_sub_budgets' => $actualSubBudgets,
             'unmapped_assessments' => $unmappedAssessments,
             'orphan_sub_links' => $orphanSubLinks,
+            'weight_overrides' => $weightOverrides,
+            'invalid_weight_override_sub_ids' => array_values(array_unique($invalidWeightOverrideSubIds)),
             'aggregate_total' => round((float) $assessments->sum(
                 fn ($assessment) => (float) ($assessment->weight ?? 0)
             ), 2),
@@ -167,8 +224,24 @@ class RpsAssessmentSyncService
     public function syncVersion(string $versionId): array
     {
         $indicatorFixes = $this->syncWeeklyIndicators($versionId);
+
+        // Petakan RTM lama terlebih dahulu agar asesmen yang sebenarnya sudah
+        // mempunyai bukti tidak dibuatkan RTM duplikat.
+        $this->syncTaskMappings($versionId);
+        $createdTasks = $this->ensureRequiredTasks($versionId);
         $linkedTasks = $this->syncTaskMappings($versionId);
+
         $snapshot = $this->snapshot($versionId);
+
+        // Bila anggaran asesmen berubah sehingga override manual lama tidak
+        // lagi mungkin dipenuhi, hanya override pada Sub-CPMK tersebut yang
+        // dilepas. Ini menjaga total 100% tetap konsisten dan tidak membiarkan
+        // distribusi invalid tersembunyi.
+        $invalidSubIds = $snapshot['invalid_weight_override_sub_ids'] ?? [];
+        if ($invalidSubIds !== []) {
+            $this->dropWeightOverridesForSubCpmks($versionId, $invalidSubIds);
+            $snapshot = $this->snapshot($versionId);
+        }
 
         DB::transaction(function () use ($versionId, $snapshot): void {
             foreach ($snapshot['expected_weekly_weights'] as $week => $weight) {
@@ -189,11 +262,170 @@ class RpsAssessmentSyncService
                 && (float) $weight > 0
             )
             ->count();
+        $manualWeightCount = count($refreshed['weight_overrides'] ?? []);
 
         return [
             ...$refreshed,
-            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot berdasarkan tag Sub-CPMK asesmen; {$linkedTasks} RTM terhubung ke asesmen; {$indicatorFixes} indikator pekan yang salah Sub-CPMK diperbaiki.",
+            'created_required_tasks' => $createdTasks,
+            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot; {$manualWeightCount} pembagian bobot pekan ditetapkan manual; {$linkedTasks} RTM terhubung ke asesmen; {$createdTasks} RTM wajib dibuat otomatis dari Detail Asesmen; {$indicatorFixes} indikator pekan yang salah Sub-CPMK diperbaiki.",
         ];
+    }
+
+    /**
+     * Membuat RTM minimum untuk asesmen tugas/proyek/praktikum/presentasi
+     * berbobot yang belum memiliki RTM. Isi berasal dari data asesmen yang
+     * sudah diputuskan dosen; tidak membuat bobot atau tag Sub-CPMK baru.
+     */
+    public function ensureRequiredTasks(string $versionId): int
+    {
+        $required = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('type', ['assignment', 'project', 'practicum', 'presentation'])
+            ->whereRaw('COALESCE(weight, 0) > 0')
+            ->orderByRaw('COALESCE(week_number, 99)')
+            ->orderBy('code')
+            ->get(['id', 'name', 'type', 'week_number', 'description']);
+
+        if ($required->isEmpty()) {
+            return 0;
+        }
+
+        $coveredIds = DB::table('rps_tasks')
+            ->where('rps_version_id', $versionId)
+            ->whereNotNull('assessment_id')
+            ->pluck('assessment_id')
+            ->map('strval')
+            ->unique();
+
+        $missing = $required
+            ->reject(fn ($assessment) => $coveredIds->contains((string) $assessment->id))
+            ->values();
+
+        if ($missing->isEmpty()) {
+            return 0;
+        }
+
+        $assessmentLinks = DB::table('assessment_subcpmks')
+            ->whereIn('assessment_id', $missing->pluck('id')->all())
+            ->get(['assessment_id', 'rps_sub_cpmk_id'])
+            ->groupBy('assessment_id');
+
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->get(['week_number', 'rps_sub_cpmk_id']);
+
+        $usedWeeks = DB::table('rps_tasks')
+            ->where('rps_version_id', $versionId)
+            ->whereNotNull('due_week')
+            ->pluck('due_week')
+            ->map(fn ($week) => (int) $week)
+            ->all();
+
+        $existingCodes = DB::table('rps_tasks')
+            ->where('rps_version_id', $versionId)
+            ->pluck('code')
+            ->map(fn ($code) => strtoupper((string) $code))
+            ->all();
+        $next = 1;
+        while (in_array('RTM-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT), $existingCodes, true)) {
+            $next++;
+        }
+
+        $created = 0;
+
+        DB::transaction(function () use (
+            $missing,
+            $assessmentLinks,
+            $weeks,
+            &$usedWeeks,
+            &$existingCodes,
+            &$next,
+            &$created,
+            $versionId
+        ): void {
+            foreach ($missing as $assessment) {
+                $subIds = collect($assessmentLinks->get($assessment->id, []))
+                    ->pluck('rps_sub_cpmk_id')
+                    ->map('strval')
+                    ->unique()
+                    ->values();
+
+                if ($subIds->isEmpty()) {
+                    continue;
+                }
+
+                $preferred = (int) ($assessment->week_number ?? 0);
+                $candidates = $weeks
+                    ->filter(fn ($week) => $subIds->contains((string) $week->rps_sub_cpmk_id))
+                    ->sort(function ($a, $b) use ($preferred, $usedWeeks): int {
+                        $aWeek = (int) $a->week_number;
+                        $bWeek = (int) $b->week_number;
+                        $aDistance = $preferred > 0 ? abs($aWeek - $preferred) : $aWeek;
+                        $bDistance = $preferred > 0 ? abs($bWeek - $preferred) : $bWeek;
+
+                        if ($aDistance !== $bDistance) return $aDistance <=> $bDistance;
+
+                        $aUsed = in_array($aWeek, $usedWeeks, true) ? 1 : 0;
+                        $bUsed = in_array($bWeek, $usedWeeks, true) ? 1 : 0;
+                        if ($aUsed !== $bUsed) return $aUsed <=> $bUsed;
+
+                        return $aWeek <=> $bWeek;
+                    })
+                    ->values();
+
+                $dueWeek = $candidates->isNotEmpty()
+                    ? (int) $candidates->first()->week_number
+                    : ($preferred > 0 ? $preferred : null);
+
+                while (in_array('RTM-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT), $existingCodes, true)) {
+                    $next++;
+                }
+
+                $code = 'RTM-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT);
+                $next++;
+                $existingCodes[] = $code;
+                if ($dueWeek) $usedWeeks[] = $dueWeek;
+
+                $taskId = (string) Str::uuid();
+                $name = trim((string) $assessment->name);
+                $criteria = trim((string) ($assessment->description ?? ''));
+
+                DB::table('rps_tasks')->insert([
+                    'id' => $taskId,
+                    'rps_version_id' => $versionId,
+                    'assessment_id' => $assessment->id,
+                    'code' => $code,
+                    'title' => $name,
+                    'type' => $assessment->type,
+                    'purpose' => 'Mengukur ketercapaian Sub-CPMK melalui '.$name.'.',
+                    'instructions' => $criteria !== ''
+                        ? 'Kerjakan '.$name.' sesuai arahan dosen dengan memperhatikan kriteria penilaian: '.$criteria
+                        : 'Kerjakan '.$name.' sesuai arahan dosen dan kriteria penilaian yang ditetapkan.',
+                    'expected_output' => 'Luaran '.$name.' sesuai ketentuan asesmen.',
+                    'due_week' => $dueWeek,
+                    'source_type' => 'assessment_sync',
+                    'created_by' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($subIds as $subId) {
+                    DB::table('rps_task_subcpmks')->insert([
+                        'id' => (string) Str::uuid(),
+                        'rps_task_id' => $taskId,
+                        'rps_sub_cpmk_id' => $subId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                $created++;
+            }
+        });
+
+        return $created;
     }
 
     public function syncTaskMappings(string $versionId): int
@@ -499,7 +731,7 @@ class RpsAssessmentSyncService
     {
         if (! in_array($weekNumber, self::TEACHING_WEEKS, true)) {
             throw ValidationException::withMessages([
-                'weight' => 'Bobot UTS/UAS mengikuti asesmen sistem dan tidak diatur dari bobot pekan.',
+                'weight' => 'Bobot UTS/UAS mengikuti asesmen sistem dan tidak diatur dari tabel RPS.',
             ]);
         }
 
@@ -522,16 +754,9 @@ class RpsAssessmentSyncService
 
         if ($targetCents <= 0) {
             throw ValidationException::withMessages([
-                'weight' => 'Sub-CPMK pekan ini belum memiliki anggaran dari asesmen. Tag Sub-CPMK pada Detail Asesmen terlebih dahulu.',
+                'weight' => 'Sub-CPMK pekan ini belum memiliki anggaran dari Asesmen Detail & RTM. Tag Sub-CPMK pada asesmen terlebih dahulu.',
             ]);
         }
-
-        $group = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $versionId)
-            ->where('rps_sub_cpmk_id', $subId)
-            ->whereIn('week_number', self::TEACHING_WEEKS)
-            ->orderBy('week_number')
-            ->get(['id', 'week_number']);
 
         if ($newCents < 1) {
             throw ValidationException::withMessages([
@@ -545,45 +770,179 @@ class RpsAssessmentSyncService
             ]);
         }
 
-        $siblings = $group->reject(fn ($item) => (int) $item->week_number === $weekNumber)->values();
-        $remaining = $targetCents - $newCents;
+        $group = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->where('rps_sub_cpmk_id', $subId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->orderBy('week_number')
+            ->get(['id', 'week_number']);
 
-        if ($siblings->isEmpty() && $remaining !== 0) {
+        $overrides = $this->weightOverrides($versionId);
+        $overrides[$weekNumber] = round($newCents / 100, 2);
+
+        $groupWeekNumbers = $group->pluck('week_number')->map(fn ($value) => (int) $value);
+        $manual = collect($overrides)
+            ->filter(fn ($value, $key) => $groupWeekNumbers->contains((int) $key))
+            ->mapWithKeys(fn ($value, $key) => [(int) $key => (int) round((float) $value * 100)]);
+
+        $manualTotal = (int) $manual->sum();
+        $autoWeeks = $group
+            ->reject(fn ($item) => $manual->has((int) $item->week_number))
+            ->values();
+        $remaining = $targetCents - $manualTotal;
+
+        if ($manualTotal > $targetCents) {
             throw ValidationException::withMessages([
-                'weight' => "Sub-CPMK ini hanya digunakan satu pekan sehingga bobotnya harus tepat {$target}%.",
+                'weight' => "Jumlah pembagian manual pada {$this->subCpmkCode($subId)} melebihi anggaran {$target}%. Kurangi salah satu bobot pekan.",
             ]);
         }
 
-        if ($siblings->isNotEmpty() && $remaining < $siblings->count()) {
+        if ($autoWeeks->isEmpty() && $remaining !== 0) {
             throw ValidationException::withMessages([
-                'weight' => 'Bobot yang dipilih menyisakan kurang dari 0,01% untuk salah satu pekan Sub-CPMK yang sama.',
+                'weight' => "Seluruh pekan {$this->subCpmkCode($subId)} sudah diatur manual. Totalnya harus tepat {$target}%.",
             ]);
         }
 
-        DB::transaction(function () use ($week, $newCents, $siblings, $remaining): void {
-            DB::table('rps_weekly_plans')->where('id', $week->id)->update([
-                'assessment_weight' => round($newCents / 100, 2),
-                'updated_at' => now(),
+        if ($autoWeeks->isNotEmpty() && $remaining < $autoWeeks->count()) {
+            throw ValidationException::withMessages([
+                'weight' => 'Perubahan ini menyisakan kurang dari 0,01% untuk salah satu pekan lain pada Sub-CPMK yang sama.',
             ]);
+        }
 
-            if ($siblings->isEmpty()) {
-                return;
+        $distribution = [];
+        foreach ($manual as $number => $cents) {
+            $distribution[(int) $number] = round($cents / 100, 2);
+        }
+
+        if ($autoWeeks->isNotEmpty()) {
+            $base = intdiv($remaining, $autoWeeks->count());
+            $remainder = $remaining % $autoWeeks->count();
+            foreach ($autoWeeks as $index => $autoWeek) {
+                $distribution[(int) $autoWeek->week_number] = round(
+                    ($base + ($index < $remainder ? 1 : 0)) / 100,
+                    2
+                );
+            }
+        }
+
+        ksort($distribution);
+
+        DB::transaction(function () use ($group, $distribution, $versionId, $overrides): void {
+            foreach ($group as $item) {
+                $number = (int) $item->week_number;
+                DB::table('rps_weekly_plans')
+                    ->where('id', $item->id)
+                    ->update([
+                        'assessment_weight' => (float) ($distribution[$number] ?? 0),
+                        'updated_at' => now(),
+                    ]);
             }
 
-            $base = intdiv($remaining, $siblings->count());
-            $remainder = $remaining % $siblings->count();
-
-            foreach ($siblings as $index => $sibling) {
-                DB::table('rps_weekly_plans')->where('id', $sibling->id)->update([
-                    'assessment_weight' => round(($base + ($index < $remainder ? 1 : 0)) / 100, 2),
-                    'updated_at' => now(),
-                ]);
-            }
+            $this->saveWeightOverrides($versionId, $overrides);
         });
 
         return [
             'sub_budget' => $target,
+            'sub_code' => $this->subCpmkCode($subId),
             'week_count' => $group->count(),
+            'manual_week_count' => $manual->count(),
+            'distribution' => $distribution,
         ];
     }
+
+    private function weightOverrides(string $versionId): array
+    {
+        $raw = DB::table('rps_versions')
+            ->where('id', $versionId)
+            ->value('ai_generation_meta');
+
+        if (is_string($raw)) {
+            $meta = json_decode($raw, true);
+        } elseif (is_object($raw)) {
+            $meta = (array) $raw;
+        } elseif (is_array($raw)) {
+            $meta = $raw;
+        } else {
+            $meta = [];
+        }
+
+        $overrides = is_array($meta['weekly_weight_overrides'] ?? null)
+            ? $meta['weekly_weight_overrides']
+            : [];
+
+        $clean = [];
+        foreach ($overrides as $week => $weight) {
+            $number = (int) $week;
+            $value = round((float) $weight, 2);
+            if (in_array($number, self::TEACHING_WEEKS, true) && $value > 0) {
+                $clean[$number] = $value;
+            }
+        }
+
+        ksort($clean);
+        return $clean;
+    }
+
+    private function saveWeightOverrides(string $versionId, array $overrides): void
+    {
+        $raw = DB::table('rps_versions')
+            ->where('id', $versionId)
+            ->value('ai_generation_meta');
+
+        if (is_string($raw)) {
+            $meta = json_decode($raw, true);
+        } elseif (is_object($raw)) {
+            $meta = (array) $raw;
+        } elseif (is_array($raw)) {
+            $meta = $raw;
+        } else {
+            $meta = [];
+        }
+
+        if (! is_array($meta)) $meta = [];
+
+        $clean = [];
+        foreach ($overrides as $week => $weight) {
+            $number = (int) $week;
+            $value = round((float) $weight, 2);
+            if (in_array($number, self::TEACHING_WEEKS, true) && $value > 0) {
+                $clean[(string) $number] = $value;
+            }
+        }
+
+        $meta['weekly_weight_overrides'] = $clean;
+
+        DB::table('rps_versions')
+            ->where('id', $versionId)
+            ->update([
+                'ai_generation_meta' => json_encode($meta, JSON_UNESCAPED_UNICODE),
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function dropWeightOverridesForSubCpmks(string $versionId, array $subIds): void
+    {
+        $weekNumbers = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('rps_sub_cpmk_id', $subIds)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->pluck('week_number')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        $overrides = $this->weightOverrides($versionId);
+        foreach ($weekNumbers as $weekNumber) {
+            unset($overrides[$weekNumber]);
+        }
+        $this->saveWeightOverrides($versionId, $overrides);
+    }
+
+    private function subCpmkCode(string $subId): string
+    {
+        return (string) (
+            DB::table('rps_sub_cpmks')->where('id', $subId)->value('code')
+            ?? 'Sub-CPMK'
+        );
+    }
 }
+

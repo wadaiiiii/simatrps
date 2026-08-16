@@ -176,11 +176,13 @@ class RpsDocumentController extends Controller
             $newWeight
         );
 
+        $distribution = collect($result['distribution'] ?? [])
+            ->map(fn ($weight, $number) => 'P'.$number.'='.$weight.'%')
+            ->implode(', ');
+
         return back()->with(
             'success',
-            "Bobot pengukuran pekan {$week} disimpan {$newWeight}%. "
-                ."Pekan lain pada Sub-CPMK yang sama otomatis diseimbangkan "
-                ."agar total tetap {$result['sub_budget']}%."
+            "Bobot Pekan {$week} disimpan {$newWeight}%. Anggaran {$result['sub_code']} tetap {$result['sub_budget']}%; distribusi: {$distribution}. Bobot asesmen agregat tidak berubah dan RTM/validator mengikuti bobot pekan terbaru."
         );
     }
 

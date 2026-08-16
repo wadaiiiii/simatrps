@@ -215,6 +215,14 @@ class RpsController extends Controller
             ->orderBy('sequence_no')
             ->get();
 
+        // RPS lama dapat memiliki asesmen wajib yang belum mempunyai RTM.
+        // Heal hanya ketika rantainya memang belum selaras; RPS yang sudah
+        // valid tidak melakukan write pada setiap GET.
+        $initialTaskAlignment = $assessmentSync->taskAlignment($version->id);
+        if (! (bool) ($initialTaskAlignment['is_aligned'] ?? false)) {
+            $assessmentSync->syncVersion($version->id);
+        }
+
         $weeks = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $version->id)
             ->orderBy('week_number')
@@ -253,11 +261,27 @@ class RpsController extends Controller
         $assessmentNamesByWeek = collect(
             $assessmentSyncSnapshot['assessment_names_by_week'] ?? []
         );
+        $assessmentSubBudgets = collect(
+            $assessmentSyncSnapshot['aggregate_sub_budgets'] ?? []
+        );
+        $weightOverrides = collect(
+            $assessmentSyncSnapshot['weight_overrides'] ?? []
+        );
+        $teachingWeekCountsBySub = $weeks
+            ->filter(fn ($item) =>
+                in_array((int) $item->week_number, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true)
+                && filled($item->rps_sub_cpmk_id ?? null)
+            )
+            ->groupBy(fn ($item) => (string) $item->rps_sub_cpmk_id)
+            ->map(fn ($items) => $items->count());
 
         $weeks = $weeks->map(function ($week) use (
             $subById,
             $assessmentWeightsByWeek,
-            $assessmentNamesByWeek
+            $assessmentNamesByWeek,
+            $assessmentSubBudgets,
+            $weightOverrides,
+            $teachingWeekCountsBySub
         ): object {
             $sub = $week->rps_sub_cpmk_id
                 ? $subById->get($week->rps_sub_cpmk_id)
@@ -278,6 +302,23 @@ class RpsController extends Controller
                     : (float) ($storedWeight ?? 0);
 
             $week->assessment_names = $assessmentNamesByWeek->get($weekNumber, '');
+            $subId = filled($week->rps_sub_cpmk_id ?? null)
+                ? (string) $week->rps_sub_cpmk_id
+                : null;
+            $subBudget = $subId
+                ? (float) $assessmentSubBudgets->get($subId, 0)
+                : 0.0;
+            $isTeachingWeek = ! in_array($weekNumber, [8, 16], true);
+
+            $week->assessment_sub_budget = $subBudget;
+            $week->assessment_sub_week_count = $subId
+                ? (int) $teachingWeekCountsBySub->get($subId, 0)
+                : 0;
+            $week->assessment_weight_editable = $isTeachingWeek
+                && $subId !== null
+                && $subBudget > 0;
+            $week->assessment_weight_manual = $isTeachingWeek
+                && $weightOverrides->has($weekNumber);
 
             return $week;
         });

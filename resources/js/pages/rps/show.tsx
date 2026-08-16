@@ -844,7 +844,7 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
-                                title="Mengisi bagian RPS yang masih kosong. Jika total asesmen agregat sudah 100%, bobot non-UTS/UAS juga dibagi ke pekan kosong berdasarkan Sub-CPMK dan jumlah pertemuannya, tanpa menimpa bobot yang sudah diisi dosen."
+                                title="Mengisi bagian RPS yang masih kosong dan menyinkronkan distribusi bobot dari Asesmen Detail. Pembagian bobot pekan yang sudah ditetapkan manual oleh dosen dipertahankan selama tetap sesuai anggaran Sub-CPMK."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
                                     { mode: 'fill_empty' },
@@ -924,7 +924,7 @@ export default function RpsShow(props: any) {
                             <div>
                                 <div className="font-bold text-slate-900">Asesmen Detail & RTM</div>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Asesmen menyimpan bobot agregat/anggaran penilaian (total 100%). Bobot non-UTS/UAS kemudian didistribusikan ke 14 pekan pada tabel RPS; keduanya adalah dua representasi yang sama dan tidak dijumlahkan dua kali.
+                                    Asesmen menyimpan bobot agregat/anggaran penilaian (total 100%). Bobot non-UTS/UAS kemudian didistribusikan ke 14 pekan pada tabel RPS. Bobot pekan boleh dikoreksi langsung dari tabel RPS setelah asesmen/tag Sub-CPMK tersedia; perubahan hanya mengatur distribusi pekan, tidak mengubah bobot agregat, dan RTM serta Validator OBE ikut tersinkron.
                                 </p>
                             </div>
 
@@ -1804,62 +1804,14 @@ function AssessmentMatrixNameInput({ rpsId, assessment, compactLabel }: any) {
     );
 }
 
-function SimulationWeightInput({ rpsId, week, value }: any) {
-    if ([8, 16].includes(Number(week))) {
-        return <span className="font-bold text-slate-700">{Number(value || 0) || '—'}</span>;
-    }
-
-    const numericOriginal = Number(value || 0);
-    const original = numericOriginal > 0 ? String(numericOriginal) : '';
-    const [weight, setWeight] = useState(original);
-    const [busy, setBusy] = useState(false);
-
-    useEffect(() => setWeight(original), [original]);
-
-    const save = () => {
-        if (busy || weight === original) return;
-
-        const nextWeight = weight === '' ? 0 : Number(weight);
-
-        setBusy(true);
-        router.put(
-            `/rps/${rpsId}/weeks/${week}/weight`,
-            { weight: nextWeight },
-            {
-                preserveScroll: true,
-                preserveState: false,
-                onSuccess: () => notify('success', `Bobot simulasi pekan ${week} disimpan.`),
-                onError: (errors: any) => {
-                    setWeight(original);
-                    notify('error', firstError(errors));
-                },
-                onFinish: () => setBusy(false),
-            },
-        );
-    };
-
+function SimulationWeightInput({ value }: any) {
     return (
-        <>
-            <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                value={weight}
-                onChange={(event) => setWeight(event.target.value)}
-                onBlur={save}
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                        event.preventDefault();
-                        (event.currentTarget as HTMLInputElement).blur();
-                    }
-                }}
-                placeholder="—"
-                className="mx-auto w-16 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] font-bold print:hidden"
-                title="Bobot pengukuran pekan. Setiap pekan pembelajaran yang memuat Sub-CPMK sebaiknya memiliki bobot positif."
-            />
-            <span className="hidden print:inline">{Number(value || 0) > 0 ? Number(value) : ''}</span>
-        </>
+        <span
+            className="font-bold text-slate-700"
+            title="Bobot simulasi mengikuti distribusi Bobot Penilaian pada tabel RPS. Edit bobot dari tabel RPS."
+        >
+            {Number(value || 0) > 0 ? Number(value) : '—'}
+        </span>
     );
 }
 
@@ -3307,34 +3259,81 @@ function SubCpmkMatrix({ cpmks, subCpmks }: any) {
 }
 
 function InlineWeightInput({ rpsId, week }: any) {
-    const original = String(Number(week.assessment_weight || 0));
+    const numeric = Number(week.assessment_weight || 0);
+    const original = String(numeric);
+    const isExam = Boolean(week.is_exam) || [8, 16].includes(Number(week.week_number));
+    const editable = Boolean(week.assessment_weight_editable) && !isExam;
+    const budget = Number(week.assessment_sub_budget || 0);
+    const groupCount = Number(week.assessment_sub_week_count || 0);
+    const isManual = Boolean(week.assessment_weight_manual);
 
     const form = useForm({
         weight: original,
     });
 
-    // Inertia mempertahankan state komponen setelah PUT/partial reload.
-    // Tanpa sinkronisasi ini, server sudah mengirim bobot terbaru tetapi
-    // input masih menampilkan nilai lama (mis. 0).
     useEffect(() => {
         form.setData('weight', original);
         form.clearErrors();
     }, [original]);
 
+    if (isExam) {
+        return (
+            <span
+                className="font-bold text-slate-700"
+                title="Bobot UTS/UAS mengikuti Asesmen Detail & RTM."
+            >
+                {numeric || '—'}
+            </span>
+        );
+    }
+
+    if (!editable) {
+        return (
+            <span
+                className="inline-flex min-w-12 items-center justify-center rounded border border-slate-200 bg-slate-50 px-1 py-1 text-xs font-bold text-slate-400"
+                title="Belum dapat diedit. Tetapkan bobot dan tag Sub-CPMK pada Asesmen Detail & RTM terlebih dahulu."
+            >
+                {numeric > 0 ? numeric : '—'}
+            </span>
+        );
+    }
+
     const save = () => {
-        if (String(form.data.weight) === original) return;
+        if (String(form.data.weight) === original || form.processing) return;
+
+        const next = Number(form.data.weight);
+        if (!Number.isFinite(next)) {
+            form.setData('weight', original);
+            return;
+        }
+
+        const confirmed = confirm(
+            `Ubah bobot Pekan ${week.week_number} menjadi ${next}%?
+
+`
+            + `Anggaran ${week.sub_cpmk_code || 'Sub-CPMK'} tetap ${budget}% untuk ${groupCount} pekan. `
+            + 'Sistem akan menyeimbangkan sisa anggaran pada pekan lain dalam Sub-CPMK yang sama, sambil mempertahankan pembagian manual yang sudah ada. '
+            + 'Bobot asesmen agregat tidak berubah; RTM dan Validator OBE akan mengikuti distribusi terbaru.',
+        );
+
+        if (!confirmed) {
+            form.setData('weight', original);
+            return;
+        }
 
         form.put(
             `/rps/${rpsId}/weeks/${week.week_number}/weight`,
             {
                 preserveScroll: true,
-                onSuccess: () => {
-                    notify('success', `Bobot pekan ${week.week_number} disimpan dan disinkronkan.`);
-
-                    router.reload({
-                        only: ['weeks', 'assessments', 'progress', 'simulationScores'],
-                        preserveScroll: true,
-                    });
+                preserveState: false,
+                onSuccess: (page: any) => {
+                    notify(
+                        'success',
+                        safeText(
+                            page?.props?.flash?.success,
+                            `Bobot Pekan ${week.week_number} disimpan dan seluruh representasi penilaian disinkronkan.`,
+                        ),
+                    );
                 },
                 onError: (errors) => {
                     form.setData('weight', original);
@@ -3348,10 +3347,11 @@ function InlineWeightInput({ rpsId, week }: any) {
         <>
             <input
                 type="number"
-                min="0"
-                max="100"
+                min="0.01"
+                max={Math.max(0.01, budget)}
                 step="0.01"
                 value={form.data.weight}
+                disabled={form.processing}
                 onChange={(e) => form.setData('weight', e.target.value)}
                 onBlur={save}
                 onKeyDown={(e) => {
@@ -3360,11 +3360,18 @@ function InlineWeightInput({ rpsId, week }: any) {
                         (e.currentTarget as HTMLInputElement).blur();
                     }
                 }}
-                className="w-full rounded border border-sky-200 bg-sky-50/40 px-1 py-1 text-center text-xs font-bold text-sky-800 print:hidden"
-                title="Bobot pengukuran Sub-CPMK pada pekan ini"
+                className={`w-full rounded border px-1 py-1 text-center text-xs font-bold print:hidden ${
+                    isManual
+                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                        : 'border-sky-200 bg-sky-50/40 text-sky-800'
+                } disabled:opacity-50`}
+                title={`Editable karena ${week.sub_cpmk_code || 'Sub-CPMK'} memiliki anggaran asesmen ${budget}%. Perubahan hanya mengatur distribusi pekan.`}
             />
+            {isManual && (
+                <span className="mt-0.5 block text-[8px] font-bold text-amber-600 print:hidden">manual</span>
+            )}
             <span className="hidden font-bold print:inline">
-                {Number(form.data.weight || 0) || '-'}
+                {numeric || '-'}
             </span>
         </>
     );
@@ -3442,7 +3449,7 @@ function SubCpmkMeetingPlanner({ rpsId, subCpmks, weeks, onClose }: any) {
 
                 <div className="p-5">
                     <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
-                        Jumlah yang ditetapkan dosen menjadi acuan utama. <strong>Lengkapi RPS Otomatis</strong> dan <strong>Susun AI</strong> akan mengikuti alokasi ini, bukan membagi ulang Sub-CPMK.
+                        Jumlah yang ditetapkan dosen menjadi acuan utama. <strong>Isi Bagian Kosong</strong> dan <strong>Susun AI</strong> akan mengikuti alokasi ini, bukan membagi ulang Sub-CPMK.
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-slate-200">
