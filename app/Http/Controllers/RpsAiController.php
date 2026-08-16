@@ -296,6 +296,7 @@ Indikator ideal memuat 2-3 tindakan/bukti operasional, misalnya mengidentifikasi
 JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian", atau membuka kalimat dengan "Mahasiswa mampu/dapat". Mulai langsung dengan kata kerja operasional.
 Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
 Pastikan `assessment_criteria` menilai kualitas bukti tersebut dan `assessment_method` konsisten dengan asesmen yang tersedia.
+Materi minggu WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
 PROMPT;
 
         $effectiveInstruction = filled($data['instruction'] ?? null)
@@ -334,9 +335,13 @@ PROMPT;
 
         $subId = $targetSub->id;
 
+        $allowedMaterials = ! empty($context['target_materials'] ?? [])
+            ? $context['target_materials']
+            : ($context['materials'] ?? []);
+
         $resolvedMaterial = $this->resolveWeekMaterial(
             (string) ($item['material'] ?? ''),
-            $context['materials'] ?? [],
+            $allowedMaterials,
             (string) ($context['target_sub_cpmk']['description'] ?? '')
         );
 
@@ -354,14 +359,14 @@ PROMPT;
             'learning_form' => $item['learning_form'] ?? null,
             'learning_method' => $item['learning_method'] ?? null,
             'time_estimate' => $this->defaultTimeEstimate((int) ($context['course']['credits'] ?? 1)),
-            'face_to_face_sessions' => (int) ($weekly->face_to_face_sessions ?? 1),
+            'face_to_face_sessions' => max(1, (int) ($weekly->face_to_face_sessions ?? 1)),
             'student_assignment' => $item['student_assignment'] ?? null,
-            'structured_task_sessions' => (int) ($weekly->structured_task_sessions ?? 1),
+            'structured_task_sessions' => max(1, (int) ($weekly->structured_task_sessions ?? 1)),
             'online_activity' => $item['online_activity'] ?? null,
             // learning_activity adalah rincian aktivitas dalam Metode Pembelajaran.
             // Belajar Mandiri hanya disimpan sebagai frekuensi/waktu.
             'learning_activity' => $item['learning_activity'] ?? null,
-            'independent_study_sessions' => (int) ($weekly->independent_study_sessions ?? 1),
+            'independent_study_sessions' => max(1, (int) ($weekly->independent_study_sessions ?? 1)),
             'assessment_indicator' => $item['assessment_indicator'] ?? null,
             'assessment_criteria' => $item['assessment_criteria'] ?? null,
             'assessment_method' => $item['assessment_method'] ?? null,
@@ -376,7 +381,17 @@ PROMPT;
                 continue;
             }
 
-            if ($overwrite || ! filled($weekly->{$key} ?? null)) {
+            $sessionField = in_array($key, [
+                'face_to_face_sessions',
+                'structured_task_sessions',
+                'independent_study_sessions',
+            ], true);
+
+            if (
+                $overwrite
+                || ! filled($weekly->{$key} ?? null)
+                || ($sessionField && (int) ($weekly->{$key} ?? 0) < 1)
+            ) {
                 $updates[$key] = $value;
             }
         }

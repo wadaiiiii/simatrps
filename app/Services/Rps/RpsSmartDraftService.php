@@ -81,10 +81,15 @@ class RpsSmartDraftService
             ->keyBy('week_number');
 
         $updated = 0;
-        $subCount = $subCpmks->count();
-        $weekCount = count(self::TEACHING_WEEKS);
         $rows = [];
         $updateColumns = [];
+
+        // Susun 14 minggu sebagai blok Sub-CPMK yang berurutan. Materi tidak
+        // lagi diputar secara global; setiap materi harus relevan dengan
+        // Sub-CPMK pada minggu tersebut. Jika satu Sub-CPMK memerlukan minggu
+        // tambahan setelah seluruh materinya terpakai, label Pendalaman dibuat
+        // eksplisit agar tidak terlihat sebagai pengulangan tanpa alasan.
+        $teachingSequence = $this->buildTeachingSequence($subCpmks, $materials);
 
         foreach (self::TEACHING_WEEKS as $position => $weekNumber) {
             $current = $currentWeeks->get($weekNumber);
@@ -93,33 +98,13 @@ class RpsSmartDraftService
                 continue;
             }
 
-            $subIndex = min(
-                $subCount - 1,
-                (int) floor(($position * $subCount) / $weekCount)
-            );
-
-            $sub = $subCpmks[$subIndex];
-
-            $linkedMaterials = $materials
-                ->where('rps_sub_cpmk_id', $sub->id)
-                ->values();
-
-            if ($linkedMaterials->isEmpty()) {
-                $globalMaterials = $materials
-                    ->whereNull('rps_sub_cpmk_id')
-                    ->values();
-
-                $material = $globalMaterials->isNotEmpty()
-                    ? $globalMaterials[$position % $globalMaterials->count()]
-                    : null;
-
-                $materialText = $material?->title;
-            } else {
-                $materialText = $linkedMaterials
-                    ->take(3)
-                    ->pluck('title')
-                    ->implode('; ');
+            $slot = $teachingSequence[$position] ?? null;
+            if (! $slot) {
+                continue;
             }
+
+            $sub = $slot['sub'];
+            $materialText = $slot['material'];
 
             $method = $hasPracticum
                 ? 'Ceramah interaktif, demonstrasi, latihan terbimbing, diskusi, dan praktikum.'
@@ -185,6 +170,21 @@ class RpsSmartDraftService
                     if ($existing !== $value) {
                         $changed = true;
                     }
+                    continue;
+                }
+
+                // Nilai 0 pada frekuensi hasil generator lama bukan estimasi
+                // pembelajaran yang valid. Lengkapi RPS Otomatis boleh
+                // memperbaikinya menjadi minimal 1 tanpa menyentuh angka
+                // manual lain yang sudah positif.
+                $sessionField = in_array($key, [
+                    'face_to_face_sessions',
+                    'structured_task_sessions',
+                    'independent_study_sessions',
+                ], true);
+                if ($sessionField && (int) $existing < 1 && (int) $value >= 1) {
+                    $merged[$key] = $value;
+                    $changed = true;
                     continue;
                 }
 
@@ -384,6 +384,124 @@ class RpsSmartDraftService
             ->unique()
             ->map(fn ($index) => $codes[$index])
             ->implode(', ');
+    }
+
+    private function buildTeachingSequence($subCpmks, $materials): array
+    {
+        $subs = $subCpmks->values()->take(count(self::TEACHING_WEEKS));
+        if ($subs->isEmpty()) {
+            return [];
+        }
+
+        $materialRows = $materials->values();
+        $relevant = [];
+
+        foreach ($subs as $subIndex => $sub) {
+            $ranked = $materialRows
+                ->map(function ($material, $materialIndex) use ($sub): array {
+                    return [
+                        'title' => trim((string) ($material->title ?? '')),
+                        'index' => (int) $materialIndex,
+                        'score' => $this->materialRelevanceScore(
+                            (string) ($sub->description ?? ''),
+                            (string) ($material->title ?? '')
+                        ),
+                        'linked' => filled($material->rps_sub_cpmk_id ?? null)
+                            && (string) $material->rps_sub_cpmk_id === (string) $sub->id,
+                    ];
+                })
+                ->filter(fn (array $item) => $item['title'] !== '' && ($item['linked'] || $item['score'] > 0))
+                ->sort(function (array $a, array $b): int {
+                    if ($a['linked'] !== $b['linked']) {
+                        return $a['linked'] ? -1 : 1;
+                    }
+                    if ($a['score'] !== $b['score']) {
+                        return $b['score'] <=> $a['score'];
+                    }
+                    return $a['index'] <=> $b['index'];
+                })
+                ->pluck('title')
+                ->unique()
+                ->values()
+                ->all();
+
+            $relevant[$subIndex] = $ranked;
+        }
+
+        // Setiap Sub-CPMK memperoleh minimal satu minggu. Sisa minggu terlebih
+        // dahulu diberikan kepada Sub-CPMK yang masih memiliki bahan kajian
+        // relevan yang belum digunakan; setelah itu baru untuk pendalaman.
+        $counts = array_fill(0, $subs->count(), 1);
+        $remaining = count(self::TEACHING_WEEKS) - $subs->count();
+
+        while ($remaining > 0) {
+            $allocated = false;
+            foreach ($subs as $subIndex => $_sub) {
+                if ($remaining <= 0) break;
+                if ($counts[$subIndex] < max(1, count($relevant[$subIndex] ?? []))) {
+                    $counts[$subIndex]++;
+                    $remaining--;
+                    $allocated = true;
+                }
+            }
+            if (! $allocated) break;
+        }
+
+        $cursor = 0;
+        while ($remaining > 0) {
+            $counts[$cursor % $subs->count()]++;
+            $remaining--;
+            $cursor++;
+        }
+
+        $sequence = [];
+        foreach ($subs as $subIndex => $sub) {
+            $titles = $relevant[$subIndex] ?? [];
+            for ($occurrence = 0; $occurrence < $counts[$subIndex]; $occurrence++) {
+                $material = null;
+                if (isset($titles[$occurrence])) {
+                    $material = $titles[$occurrence];
+                } elseif ($titles !== []) {
+                    $material = 'Pendalaman dan latihan: '.$titles[count($titles) - 1];
+                }
+
+                $sequence[] = [
+                    'sub' => $sub,
+                    'material' => $material,
+                ];
+            }
+        }
+
+        return array_slice($sequence, 0, count(self::TEACHING_WEEKS));
+    }
+
+    private function materialRelevanceScore(string $subDescription, string $materialTitle): int
+    {
+        $subTokens = $this->academicTokens($subDescription);
+        $materialTokens = $this->academicTokens($materialTitle);
+
+        if ($subTokens === [] || $materialTokens === []) {
+            return 0;
+        }
+
+        return count(array_intersect($subTokens, $materialTokens));
+    }
+
+    private function academicTokens(string $value): array
+    {
+        $value = mb_strtolower($value);
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+        $stop = [
+            'mahasiswa','mampu','dapat','dan','atau','yang','dalam','pada','untuk',
+            'dengan','serta','secara','melalui','konsep','prinsip','dasar','contoh',
+            'permasalahan','masalah','kehidupan','terkait','sesuai',
+        ];
+
+        return collect(preg_split('/\s+/u', trim($value)) ?: [])
+            ->filter(fn ($token) => mb_strlen($token) >= 3 && ! in_array($token, $stop, true))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function indicatorFromSubCpmk(string $description): string
