@@ -131,20 +131,37 @@ class RpsAutomationController extends Controller
                     ? (string) $row->rps_sub_cpmk_id
                     : null;
                 $oldSource = (string) ($row->source_type ?? '');
+                $legacyLooksGenerated = $oldSource === 'manual_allocation'
+                    && $this->legacyManualAllocationLooksGenerated($row);
+
+                if (
+                    $oldSource === 'manual'
+                    || $oldSource === 'copied_previous'
+                    || $oldSource === 'manual_allocation_manual'
+                    || ($oldSource === 'manual_allocation' && ! $legacyLooksGenerated)
+                ) {
+                    $newSource = 'manual_allocation_manual';
+                } elseif (
+                    $oldSource === 'ai_accepted'
+                    || $oldSource === 'manual_allocation_ai'
+                ) {
+                    $newSource = 'manual_allocation_ai';
+                } else {
+                    $newSource = 'manual_allocation_auto';
+                }
 
                 $update = [
                     'rps_sub_cpmk_id' => $newSubId,
-                    'source_type' => 'manual_allocation',
+                    'source_type' => $newSource,
                     'updated_at' => now(),
                 ];
 
-                // Jika alokasi menggeser baris yang sebelumnya dihasilkan otomatis,
-                // kosongkan konten turunan agar tidak terjadi Sub-CPMK baru dengan
-                // materi/indikator milik Sub-CPMK lama. Isian manual/AI dosen tidak
-                // dihapus; dosen tetap dapat meninjaunya.
+                // Hanya konten generator yang dikosongkan saat Sub-CPMK bergeser.
+                // Lengkapi RPS Otomatis akan langsung menyusunnya kembali tanpa
+                // reset manual. Isi manual dan AI tetap dilindungi.
                 if (
                     $oldSubId !== $newSubId
-                    && in_array($oldSource, ['smart_draft', 'manual_allocation'], true)
+                    && $newSource === 'manual_allocation_auto'
                 ) {
                     foreach ([
                         'material_text',
@@ -167,7 +184,7 @@ class RpsAutomationController extends Controller
 
         return back()->with(
             'success',
-            'Alokasi pertemuan Sub-CPMK disimpan. Lengkapi RPS Otomatis akan mengikuti jumlah pertemuan yang ditetapkan dosen.'
+            'Alokasi pertemuan Sub-CPMK disimpan. Isi otomatis dapat disegarkan langsung dengan Lengkapi RPS Otomatis tanpa mengosongkan 14 pertemuan; edit manual dan AI tetap dilindungi.'
         );
     }
 
@@ -221,6 +238,50 @@ class RpsAutomationController extends Controller
                 ? 'Validasi OBE selesai: seluruh pemeriksaan lulus.'
                 : "Validasi OBE selesai: kelengkapan {$result['percent']}%."
         );
+    }
+
+    private function isManualAllocationSource(string $source): bool
+    {
+        return $source === 'manual_allocation'
+            || str_starts_with($source, 'manual_allocation_');
+    }
+
+    private function legacyManualAllocationLooksGenerated(object $week): bool
+    {
+        $core = [
+            trim((string) ($week->material_text ?? '')),
+            trim((string) ($week->learning_activity ?? '')),
+            trim((string) ($week->student_assignment ?? '')),
+            trim((string) ($week->assessment_indicator ?? '')),
+            trim((string) ($week->assessment_criteria ?? '')),
+            trim((string) ($week->assessment_method ?? '')),
+        ];
+
+        if (collect($core)->filter(fn ($value) => $value !== '')->isEmpty()) {
+            return true;
+        }
+
+        $signals = 0;
+        if (preg_match('/^Mahasiswa mempelajari .+mendiskusikan contoh, dan menyelesaikan latihan yang mendukung Sub-CPMK-?\d+\.$/u', (string) ($week->learning_activity ?? '')) === 1) {
+            $signals++;
+        }
+        if (preg_match('/^Latihan\/tugas terstruktur yang selaras dengan Sub-CPMK-?\d+\.$/u', (string) ($week->student_assignment ?? '')) === 1) {
+            $signals++;
+        }
+        if (str_starts_with((string) ($week->assessment_criteria ?? ''), 'Ketepatan, kelengkapan, dan kesesuaian jawaban/kinerja terhadap indikator Sub-CPMK-')) {
+            $signals++;
+        }
+        if ((string) ($week->assessment_method ?? '') === 'Latihan/kuis formatif atau observasi kinerja sesuai aktivitas pembelajaran.') {
+            $signals++;
+        }
+        if (
+            str_contains((string) ($week->learning_method ?? ''), 'Ceramah interaktif')
+            && str_contains((string) ($week->learning_method ?? ''), 'latihan terbimbing')
+        ) {
+            $signals++;
+        }
+
+        return $signals >= 2;
     }
 
     private function context(Request $request, string $rps): array

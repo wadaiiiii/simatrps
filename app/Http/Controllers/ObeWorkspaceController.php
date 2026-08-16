@@ -541,7 +541,7 @@ class ObeWorkspaceController extends Controller
         $manualAllocationActive = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $version->id)
             ->whereIn('week_number', [1,2,3,4,5,6,7,9,10,11,12,13,14,15])
-            ->where('source_type', 'manual_allocation')
+            ->where('source_type', 'like', 'manual_allocation%')
             ->exists();
 
         if ($manualAllocationActive) {
@@ -753,7 +753,9 @@ Pendukung:
             'assessment_criteria' => $data['assessment_criteria'] ?: null,
             'assessment_method' => $data['assessment_method'] ?: ($isExam ? $examType : null),
             'reference_text' => $this->normalizeReferenceCodes((string) ($data['reference_text'] ?? '')),
-            'source_type' => 'manual',
+            'source_type' => str_starts_with((string) ($weekly->source_type ?? ''), 'manual_allocation')
+                ? 'manual_allocation_manual'
+                : 'manual',
             'updated_at' => now(),
         ];
 

@@ -407,7 +407,9 @@ PROMPT;
             );
         }
 
-        $updates['source_type'] = 'ai_accepted';
+        $updates['source_type'] = str_starts_with((string) ($weekly->source_type ?? ''), 'manual_allocation')
+            ? 'manual_allocation_ai'
+            : 'ai_accepted';
         $updates['updated_at'] = now();
 
         DB::table('rps_weekly_plans')

@@ -99,7 +99,7 @@ class RpsSmartDraftService
             $manualRow = $currentWeeks->get($manualWeek);
             if (
                 $manualRow
-                && ($manualRow->source_type ?? null) === 'manual_allocation'
+                && $this->isManualAllocationSource((string) ($manualRow->source_type ?? ''))
                 && filled($manualRow->rps_sub_cpmk_id ?? null)
             ) {
                 $key = (string) $manualRow->rps_sub_cpmk_id;
@@ -122,8 +122,11 @@ class RpsSmartDraftService
 
             $sub = $slot['sub'];
             $materialText = $slot['material'];
-            $manualAllocation = ($current->source_type ?? null) === 'manual_allocation'
+            $currentSource = (string) ($current->source_type ?? '');
+            $manualAllocation = $this->isManualAllocationSource($currentSource)
                 && filled($current->rps_sub_cpmk_id ?? null);
+            $legacyManualAllocationAuto = $currentSource === 'manual_allocation'
+                && $this->legacyManualAllocationLooksGenerated($current);
 
             if ($manualAllocation) {
                 $manualSub = $subCpmks->first(
@@ -141,6 +144,17 @@ class RpsSmartDraftService
                         $occurrence,
                         max(1, (int) ($manualAllocationCounts[$subKey] ?? 1))
                     );
+                }
+            }
+
+            $resultSourceType = 'smart_draft';
+            if ($manualAllocation) {
+                if (in_array($currentSource, ['manual_allocation_manual', 'manual_allocation_ai'], true)) {
+                    $resultSourceType = $currentSource;
+                } elseif ($currentSource === 'manual_allocation' && ! $legacyManualAllocationAuto) {
+                    $resultSourceType = 'manual_allocation_manual';
+                } else {
+                    $resultSourceType = 'manual_allocation_auto';
                 }
             }
 
@@ -177,7 +191,7 @@ class RpsSmartDraftService
                     $referenceCodes,
                     $position
                 ),
-                'source_type' => $manualAllocation ? 'manual_allocation' : 'smart_draft',
+                'source_type' => $resultSourceType,
             ];
 
             // Deployment lama mungkin belum memiliki seluruh kolom tambahan.
@@ -190,9 +204,21 @@ class RpsSmartDraftService
                 'week_number' => $weekNumber,
             ];
             $changed = false;
+            $refreshableGeneratedSource = $currentSource === 'smart_draft'
+                || $currentSource === 'manual_allocation_auto'
+                || $legacyManualAllocationAuto;
 
             foreach ($payload as $key => $value) {
                 $existing = $current->{$key} ?? null;
+
+                // Normalisasi provenance legacy tanpa mengubah isi manual/AI.
+                if ($key === 'source_type' && $manualAllocation) {
+                    $merged[$key] = $resultSourceType;
+                    if ($existing !== $resultSourceType) {
+                        $changed = true;
+                    }
+                    continue;
+                }
 
                 // Indikator lama hasil generator boleh dinormalisasi tanpa menyentuh
                 // indikator manual dosen. Pola ini berasal dari Smart Draft versi lama.
@@ -214,7 +240,7 @@ class RpsSmartDraftService
                 // Data minggu yang dibuat Smart Draft versi lama boleh
                 // dinormalisasi ke algoritme penyelarasan baru. Ini hanya berlaku
                 // bila source_type masih smart_draft; edit manual/AI tidak disentuh.
-                $refreshGeneratedField = ($current->source_type ?? null) === 'smart_draft'
+                $refreshGeneratedField = $refreshableGeneratedSource
                     && in_array($key, [
                         'rps_sub_cpmk_id',
                         'material_text',
@@ -326,10 +352,16 @@ class RpsSmartDraftService
             ]);
         }
 
+        $targetHasManualAllocation = $this->isManualAllocationSource(
+            (string) ($target->source_type ?? '')
+        );
+
         DB::table('rps_weekly_plans')
             ->where('id', $target->id)
             ->update([
-                'rps_sub_cpmk_id' => $source->rps_sub_cpmk_id,
+                'rps_sub_cpmk_id' => $targetHasManualAllocation
+                    ? $target->rps_sub_cpmk_id
+                    : $source->rps_sub_cpmk_id,
                 'material_text' => $source->material_text,
                 'learning_method' => $source->learning_method,
                 'learning_activity' => $source->learning_activity,
@@ -337,7 +369,9 @@ class RpsSmartDraftService
                 'assessment_criteria' => $source->assessment_criteria,
                 'assessment_method' => $source->assessment_method,
                 'reference_text' => $source->reference_text,
-                'source_type' => 'copied_previous',
+                'source_type' => $targetHasManualAllocation
+                    ? 'manual_allocation_manual'
+                    : 'copied_previous',
                 'updated_at' => now(),
             ]);
     }
@@ -363,6 +397,53 @@ class RpsSmartDraftService
                 'learning_method' => $method,
                 'updated_at' => now(),
             ]);
+    }
+
+    private function isManualAllocationSource(string $source): bool
+    {
+        return $source === 'manual_allocation'
+            || str_starts_with($source, 'manual_allocation_');
+    }
+
+    private function legacyManualAllocationLooksGenerated(object $week): bool
+    {
+        $core = [
+            trim((string) ($week->material_text ?? '')),
+            trim((string) ($week->learning_activity ?? '')),
+            trim((string) ($week->student_assignment ?? '')),
+            trim((string) ($week->assessment_indicator ?? '')),
+            trim((string) ($week->assessment_criteria ?? '')),
+            trim((string) ($week->assessment_method ?? '')),
+        ];
+
+        if (collect($core)->filter(fn ($value) => $value !== '')->isEmpty()) {
+            return true;
+        }
+
+        $signals = 0;
+        $activity = (string) ($week->learning_activity ?? '');
+        $assignment = (string) ($week->student_assignment ?? '');
+        $criteria = (string) ($week->assessment_criteria ?? '');
+        $method = (string) ($week->assessment_method ?? '');
+        $learningMethod = (string) ($week->learning_method ?? '');
+
+        if (preg_match('/^Mahasiswa mempelajari .+mendiskusikan contoh, dan menyelesaikan latihan yang mendukung Sub-CPMK-?\d+\.$/u', $activity) === 1) {
+            $signals++;
+        }
+        if (preg_match('/^Latihan\/tugas terstruktur yang selaras dengan Sub-CPMK-?\d+\.$/u', $assignment) === 1) {
+            $signals++;
+        }
+        if (str_starts_with($criteria, 'Ketepatan, kelengkapan, dan kesesuaian jawaban/kinerja terhadap indikator Sub-CPMK-')) {
+            $signals++;
+        }
+        if ($method === 'Latihan/kuis formatif atau observasi kinerja sesuai aktivitas pembelajaran.') {
+            $signals++;
+        }
+        if (str_contains($learningMethod, 'Ceramah interaktif') && str_contains($learningMethod, 'latihan terbimbing')) {
+            $signals++;
+        }
+
+        return $signals >= 2;
     }
 
     private function referenceCodes(
