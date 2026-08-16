@@ -30,7 +30,17 @@ class RpsSyllabusService
 
         return array_values(array_filter(array_map(function (string $topic): string {
             $topic = trim($topic, " \t\n\r\0\x0B,.;");
-            return $topic;
+
+            // Master silabus kadang sudah memakai enumerasi a., b., c. atau
+            // 1., 2., dst. Nomor/huruf daftar adalah presentasi, bukan bagian
+            // dari judul Bahan Kajian. Hilangkan agar UI tidak menjadi a. a.
+            $topic = preg_replace(
+                '/^\s*(?:(?:[a-z]|\d{1,2})[\.\)]\s*)+/iu',
+                '',
+                $topic
+            ) ?? $topic;
+
+            return trim($topic);
         }, $topics), fn (string $topic) => mb_strlen($topic) >= 3));
     }
 
