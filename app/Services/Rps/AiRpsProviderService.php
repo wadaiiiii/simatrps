@@ -118,7 +118,7 @@ class AiRpsProviderService
 
         if (! in_array($week, $allowed, true)) {
             throw ValidationException::withMessages([
-                'ai' => 'AI per minggu hanya tersedia untuk minggu pembelajaran 1-7 dan 9-15.',
+                'ai' => 'AI per pekan hanya tersedia untuk pekan pembelajaran 1-7 dan 9-15.',
             ]);
         }
 
@@ -187,7 +187,7 @@ class AiRpsProviderService
 
         if ($actual !== $expected) {
             throw ValidationException::withMessages([
-                'ai' => 'AI belum menghasilkan 14 minggu lengkap. Tidak ada rekomendasi yang disimpan.',
+                'ai' => 'AI belum menghasilkan 14 pekan lengkap. Tidak ada rekomendasi yang disimpan.',
             ]);
         }
 

@@ -23,7 +23,7 @@ class VerifySimatRpsPatch05N extends Command
             ['Pustaka bernomor dari controller', str_contains($rps, "'bibliography' => \$bibliography")],
             ['Struktur RPS seperti dokumen', str_contains($ui, 'Struktur RPS') && str_contains($ui, 'Matriks Sub-CPMK → CPMK')],
             ['Edit langsung baris tabel', str_contains($ui, 'function InlineWeekRow') && str_contains($ui, 'Pencil className')],
-            ['Pustaka mingguan nomor saja', str_contains($ui, 'Pustaka nomor saja')],
+            ['Pustaka pekanan nomor saja', str_contains($ui, 'Pustaka nomor saja')],
             ['AI menerima bibliography', str_contains($ctx, "'bibliography' => \$this->bibliographyEntries")],
             ['AI menyimpan kode pustaka', str_contains($ai, 'normalizeAiReferenceCodes')],
             ['Input manual dinormalisasi', str_contains($obe, 'normalizeReferenceCodes')],

@@ -25,7 +25,7 @@ class VerifySimatRpsPatch05Z extends Command
             ['Pustaka utama sejajar toolbar', str_contains($show, 'mb-1 flex flex-wrap items-start justify-between gap-2')],
             ['Telaah Pustaka AI tetap tersedia', str_contains($show, 'Telaah Pustaka AI')],
             ['Font dokumen kembali 11px', str_contains($show, 'font-sans text-[11px] leading-[1.45]')],
-            ['Tabel mingguan 11px', str_contains($show, 'border-spacing-0 text-[11px] leading-[1.45]')],
+            ['Tabel pekanan 11px', str_contains($show, 'border-spacing-0 text-[11px] leading-[1.45]')],
             ['RTM 11px', str_contains($show, 'border-collapse font-sans text-[11px] leading-[1.45]')],
             ['Panel editor OBE tetap terlihat', str_contains($show, 'Buka Editor')],
         ];

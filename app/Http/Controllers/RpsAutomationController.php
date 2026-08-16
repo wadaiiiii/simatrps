@@ -128,7 +128,7 @@ class RpsAutomationController extends Controller
 
         if ($currentWeeks->count() !== count($teachingWeeks)) {
             throw ValidationException::withMessages([
-                'allocations' => 'Struktur 14 pertemuan belum lengkap. Muat ulang RPS atau lengkapi struktur minggu terlebih dahulu.',
+                'allocations' => 'Struktur 14 pertemuan belum lengkap. Muat ulang RPS atau lengkapi struktur pekan terlebih dahulu.',
             ]);
         }
 
@@ -211,7 +211,7 @@ class RpsAutomationController extends Controller
         $service->copyPreviousWeek($version->id, $week);
         $assessmentSync->syncVersion($version->id);
 
-        return back()->with('success', "Minggu {$week} menyalin draft minggu sebelumnya dan rantai asesmen disinkronkan.");
+        return back()->with('success', "Pekan {$week} menyalin draft pekan sebelumnya dan rantai asesmen disinkronkan.");
     }
 
     public function applyMethod(
@@ -233,7 +233,7 @@ class RpsAutomationController extends Controller
             $validated['learning_method']
         );
 
-        return back()->with('success', "Metode pembelajaran diterapkan pada {$count} minggu.");
+        return back()->with('success', "Metode pembelajaran diterapkan pada {$count} pekan.");
     }
 
     public function validateObe(

@@ -256,7 +256,7 @@ class RpsAiController extends Controller
 
         if ((bool) $weekly->is_exam || in_array($week, [8, 16], true)) {
             throw ValidationException::withMessages([
-                'ai' => 'Minggu UTS/UAS tidak disusun dengan AI pertemuan.',
+                'ai' => 'Pekan UTS/UAS tidak disusun dengan AI pertemuan.',
             ]);
         }
 
@@ -279,7 +279,7 @@ class RpsAiController extends Controller
 
         if (! $targetSub) {
             throw ValidationException::withMessages([
-                'ai' => 'Belum ada Sub-CPMK. Susun Sub-CPMK terlebih dahulu sebelum menggunakan AI per minggu.',
+                'ai' => 'Belum ada Sub-CPMK. Susun Sub-CPMK terlebih dahulu sebelum menggunakan AI per pekan.',
             ]);
         }
 
@@ -291,13 +291,13 @@ class RpsAiController extends Controller
         );
 
         $indicatorInstruction = <<<'PROMPT'
-Untuk minggu ini, jangan menyalin, memendekkan, atau sekadar memparafrase rumusan `target_sub_cpmk` pada `assessment_indicator`.
-Turunkan indikator penilaian BARU sebagai bukti ketercapaian yang dapat diamati dan dinilai. Gunakan konteks `parent_cpmk`, `target_materials`, `target_assessments`, `current_week`, dan level Bloom untuk membuat indikator lebih spesifik terhadap materi minggu tersebut.
+Untuk pekan ini, jangan menyalin, memendekkan, atau sekadar memparafrase rumusan `target_sub_cpmk` pada `assessment_indicator`.
+Turunkan indikator penilaian BARU sebagai bukti ketercapaian yang dapat diamati dan dinilai. Gunakan konteks `parent_cpmk`, `target_materials`, `target_assessments`, `current_week`, dan level Bloom untuk membuat indikator lebih spesifik terhadap materi pekan tersebut.
 Indikator ideal memuat 2-3 tindakan/bukti operasional, misalnya mengidentifikasi unsur pada contoh, menjelaskan hubungan/argumen, menerapkan prosedur pada kasus, membandingkan hasil, menganalisis kesalahan, atau menghasilkan produk yang relevan—sesuaikan dengan level Bloom dan bidang ilmu pada konteks.
 JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian", atau membuka kalimat dengan "Mahasiswa mampu/dapat". Mulai langsung dengan kata kerja operasional.
 Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
 Pastikan `assessment_criteria` menilai kualitas bukti tersebut dan `assessment_method` konsisten dengan asesmen yang tersedia.
-Materi minggu WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
+Materi pekan WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
 PROMPT;
 
         $effectiveInstruction = filled($data['instruction'] ?? null)
@@ -318,7 +318,7 @@ PROMPT;
             report($error);
 
             throw ValidationException::withMessages([
-                'ai' => 'AI minggu '.$week.' gagal sebelum batas waktu. '
+                'ai' => 'AI pekan '.$week.' gagal sebelum batas waktu. '
                     .'Coba lagi atau aktifkan provider backup. Detail: '.$error->getMessage(),
             ]);
         }
@@ -330,7 +330,7 @@ PROMPT;
 
         if (! is_array($item)) {
             throw ValidationException::withMessages([
-                'ai' => 'AI tidak mengembalikan data yang valid untuk minggu '.$week.'.',
+                'ai' => 'AI tidak mengembalikan data yang valid untuk pekan '.$week.'.',
             ]);
         }
 
@@ -404,7 +404,7 @@ PROMPT;
         if ($updates === []) {
             return back()->with(
                 'success',
-                'Minggu '.$week.' sudah lengkap. Tidak ada field kosong yang perlu diisi AI.'
+                'Pekan '.$week.' sudah lengkap. Tidak ada field kosong yang perlu diisi AI.'
             );
         }
 
@@ -453,7 +453,7 @@ PROMPT;
         return back()->with(
             'success',
             'AI berhasil '.($overwrite ? 'menyusun ulang' : 'melengkapi')
-                .' minggu '.$week.' menggunakan '
+                .' pekan '.$week.' menggunakan '
                 .strtoupper((string) ($result['provider'] ?? 'AI')).'.'
         );
     }
@@ -957,7 +957,7 @@ PROMPT;
 
         if ($codes->isEmpty()) {
             // Fallback terkontrol: gunakan pustaka RPS aktif dan rotasi
-            // antar minggu agar tidak semua pekan selalu [1].
+            // antar pekan agar tidak semua pekan selalu [1].
             $offset = max(0, ($week - 1) % $entries->count());
             $entry = $entries->get($offset) ?? $entries->first();
             $codes = collect([(string) $entry['code']]);
@@ -1761,7 +1761,7 @@ PROMPT;
 
         if ($actualWeeks !== $expectedWeeks) {
             throw ValidationException::withMessages([
-                'ai' => 'Rencana mingguan AI tidak lengkap. Harus tepat 14 minggu pembelajaran (1-7 dan 9-15). Buat rekomendasi baru.',
+                'ai' => 'Rencana pekanan AI tidak lengkap. Harus tepat 14 pekan pembelajaran (1-7 dan 9-15). Buat rekomendasi baru.',
             ]);
         }
 
@@ -1836,7 +1836,7 @@ PROMPT;
 
         return [
             'changed' => 14,
-            'message' => 'Rencana 14 minggu AI diterapkan ke workspace dan rantai asesmen disinkronkan.',
+            'message' => 'Rencana 14 pekan AI diterapkan ke workspace dan rantai asesmen disinkronkan.',
         ];
     }
 

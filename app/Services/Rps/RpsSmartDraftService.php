@@ -35,7 +35,7 @@ class RpsSmartDraftService
 
         $weeklyColumns = array_flip(Schema::getColumnListing('rps_weekly_plans'));
 
-        // Lengkapi RPS Otomatis hanya mengisi tabel mingguan/asesmen dasar.
+        // Lengkapi RPS Otomatis hanya mengisi tabel pekanan/asesmen dasar.
         // Bahan Kajian dan Pustaka adalah data akademik yang dikelola eksplisit
         // melalui Edit, Ambil dari Kurikulum, atau Telaah AI masing-masing.
         // Karena itu proses otomatis TIDAK BOLEH menyinkronkan atau menulis ulang
@@ -84,16 +84,16 @@ class RpsSmartDraftService
         $rows = [];
         $updateColumns = [];
 
-        // Susun 14 minggu sebagai blok Sub-CPMK yang berurutan. Materi tidak
+        // Susun 14 pekan sebagai blok Sub-CPMK yang berurutan. Materi tidak
         // lagi diputar secara global; setiap materi harus relevan dengan
-        // Sub-CPMK pada minggu tersebut. Jika satu Sub-CPMK memerlukan minggu
+        // Sub-CPMK pada pekan tersebut. Jika satu Sub-CPMK memerlukan pekan
         // tambahan setelah seluruh materinya terpakai, label Pendalaman dibuat
         // eksplisit agar tidak terlihat sebagai pengulangan tanpa alasan.
         $teachingSequence = $this->buildTeachingSequence($subCpmks, $materials);
 
         // Jika dosen sudah menetapkan jumlah pertemuan melalui Atur Pertemuan,
         // alokasi itu menjadi hard constraint. Smart Draft hanya melengkapi isi
-        // tiap minggu dan tidak boleh membagi ulang Sub-CPMK.
+        // tiap pekan dan tidak boleh membagi ulang Sub-CPMK.
         $manualAllocationCounts = [];
         foreach (self::TEACHING_WEEKS as $manualWeek) {
             $manualRow = $currentWeeks->get($manualWeek);
@@ -237,7 +237,7 @@ class RpsSmartDraftService
                     continue;
                 }
 
-                // Data minggu yang dibuat Smart Draft versi lama boleh
+                // Data pekan yang dibuat Smart Draft versi lama boleh
                 // dinormalisasi ke algoritme penyelarasan baru. Ini hanya berlaku
                 // bila source_type masih smart_draft; edit manual/AI tidak disentuh.
                 $refreshGeneratedField = $refreshableGeneratedSource
@@ -329,7 +329,7 @@ class RpsSmartDraftService
     ): void {
         if ($weekNumber <= 1 || in_array($weekNumber, [8, 16], true)) {
             throw ValidationException::withMessages([
-                'week' => 'Minggu ini tidak dapat menyalin isi minggu sebelumnya.',
+                'week' => 'Pekan ini tidak dapat menyalin isi pekan sebelumnya.',
             ]);
         }
 
@@ -659,10 +659,10 @@ class RpsSmartDraftService
                 ->all();
         }
 
-        // Setiap Sub-CPMK minimal satu minggu. Sisa minggu TIDAK dibagi rata.
+        // Setiap Sub-CPMK minimal satu pekan. Sisa pekan TIDAK dibagi rata.
         // Alokasi tambahan mempertimbangkan beban Bahan Kajian dan tingkat Bloom.
-        // Karena itu satu Sub-CPMK boleh 1 minggu, sementara yang lebih kompleks
-        // dapat memperoleh beberapa minggu.
+        // Karena itu satu Sub-CPMK boleh 1 pekan, sementara yang lebih kompleks
+        // dapat memperoleh beberapa pekan.
         $weekCounts = array_fill(0, $subs->count(), 1);
         $demand = [];
 
@@ -741,7 +741,7 @@ class RpsSmartDraftService
         $materialCount = count($titles);
         $groups = [];
 
-        // Jika Bahan Kajian lebih banyak daripada minggu yang dialokasikan,
+        // Jika Bahan Kajian lebih banyak daripada pekan yang dialokasikan,
         // beberapa Bahan Kajian yang berurutan digabung dalam satu pertemuan.
         if ($materialCount >= $weekCount) {
             for ($week = 0; $week < $weekCount; $week++) {
@@ -754,8 +754,8 @@ class RpsSmartDraftService
             return $groups;
         }
 
-        // Jika minggu lebih banyak daripada Bahan Kajian, materi tidak diputar
-        // mentah. Minggu tambahan diberi tujuan pedagogis eksplisit sesuai Bloom.
+        // Jika pekan lebih banyak daripada Bahan Kajian, materi tidak diputar
+        // mentah. Pekan tambahan diberi tujuan pedagogis eksplisit sesuai Bloom.
         foreach ($titles as $title) {
             $groups[] = $title;
         }

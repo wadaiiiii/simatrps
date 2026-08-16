@@ -380,7 +380,7 @@ export default function RpsShow(props: any) {
     };
 
     const generateWeekAi = (weekNumber: number, overwrite = false) => {
-        if (overwrite && !confirm(`Susun ulang minggu ${weekNumber} dengan AI? Isian minggu ini dapat diganti oleh hasil AI.`)) {
+        if (overwrite && !confirm(`Susun ulang pekan ${weekNumber} dengan AI? Isian pekan ini dapat diganti oleh hasil AI.`)) {
             return;
         }
 
@@ -398,8 +398,8 @@ export default function RpsShow(props: any) {
                 onSuccess: () => notify(
                     'success',
                     overwrite
-                        ? `Minggu ${weekNumber} berhasil disusun ulang dengan AI.`
-                        : `Minggu ${weekNumber} berhasil dilengkapi dengan AI.`,
+                        ? `Pekan ${weekNumber} berhasil disusun ulang dengan AI.`
+                        : `Pekan ${weekNumber} berhasil dilengkapi dengan AI.`,
                 ),
                 onError: (errors) => notify('error', firstError(errors)),
                 onFinish: () => setAiBusyWeek(null),
@@ -1619,7 +1619,7 @@ function SimulationScoreInput({
             `/rps/${rpsId}/simulation/${week}`,
             {
                 preserveScroll: true,
-                onSuccess: () => notify('success', `Nilai simulasi minggu ${week} disimpan.`),
+                onSuccess: () => notify('success', `Nilai simulasi pekan ${week} disimpan.`),
                 onError: (errors) => {
                     form.setData('score', original);
                     notify('error', firstError(errors));
@@ -1828,7 +1828,7 @@ function SimulationWeightInput({ rpsId, week, value }: any) {
             {
                 preserveScroll: true,
                 preserveState: false,
-                onSuccess: () => notify('success', `Bobot simulasi minggu ${week} disimpan.`),
+                onSuccess: () => notify('success', `Bobot simulasi pekan ${week} disimpan.`),
                 onError: (errors: any) => {
                     setWeight(original);
                     notify('error', firstError(errors));
@@ -2051,7 +2051,7 @@ function AssessmentEvaluationSection({
                     <table className="min-w-[900px] w-full border-collapse text-[11px]">
                         <thead className="bg-cyan-50">
                             <tr>
-                                <th className="border border-slate-300 px-2 py-2">Mg</th>
+                                <th className="border border-slate-300 px-2 py-2">Pekan</th>
                                 <th className="border border-slate-300 px-2 py-2">CPL</th>
                                 <th className="border border-slate-300 px-2 py-2">CPMK</th>
                                 <th className="border border-slate-300 px-2 py-2">Sub-CPMK</th>
@@ -2330,7 +2330,7 @@ function RtmDocumentSection({
                                             <tr>
                                                 <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">SEMESTER</td>
                                                 <td className="border border-slate-300 px-2 py-1">{rps.semester_recommended || '-'}</td>
-                                                <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">DUE / MINGGU</td>
+                                                <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">PEKAN KE-</td>
                                                 <td className="border border-slate-300 px-2 py-1">{task.due_week || '-'}</td>
                                             </tr>
                                             <tr>
@@ -2403,7 +2403,7 @@ function RtmDocumentSection({
                                             </tr>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
-                                                    Minggu {task.due_week || '-'}
+                                                    Pekan {task.due_week || '-'}
                                                 </td>
                                             </tr>
                                             <tr>
@@ -2761,7 +2761,7 @@ function AssessmentQuickAdd({ rpsId, subCpmks }: any) {
                             max="16"
                             value={form.data.week_number}
                             onChange={(e) => form.setData('week_number', e.target.value)}
-                            placeholder="Minggu"
+                            placeholder="Pekan"
                             className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
                         />
                         <input
@@ -2910,7 +2910,7 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                             max="16"
                             value={form.data.due_week}
                             onChange={(e) => form.setData('due_week', e.target.value)}
-                            placeholder="Minggu"
+                            placeholder="Pekan"
                             className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
                         />
                     </div>
@@ -3329,7 +3329,7 @@ function InlineWeightInput({ rpsId, week }: any) {
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    notify('success', `Bobot minggu ${week.week_number} disimpan dan disinkronkan.`);
+                    notify('success', `Bobot pekan ${week.week_number} disimpan dan disinkronkan.`);
 
                     router.reload({
                         only: ['weeks', 'assessments', 'progress', 'simulationScores'],
@@ -3905,7 +3905,7 @@ function SubCpmkCard({ rpsId, sub, cpmks }: any) {
                         <button
                             type="button"
                             onClick={() => {
-                                if (confirm(`Hapus ${sub.code}? Relasi pada minggu/asesmen yang menggunakan Sub-CPMK ini akan dilepas.`)) {
+                                if (confirm(`Hapus ${sub.code}? Relasi pada pekan/asesmen yang menggunakan Sub-CPMK ini akan dilepas.`)) {
                                     router.delete(
                                         `/rps/${rpsId}/sub-cpmk/${sub.id}`,
                                         actionOptions(`${sub.code} berhasil dihapus. Nomornya dapat dipakai kembali.`),
@@ -4179,7 +4179,7 @@ function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
                     </select>
                 </label>
                 <label>
-                    <span className="mb-1.5 block text-xs font-bold text-slate-500">Minggu</span>
+                    <span className="mb-1.5 block text-xs font-bold text-slate-500">Pekan</span>
                     <input
                         type="number"
                         min="1"
@@ -4275,7 +4275,7 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                     <div className="min-w-0">
                         <div className="text-xs font-bold text-teal-700">{task.code}</div>
                         <div className="mt-1 font-semibold text-slate-900">{task.title}</div>
-                        <div className="mt-1 text-xs text-slate-500">{task.type} | Minggu {task.due_week ?? '-'}</div>
+                        <div className="mt-1 text-xs text-slate-500">{task.type} | Pekan {task.due_week ?? '-'}</div>
                         {task.purpose && <div className="mt-2 text-sm text-slate-600"><strong>Tujuan:</strong> {task.purpose}</div>}
                         {task.expected_output && <div className="mt-2 text-sm text-slate-600"><strong>Luaran:</strong> {task.expected_output}</div>}
                     </div>
@@ -4385,7 +4385,7 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                 </label>
 
                 <label>
-                    <span className="mb-1.5 block text-xs font-bold text-slate-500">Minggu Pengumpulan</span>
+                    <span className="mb-1.5 block text-xs font-bold text-slate-500">Pekan Pengumpulan</span>
                     <input
                         type="number"
                         min="1"
@@ -4521,7 +4521,7 @@ function InlineWeekRow({
             time_estimate: `Tatap muka: ${Number(data.face_to_face_sessions || 0)} × (${c} × 50 menit); Tugas terstruktur: ${Number(data.structured_task_sessions || 0)} × (${c} × 60 menit); Belajar mandiri: ${Number(data.independent_study_sessions || 0)} × (${c} × 60 menit)`,
         })).put(
             `/rps/${rpsId}/weeks/${week.week_number}`,
-            actionOptions(`Minggu ${week.week_number} berhasil disimpan.`, () => setEditing(false)),
+            actionOptions(`Pekan ${week.week_number} berhasil disimpan.`, () => setEditing(false)),
         );
     };
 
@@ -4688,7 +4688,7 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                         <div className="text-xs font-bold uppercase tracking-wider text-sky-600">Pekan {week.week_number}</div>
                         <h3 className="mt-1 text-lg font-extrabold text-slate-900">{examTitle}</h3>
                         <p className="mt-1 text-sm text-slate-600">
-                            Pada tabel cetak, baris ini otomatis digabung seperti format RPS contoh. Tidak perlu mengisi Sub-CPMK, metode, materi, atau penilaian mingguan di sini.
+                            Pada tabel cetak, baris ini otomatis digabung seperti format RPS contoh. Tidak perlu mengisi Sub-CPMK, metode, materi, atau penilaian pekanan di sini.
                         </p>
                     </div>
                     <div className="rounded-xl border border-sky-200 bg-white px-4 py-3 text-center">
@@ -4721,7 +4721,7 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                     time_estimate: `Tatap muka: ${Number(data.face_to_face_sessions || 0)} × (${c} × 50 menit); Tugas terstruktur: ${Number(data.structured_task_sessions || 0)} × (${c} × 60 menit); Belajar mandiri: ${Number(data.independent_study_sessions || 0)} × (${c} × 60 menit)`,
                 })).put(
                     `/rps/${rpsId}/weeks/${week.week_number}`,
-                    actionOptions(`Minggu ${week.week_number} berhasil disimpan.`),
+                    actionOptions(`Pekan ${week.week_number} berhasil disimpan.`),
                 );
             }}
             className="mt-5 rounded-2xl border border-teal-100 bg-teal-50/30 p-5"
@@ -4746,10 +4746,10 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                     {week.week_number > 1 && (
                         <button
                             type="button"
-                            onClick={() => router.post(`/rps/${rpsId}/weeks/${week.week_number}/copy-previous`, {}, actionOptions(`Isi minggu ${week.week_number - 1} berhasil disalin ke minggu ${week.week_number}.`))}
+                            onClick={() => router.post(`/rps/${rpsId}/weeks/${week.week_number}/copy-previous`, {}, actionOptions(`Isi pekan ${week.week_number - 1} berhasil disalin ke pekan ${week.week_number}.`))}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600"
                         >
-                            <Copy className="size-3.5" /> Salin Minggu Sebelumnya
+                            <Copy className="size-3.5" /> Salin Pekan Sebelumnya
                         </button>
                     )}
                 </div>
@@ -5044,7 +5044,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
         cpl_mapping: 'Rekomendasi Pemetaan CPMK ↔ CPL',
         material_plan: 'Bahan Kajian',
         sub_cpmk: 'Sub-CPMK',
-        weekly_plan: 'Rencana 14 Minggu',
+        weekly_plan: 'Rencana 14 Pekan',
         assessment_plan: 'Asesmen + RTM',
     };
 
@@ -5059,7 +5059,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
           : suggestion.suggestion_type === 'sub_cpmk'
             ? `${safeList(payload.items).length} Sub-CPMK`
             : suggestion.suggestion_type === 'weekly_plan'
-              ? `${safeList(payload.weeks).length} minggu kuliah`
+              ? `${safeList(payload.weeks).length} pekan kuliah`
               : `${safeList(payload.assessments).length} asesmen | ${safeList(payload.tasks).length} RTM`;
 
     const expectedTeachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
@@ -5102,7 +5102,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
     const apply = () => {
         if (!weeklyComplete) {
-            notify('error', 'Rencana AI ini tidak lengkap. Buat rekomendasi 14 minggu yang baru.');
+            notify('error', 'Rencana AI ini tidak lengkap. Buat rekomendasi 14 pekan yang baru.');
             return;
         }
 
@@ -5187,7 +5187,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
                     {!weeklyComplete && (
                         <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
-                            Tidak lengkap: {actualTeachingWeeks.length}/14 minggu. Buat ulang rekomendasi sebelum diterapkan.
+                            Tidak lengkap: {actualTeachingWeeks.length}/14 pekan. Buat ulang rekomendasi sebelum diterapkan.
                         </div>
                     )}
                 </div>
@@ -5425,7 +5425,7 @@ function AiPayloadPreview({
             <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {safeList(payload.weeks).map((week: any, index: number) => (
                     <div key={`${safeText(week?.week_number, String(index))}-${index}`} className="rounded-lg bg-white p-3 text-xs">
-                        <div className="font-bold text-slate-800">Minggu {safeText(week?.week_number)} | {safeText(week?.sub_cpmk_code)}</div>
+                        <div className="font-bold text-slate-800">Pekan {safeText(week?.week_number)} | {safeText(week?.sub_cpmk_code)}</div>
                         <div className="mt-1 leading-5 text-slate-600"><strong>Materi:</strong> {safeText(week?.material)}</div>
                         <div className="mt-1 leading-5 text-slate-600"><strong>Bentuk:</strong> {safeText(week?.learning_form)}</div>
                         <div className="mt-1 leading-5 text-slate-600"><strong>Metode:</strong> {safeText(week?.learning_method)}</div>
@@ -5474,7 +5474,7 @@ function AiPayloadPreview({
                             />
                             <div className="min-w-0 flex-1">
                                 <strong>{safeText(item?.name)}</strong>
-                                {' | '}Minggu {safeText(item?.week_number)}
+                                {' | '}Pekan {safeText(item?.week_number)}
                                 {' | '}{safeText(item?.weight)}%
                                 <div className="mt-1 text-slate-500">
                                     Mengukur: {safeText(item?.sub_cpmk_codes)}
@@ -5515,7 +5515,7 @@ function AiPayloadPreview({
                                 />
                                 <div className="min-w-0 flex-1">
                                     <strong>{safeText(task?.title)}</strong>
-                                    {' | '}Minggu {safeText(task?.due_week)}
+                                    {' | '}Pekan {safeText(task?.due_week)}
                                     <div className="mt-1 text-slate-500">
                                         Luaran: {safeText(task?.expected_output)}
                                     </div>

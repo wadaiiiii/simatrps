@@ -216,9 +216,9 @@ export function AppSidebarHeader({
                 }
 
                 /*
-                 * Tabel Minggu 1 s.d. 16/UAS juga SATU tabel kontinu.
+                 * Tabel Pekan 1 s.d. 16/UAS juga SATU tabel kontinu.
                  * Header tiga tingkat diulang pada halaman berikutnya.
-                 * Satu minggu tidak boleh dibelah di tengah halaman.
+                 * Satu pekan tidak boleh dibelah di tengah halaman.
                  */
                 html.rps-print-mode .rps-print-weekly {
                     width: 100% !important;

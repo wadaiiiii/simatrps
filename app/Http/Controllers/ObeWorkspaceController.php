@@ -587,7 +587,7 @@ class ObeWorkspaceController extends Controller
 
         return back()->with(
             'success',
-            'Alur Sub-CPMK minggu pembelajaran dirapikan dan rantai asesmen disinkronkan. UTS/UAS tidak diubah.'
+            'Alur Sub-CPMK pekan pembelajaran dirapikan dan rantai asesmen disinkronkan. UTS/UAS tidak diubah.'
         );
     }
 
@@ -615,7 +615,7 @@ class ObeWorkspaceController extends Controller
 
         return back()->with(
             'success',
-            "Estimasi waktu {$credits} SKS diterapkan ke 14 minggu pembelajaran."
+            "Estimasi waktu {$credits} SKS diterapkan ke 14 pekan pembelajaran."
         );
     }
 
@@ -701,7 +701,7 @@ Pendukung:
 
         if (! $weekly) {
             throw ValidationException::withMessages([
-                'week' => "Data minggu {$week} tidak ditemukan.",
+                'week' => "Data pekan {$week} tidak ditemukan.",
             ]);
         }
 
@@ -779,8 +779,8 @@ Pendukung:
         return back()->with(
             'success',
             $isExam
-                ? "Minggu {$week} ({$examType}) berhasil disimpan."
-                : "Minggu {$week} berhasil disimpan."
+                ? "Pekan {$week} ({$examType}) berhasil disimpan."
+                : "Pekan {$week} berhasil disimpan."
         );
     }
 

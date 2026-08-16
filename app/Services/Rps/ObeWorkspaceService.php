@@ -267,7 +267,7 @@ class ObeWorkspaceService
                 'label' => 'UTS/UAS',
                 'done' => $weeks->firstWhere('week_number', 8)?->exam_type === 'UTS'
                     && $weeks->firstWhere('week_number', 16)?->exam_type === 'UAS',
-                'message' => 'UTS minggu 8 dan UAS minggu 16.',
+                'message' => 'UTS pekan 8 dan UAS pekan 16.',
             ],
             [
                 'key' => 'assessment_weight',

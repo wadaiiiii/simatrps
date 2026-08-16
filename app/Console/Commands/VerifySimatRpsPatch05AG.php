@@ -28,7 +28,7 @@ class VerifySimatRpsPatch05AG extends Command
                     && str_contains($assessment, "sum('weight')")
             ],
             [
-                'Pindah minggu sinkron minggu lama dan baru',
+                'Pindah pekan sinkron pekan lama dan baru',
                 str_contains($assessment, '$oldWeek')
                     && substr_count($assessment, 'syncWeekPrintWeight') >= 5
             ],

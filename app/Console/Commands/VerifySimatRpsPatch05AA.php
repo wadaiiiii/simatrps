@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 class VerifySimatRpsPatch05AA extends Command
 {
     protected $signature = 'simatrps:verify-patch05aa';
-    protected $description = 'Verifikasi sinkronisasi Bahan Kajian, AI mingguan, Pustaka, dan validator';
+    protected $description = 'Verifikasi sinkronisasi Bahan Kajian, AI pekanan, Pustaka, dan validator';
 
     public function handle(): int
     {

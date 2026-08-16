@@ -206,7 +206,7 @@ class NormalizeAiRpsOutput
             'sub_cpmk' => 'AI menyiapkan '.count($payload['items'] ?? [])
                 .' rekomendasi Sub-CPMK. Periksa CPMK induk, rumusan, dan level Bloom sebelum diterapkan.',
             'weekly_plan' => 'AI menyiapkan rencana pembelajaran untuk '.count($payload['weeks'] ?? [])
-                .' minggu. Periksa kesesuaian Sub-CPMK, materi, metode, dan asesmen sebelum diterapkan.',
+                .' pekan. Periksa kesesuaian Sub-CPMK, materi, metode, dan asesmen sebelum diterapkan.',
             'assessment_plan' => 'AI menyiapkan '.count($payload['assessments'] ?? [])
                 .' rekomendasi asesmen dan '.count($payload['tasks'] ?? [])
                 .' RTM. Periksa cakupan Sub-CPMK dan total bobot sebelum diterapkan.',

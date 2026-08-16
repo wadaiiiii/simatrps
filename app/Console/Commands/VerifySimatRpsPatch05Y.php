@@ -23,7 +23,7 @@ class VerifySimatRpsPatch05Y extends Command
             ['Panel asesmen dibuat terang', str_contains($show, 'KLIK UNTUK BUKA EDITOR')],
             ['RTM punya editor jelas', str_contains($show, 'Edit Isi RTM') && str_contains($show, 'Semua isi lembar RTM dapat diubah')],
             ['Font RPS 12px', str_contains($show, 'font-sans text-[12px] leading-5')],
-            ['Font tabel mingguan 12px', str_contains($show, 'border-spacing-0 text-[12px] leading-5')],
+            ['Font tabel pekanan 12px', str_contains($show, 'border-spacing-0 text-[12px] leading-5')],
             ['Font RTM 12px', str_contains($show, 'border-collapse font-sans text-[12px] leading-5')],
             ['Sidebar tanpa Platform', ! str_contains($sidebar, '>Platform<')],
             ['Sidebar dark gradient', str_contains($sidebar, "from-[#06182f]") && str_contains($sidebar, "to-[#0b625d]")],

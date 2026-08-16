@@ -105,13 +105,13 @@ class CohereRpsService
         $targetWeeks = array_values(array_filter(array_unique(array_map('intval', $targetWeeks)), fn (int $week): bool => in_array($week, $allowed, true)));
 
         if ($targetWeeks === []) {
-            throw ValidationException::withMessages(['ai' => 'Target minggu AI tidak valid.']);
+            throw ValidationException::withMessages(['ai' => 'Target pekan AI tidak valid.']);
         }
 
         $context['constraints']['target_weeks'] = $targetWeeks;
         $schema = $this->weeklySchema($targetWeeks);
         $system = $this->systemPrompt('weekly_plan')
-            ."\n\nWAJIB: keluarkan tepat ".count($targetWeeks)." item dan HANYA untuk minggu: ".implode(', ', $targetWeeks).". Jangan melewatkan satu pun minggu target."
+            ."\n\nWAJIB: keluarkan tepat ".count($targetWeeks)." item dan HANYA untuk pekan: ".implode(', ', $targetWeeks).". Jangan melewatkan satu pun pekan target."
             ."\n\nKeluarkan HANYA JSON valid yang mengikuti schema ini:\n".json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $response = $this->postWithRateLimitRetry(
@@ -142,7 +142,7 @@ class CohereRpsService
         $text = data_get($json, 'choices.0.message.content');
 
         if (! is_string($text) || trim($text) === '') {
-            throw ValidationException::withMessages(['ai' => 'Cohere tidak mengembalikan batch rencana mingguan.']);
+            throw ValidationException::withMessages(['ai' => 'Cohere tidak mengembalikan batch rencana pekanan.']);
         }
 
         $payload = AiJsonRepair::decode(
@@ -174,7 +174,7 @@ class CohereRpsService
 
         if ($actual !== $expected) {
             throw ValidationException::withMessages([
-                'ai' => $provider.' menghasilkan minggu tidak lengkap ('.count($actual).'/'.count($expected).').',
+                'ai' => $provider.' menghasilkan pekan tidak lengkap ('.count($actual).'/'.count($expected).').',
             ]);
         }
     }
@@ -331,7 +331,7 @@ Aturan mutlak:
 1. Gunakan HANYA konteks RPS yang diberikan. Jangan mengarang data kurikulum, CPL, kode mata kuliah, referensi, atau kebijakan yang tidak ada pada konteks.
 2. CPL tidak boleh dibuat atau diubah. Untuk pemetaan, gunakan hanya `cpl_scope` yang tersedia.
 3. CPMK boleh direkomendasikan untuk adaptasi atau penambahan pada level RPS, tetapi jangan mengubah master kurikulum.
-4. UTS harus berada pada minggu 8 dan UAS pada minggu 16.
+4. UTS harus berada pada pekan 8 dan UAS pada pekan 16.
 5. Gunakan bahasa Indonesia akademik yang ringkas, jelas, terukur, dan dapat dinilai.
 6. Rekomendasi harus membantu dosen mengambil keputusan. AI tidak berwenang menetapkan keputusan akademik final.
 7. Bila informasi sumber tidak cukup, jangan mengarang referensi; gunakan string kosong pada bagian yang tidak dapat didukung konteks.
@@ -356,10 +356,10 @@ PROMPT,
 Tugas: telaah Sub-CPMK yang sudah ada dan rekomendasikan `keep`, `adapt`, atau `add`. Gunakan `adapt` bila Sub-CPMK lama perlu diperbaiki dan isi `target_code` dengan kode Sub-CPMK yang ada. Gunakan `add` hanya jika benar-benar perlu capaian baru. Setiap Sub-CPMK harus mempunyai satu CPMK induk yang benar-benar ada pada konteks dan level Bloom C1-C6. Jangan menduplikasi rumusan yang sudah baik.
 PROMPT,
             'weekly_plan' => <<<'PROMPT'
-Tugas: susun rencana pembelajaran hanya untuk minggu target yang diberikan. Gunakan `target_sub_cpmk` yang sudah ditetapkan sistem dan JANGAN menggantinya dengan Sub-CPMK lain. Jika daftar `materials` tersedia, field `material` WAJIB menggunakan judul yang sama persis dengan salah satu Bahan Kajian aktif tersebut; jangan menciptakan nama materi baru. `syllabus_items` hanya fallback jika Bahan Kajian aktif kosong. Pilih bentuk/metode pembelajaran sesuai Bloom dan gunakan `time_standard`. Aktivitas, tugas, indikator, kriteria, dan teknik asesmen harus konsisten dengan Sub-CPMK dan Bahan Kajian terpilih. `learning_method` berisi nama metode, sedangkan `learning_activity` berisi rincian langkah/aktivitas yang merupakan bagian dari metode pembelajaran. JANGAN menulis narasi belajar mandiri pada `learning_activity`; Belajar Mandiri hanya dinyatakan sebagai estimasi waktu oleh sistem. Untuk `references`, WAJIB pilih kode dari `bibliography` yang relevan dengan materi minggu tersebut, misalnya `[2], [4]`. Jangan menulis nama pustaka di field ini dan jangan otomatis memakai `[1]` di setiap minggu. Gunakan 1-3 kode pustaka yang paling relevan.
+Tugas: susun rencana pembelajaran hanya untuk pekan target yang diberikan. Gunakan `target_sub_cpmk` yang sudah ditetapkan sistem dan JANGAN menggantinya dengan Sub-CPMK lain. Jika daftar `materials` tersedia, field `material` WAJIB menggunakan judul yang sama persis dengan salah satu Bahan Kajian aktif tersebut; jangan menciptakan nama materi baru. `syllabus_items` hanya fallback jika Bahan Kajian aktif kosong. Pilih bentuk/metode pembelajaran sesuai Bloom dan gunakan `time_standard`. Aktivitas, tugas, indikator, kriteria, dan teknik asesmen harus konsisten dengan Sub-CPMK dan Bahan Kajian terpilih. `learning_method` berisi nama metode, sedangkan `learning_activity` berisi rincian langkah/aktivitas yang merupakan bagian dari metode pembelajaran. JANGAN menulis narasi belajar mandiri pada `learning_activity`; Belajar Mandiri hanya dinyatakan sebagai estimasi waktu oleh sistem. Untuk `references`, WAJIB pilih kode dari `bibliography` yang relevan dengan materi pekan tersebut, misalnya `[2], [4]`. Jangan menulis nama pustaka di field ini dan jangan otomatis memakai `[1]` di setiap pekan. Gunakan 1-3 kode pustaka yang paling relevan.
 PROMPT,
             'assessment_plan' => <<<'PROMPT'
-Tugas: telaah asesmen/RTM yang sudah ada lalu rekomendasikan SATU rencana asesmen lengkap sebagai pengganti bila dosen menyetujuinya. Total bobot harus tepat 100% dan seluruh Sub-CPMK harus terukur. UTS minggu 8 dan UAS minggu 16. Jika tugas/proyek/praktikum direkomendasikan, buat RTM yang relevan. Gabungan `sub_cpmk_codes` dari seluruh RTM WAJIB mencakup semua Sub-CPMK aktif minimal satu kali. Susun cakupan RTM mengikuti urutan Sub-CPMK dari awal ke akhir agar mudah dibaca pada Lembar Rencana Tugas Mahasiswa. Jangan mengarang referensi di luar konteks.
+Tugas: telaah asesmen/RTM yang sudah ada lalu rekomendasikan SATU rencana asesmen lengkap sebagai pengganti bila dosen menyetujuinya. Total bobot harus tepat 100% dan seluruh Sub-CPMK harus terukur. UTS pekan 8 dan UAS pekan 16. Jika tugas/proyek/praktikum direkomendasikan, buat RTM yang relevan. Gabungan `sub_cpmk_codes` dari seluruh RTM WAJIB mencakup semua Sub-CPMK aktif minimal satu kali. Susun cakupan RTM mengikuti urutan Sub-CPMK dari awal ke akhir agar mudah dibaca pada Lembar Rencana Tugas Mahasiswa. Jangan mengarang referensi di luar konteks.
 PROMPT,
             default => throw ValidationException::withMessages(['ai' => 'Jenis rekomendasi AI tidak didukung.']),
         };

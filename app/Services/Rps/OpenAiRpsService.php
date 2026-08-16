@@ -183,7 +183,7 @@ Aturan mutlak:
 1. Gunakan HANYA konteks RPS yang diberikan. Jangan mengarang data kurikulum, CPL, kode mata kuliah, referensi, atau kebijakan yang tidak ada pada konteks.
 2. CPL tidak boleh dibuat atau diubah. Untuk pemetaan, gunakan hanya `cpl_scope` yang tersedia.
 3. CPMK boleh direkomendasikan untuk adaptasi atau penambahan pada level RPS, tetapi jangan mengubah master kurikulum.
-4. UTS harus berada pada minggu 8 dan UAS pada minggu 16.
+4. UTS harus berada pada pekan 8 dan UAS pada pekan 16.
 5. Gunakan bahasa Indonesia akademik yang ringkas, jelas, terukur, dan dapat dinilai.
 6. Rekomendasi harus membantu dosen mengambil keputusan. AI tidak berwenang menetapkan keputusan akademik final.
 7. Bila informasi sumber tidak cukup, jangan mengarang referensi; gunakan string kosong pada bagian yang tidak dapat didukung konteks.
@@ -198,10 +198,10 @@ PROMPT,
 Tugas: rekomendasikan Sub-CPMK yang logis dari CPMK kerja, bahan kajian, dan silabus. Setiap Sub-CPMK harus mempunyai satu CPMK induk yang benar-benar ada pada konteks dan level Bloom C1-C6.
 PROMPT,
             'weekly_plan' => <<<'PROMPT'
-Tugas: susun draft 14 minggu pembelajaran (minggu 1-7 dan 9-15). Jangan membuat minggu 8/16 sebagai kuliah biasa. Kaitkan dengan Sub-CPMK yang benar-benar ada. Materi harus berasal/diturunkan dari bahan kajian dan silabus yang tersedia. Metode, aktivitas, indikator, kriteria, dan asesmen harus selaras dengan Sub-CPMK.
+Tugas: susun draft 14 pekan pembelajaran (pekan 1-7 dan 9-15). Jangan membuat pekan 8/16 sebagai kuliah biasa. Kaitkan dengan Sub-CPMK yang benar-benar ada. Materi harus berasal/diturunkan dari bahan kajian dan silabus yang tersedia. Metode, aktivitas, indikator, kriteria, dan asesmen harus selaras dengan Sub-CPMK.
 PROMPT,
             'assessment_plan' => <<<'PROMPT'
-Tugas: rekomendasikan struktur asesmen yang total bobotnya tepat 100% dan mengukur seluruh Sub-CPMK. UTS minggu 8 dan UAS minggu 16. Jika tugas/proyek/praktikum direkomendasikan, buat RTM yang relevan. Jangan mengarang referensi di luar konteks.
+Tugas: rekomendasikan struktur asesmen yang total bobotnya tepat 100% dan mengukur seluruh Sub-CPMK. UTS pekan 8 dan UAS pekan 16. Jika tugas/proyek/praktikum direkomendasikan, buat RTM yang relevan. Jangan mengarang referensi di luar konteks.
 PROMPT,
             default => throw ValidationException::withMessages(['ai' => 'Jenis rekomendasi AI tidak didukung.']),
         };

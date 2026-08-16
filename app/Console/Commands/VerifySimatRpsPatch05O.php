@@ -22,19 +22,19 @@ class VerifySimatRpsPatch05O extends Command
 
         $checks = [
             ['Meta dokumen tersedia', Schema::hasTable('rps_document_meta')],
-            ['Bobot mingguan tersedia', Schema::hasColumn('rps_weekly_plans', 'assessment_weight')],
+            ['Bobot pekanan tersedia', Schema::hasColumn('rps_weekly_plans', 'assessment_weight')],
             ['Format RPS document-style', str_contains($ui, 'RENCANA PEMBELAJARAN SEMESTER')],
             ['Header identitas RPS lengkap', str_contains($ui, 'Dosen Pengembang RPS') && str_contains($ui, 'Koordinator RMK') && str_contains($ui, 'Ka PRODI')],
             ['CPL/CPMK/Sub-CPMK satu tabel', str_contains($ui, 'CPL-PRODI yang dibebankan pada MK') && str_contains($ui, 'Kemampuan akhir tiap tahapan belajar')],
             ['Matriks Sub-CPMK→CPMK', str_contains($ui, 'SubCpmkMatrix')],
             ['AI kontekstual di section', str_contains($ui, 'SectionAiButton')],
             ['AI tidak menambah kolom cetak', ! str_contains($ui, '>AI</th>')],
-            ['Edit mingguan dalam baris', str_contains($ui, 'function DocumentWeekRow')],
+            ['Edit pekanan dalam baris', str_contains($ui, 'function DocumentWeekRow')],
             ['Bobot langsung di tabel', str_contains($ui, 'function InlineWeightInput')],
             ['UTS/UAS baris gabung', str_contains($ui, 'colSpan={6}')],
             ['Bobot validator dari tabel RPS', str_contains($workspace, 'Total bobot pada tabel RPS')],
             ['Route meta RPS', $routes->contains(fn ($route) => $route->uri() === 'rps/{rps}/document-meta')],
-            ['Route bobot mingguan', $routes->contains(fn ($route) => $route->uri() === 'rps/{rps}/weeks/{week}/weight')],
+            ['Route bobot pekanan', $routes->contains(fn ($route) => $route->uri() === 'rps/{rps}/weeks/{week}/weight')],
             ['Error rate-limit diringkas', str_contains($ui, 'Kuota harian provider AI sedang penuh')],
         ];
 

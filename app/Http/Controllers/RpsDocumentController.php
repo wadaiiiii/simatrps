@@ -178,7 +178,7 @@ class RpsDocumentController extends Controller
 
         return back()->with(
             'success',
-            "Bobot pengukuran minggu {$week} disimpan {$newWeight}%. "
+            "Bobot pengukuran pekan {$week} disimpan {$newWeight}%. "
                 ."Pekan lain pada Sub-CPMK yang sama otomatis diseimbangkan "
                 ."agar total tetap {$result['sub_budget']}%."
         );
@@ -227,7 +227,7 @@ class RpsDocumentController extends Controller
 
         return back()->with(
             'success',
-            "Nilai simulasi minggu {$week} berhasil disimpan."
+            "Nilai simulasi pekan {$week} berhasil disimpan."
         );
     }
 

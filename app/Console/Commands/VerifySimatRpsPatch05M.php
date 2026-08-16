@@ -24,7 +24,7 @@ class VerifySimatRpsPatch05M extends Command
             ['Header Luring/Daring', str_contains($ui, 'Tatap muka / Luring') && str_contains($ui, '>Daring<')],
             ['Materi [Pustaka]', str_contains($ui, 'Materi Pembelajaran') && str_contains($ui, '[Pustaka]')],
             ['UTS/UAS baris gabung', str_contains($ui, 'Ujian Tengah Semester') && str_contains($ui, 'colSpan={6}')],
-            ['Bobot mingguan dari asesmen', str_contains($controller, 'assessmentWeightsByWeek')],
+            ['Bobot pekanan dari asesmen', str_contains($controller, 'assessmentWeightsByWeek')],
             ['Editor sesuai kolom tabel', str_contains($ui, 'Isian Sesuai Kolom Tabel RPS')],
             ['Waktu mengikuti SKS', str_contains($ui, '50 menit') && str_contains($ui, '60 menit')],
             ['Backend simpan frekuensi', str_contains($workspace, 'face_to_face_sessions') && str_contains($workspace, 'structured_task_sessions')],
