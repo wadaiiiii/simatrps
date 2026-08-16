@@ -3100,7 +3100,7 @@ function DocumentSubCpmkRow({ rpsId, sub, cpmks }: any) {
                         {sub.bloom_level || 'Bloom —'}
                     </span>
                     {parentCode && (
-                        <span className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700">
+                        <span className="rounded-full bg-teal-50 px-1.5 py-[1px] text-[8px] font-bold text-teal-700 print:hidden">
                             {parentCode}
                         </span>
                     )}
