@@ -134,6 +134,53 @@ class ObeWorkspaceService
             ->unique()
             ->count();
 
+        $weeklySubBudgets = $teachingWeeks
+            ->filter(fn ($week) => filled($week->rps_sub_cpmk_id ?? null))
+            ->groupBy(fn ($week) => (string) $week->rps_sub_cpmk_id)
+            ->map(fn ($items) => round((float) $items->sum(
+                fn ($week) => (float) ($week->assessment_weight ?? 0)
+            ), 2));
+
+        $aggregateSubBudgets = collect();
+        $nonExamAssessments = $assessments->reject(
+            fn ($assessment) => in_array(strtolower((string) $assessment->type), ['uts', 'uas'], true)
+        );
+
+        foreach ($nonExamAssessments as $assessment) {
+            $linked = DB::table('assessment_subcpmks')
+                ->where('assessment_id', $assessment->id)
+                ->whereIn('rps_sub_cpmk_id', $subCpmkIds)
+                ->orderBy('rps_sub_cpmk_id')
+                ->pluck('rps_sub_cpmk_id')
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values();
+
+            if ($linked->isEmpty() || (float) ($assessment->weight ?? 0) <= 0) {
+                continue;
+            }
+
+            $cents = (int) round((float) $assessment->weight * 100);
+            $base = intdiv($cents, $linked->count());
+            $remainder = $cents % $linked->count();
+
+            foreach ($linked as $index => $subId) {
+                $share = ($base + ($index < $remainder ? 1 : 0)) / 100;
+                $aggregateSubBudgets->put(
+                    $subId,
+                    round((float) $aggregateSubBudgets->get($subId, 0) + $share, 2)
+                );
+            }
+        }
+
+        $subBudgetAligned = $subCpmkIds->isNotEmpty()
+            && $subCpmkIds->every(function ($subId) use ($weeklySubBudgets, $aggregateSubBudgets): bool {
+                $weekly = (float) $weeklySubBudgets->get((string) $subId, 0);
+                $aggregate = (float) $aggregateSubBudgets->get((string) $subId, 0);
+
+                return $aggregate > 0 && abs($weekly - $aggregate) < 0.011;
+            });
+
         $assessedSubCount = ($subCpmkIds->isEmpty() || $assessmentIds->isEmpty())
             ? 0
             : DB::table('assessment_subcpmks')
@@ -222,14 +269,18 @@ class ObeWorkspaceService
                 'done' => abs($assessmentWeightTotal - 100.0) < 0.01
                     && $weightedTeachingWeeks->count() === 14
                     && abs($teachingWeightTotal - $nonExamAssessmentWeight) < 0.01
+                    && $subBudgetAligned
                     && abs($weightTotal - 100.0) < 0.01,
-                'message' => "{$weightedTeachingWeeks->count()}/14 pekan pembelajaran memiliki bobot; distribusi pekan non-ujian {$teachingWeightTotal}% dari anggaran asesmen non-UTS/UAS {$nonExamAssessmentWeight}%; total tabel RPS {$weightTotal}% dan total asesmen agregat {$assessmentWeightTotal}%.",
+                'message' => "{$weightedTeachingWeeks->count()}/14 pekan pembelajaran memiliki bobot; distribusi pekan non-ujian {$teachingWeightTotal}% dari anggaran asesmen non-UTS/UAS {$nonExamAssessmentWeight}%; kesesuaian bobot per Sub-CPMK ".($subBudgetAligned ? 'sesuai' : 'belum sesuai')."; total tabel RPS {$weightTotal}% dan total asesmen agregat {$assessmentWeightTotal}%.",
                 'details' => [
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
                     'teaching_week_total' => $teachingWeightTotal,
                     'non_exam_assessment_budget' => $nonExamAssessmentWeight,
                     'weekly_total' => $weightTotal,
                     'aggregate_assessment_total' => $assessmentWeightTotal,
+                    'sub_budget_aligned' => $subBudgetAligned,
+                    'weekly_sub_budgets' => $weeklySubBudgets->all(),
+                    'aggregate_sub_budgets' => $aggregateSubBudgets->all(),
                 ],
             ],
             [
