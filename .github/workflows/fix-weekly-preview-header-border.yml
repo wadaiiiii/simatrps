@@ -1,0 +1,54 @@
+name: Fix Weekly Preview Header Border
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Strengthen weekly RPS header borders
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('resources/js/components/app-sidebar-header.tsx')
+          s = p.read_text(encoding='utf-8')
+
+          # Keep general preview borders consistent at 1.2px.
+          s = s.replace(
+              "                    border-width: 1px !important;\n                    border-style: solid !important;",
+              "                    border-width: 1.2px !important;\n                    border-style: solid !important;",
+              1,
+          )
+
+          marker = "        normalizeDocumentTable(weeklyTable);\n"
+          block = """        normalizeDocumentTable(weeklyTable);\n\n        // Kop tabel RPS harus tetap terbaca pada zoom normal/PDF.\n        weeklyTable?.querySelectorAll<HTMLElement>('thead th').forEach((cell) => {\n            setPrintStyle(cell, 'border', '1.6px solid #111827');\n        });\n        if (weeklyTable) {\n            setPrintStyle(weeklyTable, 'border', '1.6px solid #111827');\n        }\n"""
+          if "Kop tabel RPS harus tetap terbaca" not in s:
+              if marker not in s:
+                  raise SystemExit('weekly normalize marker not found')
+              s = s.replace(marker, block, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/js/components/app-sidebar-header.tsx
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Strengthen RPS weekly preview header borders"
+          git push
