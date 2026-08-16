@@ -1,0 +1,37 @@
+name: Patch weekly provenance refresh v2
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-refresh-week-provenance-v2.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply corrected patch
+        run: python3 .github/scripts/patch_refresh_week_provenance_v2.py
+      - name: Validate PHP
+        run: |
+          php -l app/Services/Rps/RpsSmartDraftService.php
+          php -l app/Http/Controllers/RpsAutomationController.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+          php -l app/Http/Controllers/RpsAiController.php
+      - name: Validate provenance markers
+        run: |
+          grep -q "manual_allocation_auto" app/Services/Rps/RpsSmartDraftService.php
+          grep -q "manual_allocation_manual" app/Http/Controllers/RpsAutomationController.php
+          grep -q "manual_allocation_ai" app/Http/Controllers/RpsAiController.php
+      - name: Commit implementation and cleanup
+        run: |
+          rm -f .github/scripts/patch_refresh_week_provenance.py
+          rm -f .github/scripts/patch_refresh_week_provenance_v2.py
+          rm -f .github/workflows/patch-refresh-week-provenance.yml
+          rm -f .github/workflows/patch-refresh-week-provenance-v2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/Rps/RpsSmartDraftService.php app/Http/Controllers/RpsAutomationController.php app/Http/Controllers/ObeWorkspaceController.php app/Http/Controllers/RpsAiController.php .github/scripts/patch_refresh_week_provenance.py .github/scripts/patch_refresh_week_provenance_v2.py .github/workflows/patch-refresh-week-provenance.yml .github/workflows/patch-refresh-week-provenance-v2.yml
+          git commit -m "Refresh auto weeks without resetting lecturer allocations"
+          git push
