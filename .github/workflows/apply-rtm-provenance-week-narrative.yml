@@ -3,8 +3,6 @@ name: Apply RTM provenance and week narrative
 on:
   push:
     branches: [main]
-    paths:
-      - '.github/scripts/fix_rtm_provenance_and_week_narrative.py'
 
 jobs:
   patch:
