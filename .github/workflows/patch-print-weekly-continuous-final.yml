@@ -1,0 +1,39 @@
+name: Patch Final Weekly Print Continuity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-print-weekly-continuous-final.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply patch
+        run: python .github/scripts/patch-print-weekly-continuous-final.py
+
+      - name: Verify patch
+        run: |
+          python -m py_compile .github/scripts/patch-print-weekly-continuous-final.py
+          grep -q "rps-print-weekly-wrap" resources/js/pages/rps/show.tsx
+          grep -q "rps-print-evaluation-break" resources/js/pages/rps/show.tsx
+          grep -q "final weekly continuous flow" resources/css/app.css
+          grep -q "display: none !important" resources/css/app.css
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/js/pages/rps/show.tsx resources/css/app.css
+          git commit -m "Keep weekly RPS table continuous until evaluation section"
+          git push
