@@ -77,9 +77,9 @@ class RpsTaskController extends Controller
             }
         });
 
-        $sync->syncTaskMappings($version->id);
+        $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil ditambahkan. Jika terhubung ke asesmen, tag Sub-CPMK otomatis mengikuti asesmen.');
+        return back()->with('success', 'RTM berhasil ditambahkan. Tag Sub-CPMK mengikuti Sub-CPMK pekan, sedangkan asesmen agregat tetap menjadi sumber anggaran bobot.');
     }
 
 
@@ -151,12 +151,12 @@ class RpsTaskController extends Controller
             }
         });
 
-        $sync->syncTaskMappings($version->id);
+        $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil diperbarui dan tag Sub-CPMK disinkronkan dengan asesmen terkait.');
+        return back()->with('success', 'RTM berhasil diperbarui dan distribusi asesmen-pekan disinkronkan.');
     }
 
-    public function destroy(Request $request, string $rps, string $task): RedirectResponse
+    public function destroy(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
 
@@ -201,7 +201,9 @@ class RpsTaskController extends Controller
             ->where('rps_version_id', $version->id)
             ->delete();
 
-        return back()->with('success', 'RTM berhasil dihapus.');
+        $sync->syncVersion($version->id);
+
+        return back()->with('success', 'RTM berhasil dihapus dan distribusi asesmen-pekan disinkronkan ulang.');
     }
 
     private function applyAssessmentDefaults(array $validated, string $versionId): array
@@ -227,16 +229,36 @@ class RpsTaskController extends Controller
         }
 
         $validated['type'] = $type;
-        $validated['sub_cpmk_ids'] = DB::table('assessment_subcpmks')
+        $assessmentSubIds = DB::table('assessment_subcpmks')
             ->where('assessment_id', $assessment->id)
             ->pluck('rps_sub_cpmk_id')
-            ->map('strval')
+            ->map(fn ($id) => (string) $id)
             ->unique()
-            ->values()
-            ->all();
+            ->values();
 
         if (empty($validated['due_week']) && filled($assessment->week_number)) {
             $validated['due_week'] = (int) $assessment->week_number;
+        }
+
+        $dueWeek = (int) ($validated['due_week'] ?? 0);
+        if (in_array($dueWeek, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true)) {
+            $weekSubId = DB::table('rps_weekly_plans')
+                ->where('rps_version_id', $versionId)
+                ->where('week_number', $dueWeek)
+                ->value('rps_sub_cpmk_id');
+
+            if (filled($weekSubId)) {
+                if (! $assessmentSubIds->contains((string) $weekSubId)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'due_week' => 'Asesmen yang dipilih tidak mengukur Sub-CPMK pada Pekan '.$dueWeek.'. Ubah Asesmen Terkait atau Pekan Pengumpulan.',
+                    ]);
+                }
+                $validated['sub_cpmk_ids'] = [(string) $weekSubId];
+            } else {
+                $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
+            }
+        } else {
+            $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
         }
 
         return $validated;

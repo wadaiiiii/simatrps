@@ -258,27 +258,25 @@ class RpsController extends Controller
         $assessmentNamesByWeek = collect(
             $assessmentSyncSnapshot['assessment_names_by_week'] ?? []
         );
-        $assessmentSubBudgets = collect(
-            $assessmentSyncSnapshot['aggregate_sub_budgets'] ?? []
-        );
+        $assessmentOwnerByWeek = collect($assessmentSyncSnapshot['assessment_owner_by_week'] ?? []);
+        $assessmentOwnerNameByWeek = collect($assessmentSyncSnapshot['assessment_owner_name_by_week'] ?? []);
+        $assessmentGroupBudgetByWeek = collect($assessmentSyncSnapshot['assessment_group_budget_by_week'] ?? []);
+        $assessmentGroupWeekCountByWeek = collect($assessmentSyncSnapshot['assessment_group_week_count_by_week'] ?? []);
+        $assessmentTotalBudgetByWeek = collect($assessmentSyncSnapshot['assessment_total_budget_by_week'] ?? []);
         $weightOverrides = collect(
             $assessmentSyncSnapshot['weight_overrides'] ?? []
         );
-        $teachingWeekCountsBySub = $weeks
-            ->filter(fn ($item) =>
-                in_array((int) $item->week_number, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true)
-                && filled($item->rps_sub_cpmk_id ?? null)
-            )
-            ->groupBy(fn ($item) => (string) $item->rps_sub_cpmk_id)
-            ->map(fn ($items) => $items->count());
 
         $weeks = $weeks->map(function ($week) use (
             $subById,
             $assessmentWeightsByWeek,
             $assessmentNamesByWeek,
-            $assessmentSubBudgets,
-            $weightOverrides,
-            $teachingWeekCountsBySub
+            $assessmentOwnerByWeek,
+            $assessmentOwnerNameByWeek,
+            $assessmentGroupBudgetByWeek,
+            $assessmentGroupWeekCountByWeek,
+            $assessmentTotalBudgetByWeek,
+            $weightOverrides
         ): object {
             $sub = $week->rps_sub_cpmk_id
                 ? $subById->get($week->rps_sub_cpmk_id)
@@ -302,18 +300,25 @@ class RpsController extends Controller
             $subId = filled($week->rps_sub_cpmk_id ?? null)
                 ? (string) $week->rps_sub_cpmk_id
                 : null;
-            $subBudget = $subId
-                ? (float) $assessmentSubBudgets->get($subId, 0)
-                : 0.0;
+            $ownerId = (string) $assessmentOwnerByWeek->get($weekNumber, '');
+            $ownerName = (string) $assessmentOwnerNameByWeek->get($weekNumber, '');
+            $groupBudget = (float) $assessmentGroupBudgetByWeek->get($weekNumber, 0);
+            $groupWeekCount = (int) $assessmentGroupWeekCountByWeek->get($weekNumber, 0);
+            $assessmentTotalBudget = (float) $assessmentTotalBudgetByWeek->get($weekNumber, 0);
             $isTeachingWeek = ! in_array($weekNumber, [8, 16], true);
 
-            $week->assessment_sub_budget = $subBudget;
-            $week->assessment_sub_week_count = $subId
-                ? (int) $teachingWeekCountsBySub->get($subId, 0)
-                : 0;
+            $week->assessment_owner_id = $ownerId ?: null;
+            $week->assessment_owner_name = $ownerName;
+            $week->assessment_group_budget = $groupBudget;
+            $week->assessment_group_week_count = $groupWeekCount;
+            $week->assessment_total_budget = $assessmentTotalBudget;
+            // Alias lama dipertahankan sementara untuk kompatibilitas komponen UI.
+            $week->assessment_sub_budget = $groupBudget;
+            $week->assessment_sub_week_count = $groupWeekCount;
             $week->assessment_weight_editable = $isTeachingWeek
                 && $subId !== null
-                && $subBudget > 0;
+                && $ownerId !== ''
+                && $groupBudget > 0;
             $week->assessment_weight_manual = $isTeachingWeek
                 && $weightOverrides->has($weekNumber);
 

@@ -206,6 +206,8 @@ class ObeWorkspaceService
         $assessmentSync = app(RpsAssessmentSyncService::class);
         $taskAlignment = $assessmentSync->taskAlignment($versionId);
         $assessmentSnapshot = $assessmentSync->snapshot($versionId);
+        $assessmentBudgetMismatches = collect($assessmentSnapshot['assessment_budget_mismatches'] ?? []);
+        $assessmentBudgetAligned = $assessmentBudgetMismatches->isEmpty();
         $tasks = (int) $taskAlignment['task_total'];
 
         $evidenceNamesByWeek = collect($assessmentSnapshot['assessment_names_by_week'] ?? []);
@@ -255,6 +257,7 @@ class ObeWorkspaceService
             && $weightedTeachingWeeks->count() === 14
             && $weightedWeeklySubCount === $subCpmks->count()
             && $subBudgetAligned
+            && $assessmentBudgetAligned
             && $weeklyEvidenceAligned
             && (bool) $taskAlignment['is_aligned'];
 
@@ -309,6 +312,7 @@ class ObeWorkspaceService
                     && $weightedTeachingWeeks->count() === 14
                     && abs($teachingWeightTotal - $nonExamAssessmentWeight) < 0.01
                     && $subBudgetAligned
+                    && $assessmentBudgetAligned
                     && abs($weightTotal - 100.0) < 0.01,
                 'message' => "{$weightedTeachingWeeks->count()}/14 pekan berbobot · Total {$weightTotal}%.",
                 'details' => [
@@ -318,6 +322,8 @@ class ObeWorkspaceService
                     'weekly_total' => $weightTotal,
                     'aggregate_assessment_total' => $assessmentWeightTotal,
                     'sub_budget_aligned' => $subBudgetAligned,
+                    'assessment_budget_aligned' => $assessmentBudgetAligned,
+                    'assessment_budget_mismatches' => $assessmentBudgetMismatches->all(),
                     'weekly_sub_budgets' => $weeklySubBudgets->all(),
                     'aggregate_sub_budgets' => $aggregateSubBudgets->all(),
                 ],
@@ -342,18 +348,22 @@ class ObeWorkspaceService
                 'done' => $assessmentChainAligned,
                 'message' => $assessmentChainAligned
                     ? 'Semua penilaian sudah konsisten.'
-                    : ($ambiguousWeekNumbers->isNotEmpty()
+                    : (! $assessmentBudgetAligned
+                        ? $assessmentBudgetMismatches->count().' asesmen memiliki distribusi bobot pekan yang tidak sesuai.'
+                        : ($ambiguousWeekNumbers->isNotEmpty()
                         ? 'Pekan '.$ambiguousWeekNumbers->implode(', ').' memiliki lebih dari satu bukti penilaian.'
                         : ($missingWeekNumbers->isNotEmpty()
                             ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
                             : ($taskAlignment['missing_required_assessment_count'] > 0
                                 ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
-                                : 'Masih ada data penilaian yang belum konsisten.'))),
+                                : 'Masih ada data penilaian yang belum konsisten.')))),
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
                     'sub_budget_aligned' => $subBudgetAligned,
+                    'assessment_budget_aligned' => $assessmentBudgetAligned,
+                    'assessment_budget_mismatches' => $assessmentBudgetMismatches->all(),
                     'weekly_evidence_aligned' => $weeklyEvidenceAligned,
                     'weekly_evidence_covered' => $coveredEvidenceWeeks->count(),
                     'weekly_evidence_ambiguous' => $ambiguousWeightedWeeks->count(),

@@ -3383,8 +3383,8 @@ function InlineWeightInput({ rpsId, week }: any) {
     const original = String(numeric);
     const isExam = Boolean(week.is_exam) || [8, 16].includes(Number(week.week_number));
     const editable = Boolean(week.assessment_weight_editable) && !isExam;
-    const budget = Number(week.assessment_sub_budget || 0);
-    const groupCount = Number(week.assessment_sub_week_count || 0);
+    const budget = Number(week.assessment_group_budget || week.assessment_sub_budget || 0);
+    const groupCount = Number(week.assessment_group_week_count || week.assessment_sub_week_count || 0);
     const isManual = Boolean(week.assessment_weight_manual);
 
     const form = useForm({
@@ -3431,7 +3431,7 @@ function InlineWeightInput({ rpsId, week }: any) {
             `Ubah bobot Pekan ${week.week_number} menjadi ${next}%?
 
 `
-            + `Anggaran ${week.sub_cpmk_code || 'Sub-CPMK'} tetap ${budget}% untuk ${groupCount} pekan. `
+            + `Anggaran ${week.assessment_owner_name || 'asesmen terkait'} untuk ${week.sub_cpmk_code || 'Sub-CPMK'} tetap ${budget}% pada ${groupCount} pekan. `
             + 'Sistem akan menyeimbangkan sisa anggaran pada pekan lain dalam Sub-CPMK yang sama, sambil mempertahankan pembagian manual yang sudah ada. '
             + 'Bobot asesmen agregat tidak berubah; RTM dan Validator OBE akan mengikuti distribusi terbaru.',
         );

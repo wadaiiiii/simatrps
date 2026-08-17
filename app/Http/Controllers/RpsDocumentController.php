@@ -182,7 +182,7 @@ class RpsDocumentController extends Controller
 
         return back()->with(
             'success',
-            "Bobot Pekan {$week} disimpan {$newWeight}%. Anggaran {$result['sub_code']} tetap {$result['sub_budget']}%; distribusi: {$distribution}. Bobot asesmen agregat tidak berubah dan RTM/validator mengikuti bobot pekan terbaru."
+            "Bobot Pekan {$week} disimpan {$newWeight}%. Anggaran {$result['assessment_name']} untuk {$result['sub_code']} tetap {$result['group_budget']}% (total asesmen {$result['assessment_budget']}%); distribusi: {$distribution}."
         );
     }
 
