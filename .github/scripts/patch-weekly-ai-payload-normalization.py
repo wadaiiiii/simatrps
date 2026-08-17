@@ -139,3 +139,5 @@ if old_msg not in text:
 text = text.replace(old_msg, new_msg, 1)
 
 controller.write_text(text)
+
+# Trigger marker: weekly-ai-payload-normalization-v1
