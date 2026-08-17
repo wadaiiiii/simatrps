@@ -101,13 +101,18 @@ function stripMaterialListPrefix(value: any) {
 const VALIDATOR_FIX_META: Record<string, { label: string; target: string }> = {
     cpmk_cpl: { label: 'Perbaiki CPMK ↔ CPL', target: 'validator-target-cpmk' },
     sub_cpmk: { label: 'Perbaiki Sub-CPMK', target: 'validator-target-cpmk' },
+    bloom_hierarchy: { label: 'Perbaiki Bloom', target: 'validator-target-cpmk' },
     materials: { label: 'Perbaiki Bahan Kajian', target: 'validator-target-materials' },
+    material_quality: { label: 'Rapikan Bahan Kajian', target: 'validator-target-materials' },
+    weekly_material_semantics: { label: 'Periksa Materi Pekan', target: 'validator-target-weeks' },
     weeks: { label: 'Perbaiki Tabel RPS', target: 'validator-target-weeks' },
     exam_weeks: { label: 'Perbaiki Asesmen', target: 'validator-target-assessment' },
     assessment_weight: { label: 'Perbaiki Bobot', target: 'validator-target-assessment' },
     subcpmk_assessed: { label: 'Atur Pertemuan', target: 'validator-target-weeks' },
+    assessment_semantics: { label: 'Periksa Tag Asesmen', target: 'validator-target-assessment' },
     assessment_chain_sync: { label: 'Periksa RTM', target: 'validator-target-rtm' },
     weekly_assessment_evidence: { label: 'Periksa RTM', target: 'validator-target-rtm' },
+    rtm_semantics: { label: 'Periksa RTM', target: 'validator-target-rtm' },
     rtm: { label: 'Perbaiki RTM', target: 'validator-target-rtm' },
 };
 
