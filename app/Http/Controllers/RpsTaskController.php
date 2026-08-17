@@ -160,12 +160,48 @@ class RpsTaskController extends Controller
     {
         [, $version] = $this->context($request, $rps);
 
+        $existing = DB::table('rps_tasks')
+            ->where('id', $task)
+            ->where('rps_version_id', $version->id)
+            ->first();
+
+        abort_unless($existing, 404);
+
+        if (filled($existing->assessment_id ?? null)) {
+            $assessment = DB::table('assessments')
+                ->where('id', $existing->assessment_id)
+                ->where('rps_version_id', $version->id)
+                ->first(['id', 'name', 'type', 'weight']);
+
+            $requiresRtm = $assessment
+                && in_array(strtolower((string) $assessment->type), [
+                    'assignment', 'project', 'practicum', 'presentation',
+                ], true)
+                && (float) ($assessment->weight ?? 0) > 0;
+
+            if ($requiresRtm) {
+                $otherRtmCount = DB::table('rps_tasks')
+                    ->where('rps_version_id', $version->id)
+                    ->where('assessment_id', $assessment->id)
+                    ->where('id', '!=', $task)
+                    ->count();
+
+                if ($otherRtmCount === 0) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'task' => 'RTM ini masih menjadi satu-satunya RTM untuk asesmen "'
+                            .trim((string) $assessment->name)
+                            .'". Jika hanya bentrok pekan, ubah Pekan Pengumpulan. Jika asesmennya tidak diperlukan, ubah atau hapus asesmen pada Detail Asesmen.',
+                    ]);
+                }
+            }
+        }
+
         DB::table('rps_tasks')
             ->where('id', $task)
             ->where('rps_version_id', $version->id)
             ->delete();
 
-        return back()->with('success', 'RTM dihapus.');
+        return back()->with('success', 'RTM berhasil dihapus.');
     }
 
     private function applyAssessmentDefaults(array $validated, string $versionId): array

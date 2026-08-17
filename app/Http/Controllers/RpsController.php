@@ -215,13 +215,10 @@ class RpsController extends Controller
             ->orderBy('sequence_no')
             ->get();
 
-        // RPS lama dapat memiliki asesmen wajib yang belum mempunyai RTM.
-        // Heal hanya ketika rantainya memang belum selaras; RPS yang sudah
-        // valid tidak melakukan write pada setiap GET.
-        $initialTaskAlignment = $assessmentSync->taskAlignment($version->id);
-        if (! (bool) ($initialTaskAlignment['is_aligned'] ?? false)) {
-            $assessmentSync->syncVersion($version->id);
-        }
+        // Halaman RPS bersifat read-only terhadap RTM. RTM yang hilang/duplikat
+        // diperbaiki hanya melalui aksi eksplisit (asesmen, RTM, atau sinkronisasi),
+        // bukan saat halaman sekadar dibuka. Ini mencegah RTM yang dihapus
+        // muncul kembali secara otomatis.
 
         $weeks = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $version->id)
