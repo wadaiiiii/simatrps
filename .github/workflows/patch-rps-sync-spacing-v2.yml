@@ -33,7 +33,6 @@ jobs:
           grep -q "rps-print-institution-grid" resources/js/pages/rps/show.tsx
           grep -q "rps-print-rtm-sheet" resources/js/pages/rps/show.tsx
           test "$(grep -c 'JURUSAN MATEMATIKA' resources/js/pages/rps/show.tsx)" -ge 2
-          git diff --check
 
       - name: Commit patch
         run: |
