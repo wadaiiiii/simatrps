@@ -456,22 +456,17 @@ Pendukung:
             'lecturer' => $documentMeta['lecturer_names'],
         ];
 
-        $weekSubByNumber = $weeks
-            ->pluck('rps_sub_cpmk_id', 'week_number');
-
         $assessmentById = $assessments->keyBy(fn ($assessment) => (string) $assessment->id);
-        $normalizeAssessmentLabel = static function (string $value): string {
-            $value = mb_strtolower(trim($value));
-            $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
-            return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
-        };
 
         $tasks = Schema::hasTable('rps_tasks')
             ? DB::table('rps_tasks')
                 ->where('rps_version_id', $version->id)
                 ->orderBy('code')
                 ->get()
-                ->filter(function ($task) use ($assessmentById, $normalizeAssessmentLabel): bool {
+                ->filter(function ($task) use ($assessmentById): bool {
+                    // RTM manual boleh tidak memiliki asesmen induk. RTM hasil
+                    // generator yang masih menunjuk asesmen yang sudah hilang
+                    // disembunyikan sampai relasinya diperbaiki oleh sinkronisasi.
                     if (! $this->isGeneratedRtm($task)) {
                         return true;
                     }
@@ -479,32 +474,18 @@ Pendukung:
                     $assessmentId = filled($task->assessment_id ?? null)
                         ? (string) $task->assessment_id
                         : null;
-                    if (! $assessmentId) return false;
 
-                    $assessment = $assessmentById->get($assessmentId);
-                    if (! $assessment) return false;
-
-                    return $normalizeAssessmentLabel((string) $assessment->name)
-                        === $normalizeAssessmentLabel((string) $task->title);
+                    return $assessmentId !== null && $assessmentById->has($assessmentId);
                 })
                 ->values()
-                ->map(function ($task) use ($weekSubByNumber): object {
-                    $dueWeek = (int) ($task->due_week ?? 0);
-                    $weekSubId = filled($weekSubByNumber->get($dueWeek))
-                        ? (string) $weekSubByNumber->get($dueWeek)
-                        : null;
-
-                    // RTM pada pekan pembelajaran adalah bukti spesifik pekan.
-                    // Untuk tampilan/PDF gunakan Sub-CPMK pekan sebagai sumber
-                    // efektif tanpa menulis database saat halaman dibuka.
-                    if (in_array($dueWeek, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true) && $weekSubId) {
-                        $task->sub_cpmk_ids = [$weekSubId];
-                    } else {
-                        $task->sub_cpmk_ids = DB::table('rps_task_subcpmks')
-                            ->where('rps_task_id', $task->id)
-                            ->pluck('rps_sub_cpmk_id')
-                            ->all();
-                    }
+                ->map(function ($task): object {
+                    // Satu RTM dapat mengukur satu atau lebih Sub-CPMK.
+                    // Pekan pengumpulan hanya jadwal; jangan menimpa cakupan
+                    // RTM dengan Sub-CPMK yang kebetulan aktif pada pekan itu.
+                    $task->sub_cpmk_ids = DB::table('rps_task_subcpmks')
+                        ->where('rps_task_id', $task->id)
+                        ->pluck('rps_sub_cpmk_id')
+                        ->all();
 
                     return $task;
                 })

@@ -79,7 +79,7 @@ class RpsTaskController extends Controller
 
         $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil ditambahkan. Tag Sub-CPMK mengikuti Sub-CPMK pekan, sedangkan asesmen agregat tetap menjadi sumber anggaran bobot.');
+        return back()->with('success', 'RTM berhasil ditambahkan. Satu RTM dapat mengukur satu atau lebih Sub-CPMK dalam cakupan asesmen induk; pekan hanya menjadi jadwal pengumpulan.');
     }
 
 
@@ -153,7 +153,7 @@ class RpsTaskController extends Controller
 
         $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil diperbarui dan distribusi asesmen-pekan disinkronkan.');
+        return back()->with('success', 'RTM berhasil diperbarui. Cakupan Sub-CPMK RTM dipertahankan independen dari pekan pengumpulan dan tetap berada dalam asesmen induk.');
     }
 
     public function destroy(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
@@ -240,26 +240,33 @@ class RpsTaskController extends Controller
             $validated['due_week'] = (int) $assessment->week_number;
         }
 
-        $dueWeek = (int) ($validated['due_week'] ?? 0);
-        if (in_array($dueWeek, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true)) {
-            $weekSubId = DB::table('rps_weekly_plans')
-                ->where('rps_version_id', $versionId)
-                ->where('week_number', $dueWeek)
-                ->value('rps_sub_cpmk_id');
+        $requestedSubIds = collect($validated['sub_cpmk_ids'] ?? [])
+            ->map(fn ($id) => (string) $id)
+            ->filter()
+            ->unique()
+            ->values();
 
-            if (filled($weekSubId)) {
-                if (! $assessmentSubIds->contains((string) $weekSubId)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'due_week' => 'Asesmen yang dipilih tidak mengukur Sub-CPMK pada Pekan '.$dueWeek.'. Ubah Asesmen Terkait atau Pekan Pengumpulan.',
-                    ]);
-                }
-                $validated['sub_cpmk_ids'] = [(string) $weekSubId];
-            } else {
-                $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
-            }
-        } else {
+        if ($requestedSubIds->isEmpty()) {
+            // Default aman: satu RTM mewarisi seluruh cakupan asesmen induk.
+            // Dosen tetap dapat memilih sebagian Sub-CPMK melalui editor RTM.
             $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
+            return $validated;
         }
+
+        $outsideAssessment = $requestedSubIds
+            ->reject(fn ($id) => $assessmentSubIds->contains($id))
+            ->values();
+
+        if ($outsideAssessment->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'sub_cpmk_ids' => 'RTM hanya boleh mengukur Sub-CPMK yang termasuk dalam cakupan asesmen induk. Tambahkan Sub-CPMK tersebut pada asesmen terlebih dahulu atau ubah pilihan RTM.',
+            ]);
+        }
+
+        // Jangan mempersempit cakupan berdasarkan pekan pengumpulan. RTM
+        // integratif dapat mengukur beberapa Sub-CPMK dan dikumpulkan pada
+        // satu pekan tertentu.
+        $validated['sub_cpmk_ids'] = $requestedSubIds->all();
 
         return $validated;
     }

@@ -209,7 +209,7 @@ class GeminiRpsService
             'reference_plan' => 1200,
             'sub_cpmk' => 2200,
             'weekly_plan' => 5000,
-            'assessment_plan' => 2000,
+            'assessment_plan' => 3000,
             default => 1800,
         };
     }
@@ -224,7 +224,7 @@ class GeminiRpsService
             'cpmk_review' => 256,
             'sub_cpmk' => 384,
             'weekly_plan' => 512,
-            'assessment_plan' => 384,
+            'assessment_plan' => 3000,
             default => 256,
         };
     }

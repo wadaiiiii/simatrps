@@ -436,7 +436,7 @@ class ObeWorkspaceService
 
         $taskRows = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->get(['id', 'code', 'title', 'assessment_id', 'due_week']);
+            ->get(['id', 'code', 'title', 'assessment_id', 'due_week', 'purpose', 'instructions']);
         $assessmentById = $assessments->keyBy(fn ($item) => (string) $item->id);
         $rtmSemanticIssues = collect();
         $confirmedRtmSemanticCount = 0;
@@ -445,8 +445,8 @@ class ObeWorkspaceService
             $assessment = $assessmentById->get((string) $task->assessment_id);
             if (! $assessment) continue;
 
-            $taskCore = $this->assessmentCoreLabel((string) $task->title);
-            $assessmentCore = $this->assessmentCoreLabel((string) $assessment->name);
+            $taskCore = $this->assessmentCoreLabel(trim((string) $task->title.' '.(string) ($task->purpose ?? '').' '.(string) ($task->instructions ?? '')));
+            $assessmentCore = $this->assessmentCoreLabel(trim((string) $assessment->name.' '.(string) ($assessment->description ?? '')));
             if ($taskCore === '' || $assessmentCore === '') continue;
 
             $similarity = $this->semanticSimilarity($taskCore, $assessmentCore);

@@ -203,7 +203,7 @@ abstract class OpenAiCompatibleBackupRpsService
             'reference_plan' => 1000,
             'sub_cpmk' => 1800,
             'weekly_plan' => 3200,
-            'assessment_plan' => 1750,
+            'assessment_plan' => 3000,
             default => 1600,
         };
     }

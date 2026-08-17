@@ -2493,7 +2493,7 @@ function RtmDocumentSection({
                                             <tr>
                                                 <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">SEMESTER</td>
                                                 <td className="border border-slate-300 px-2 py-1">{rps.semester_recommended || '-'}</td>
-                                                <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">PEKAN KE-</td>
+                                                <td className="border border-slate-300 bg-slate-50 px-2 py-1 font-bold">PEKAN PENGUMPULAN</td>
                                                 <td className="border border-slate-300 px-2 py-1">{task.due_week || '-'}</td>
                                             </tr>
                                             <tr>
@@ -3027,7 +3027,7 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
             <div className="flex items-center justify-between gap-2">
                 <div>
                     <div className="font-bold text-slate-800">Tambah RTM</div>
-                    <div className="text-[10px] text-slate-400">Rencana tugas mahasiswa yang terhubung dengan asesmen.</div>
+                    <div className="text-[10px] text-slate-400">Satu RTM dapat mengukur satu atau lebih Sub-CPMK dalam cakupan asesmen induk.</div>
                 </div>
                 <button
                     type="button"

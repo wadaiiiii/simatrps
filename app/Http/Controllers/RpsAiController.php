@@ -77,13 +77,37 @@ class RpsAiController extends Controller
                 : $subBloomInstruction;
         }
 
+        if ($data['suggestion_type'] === 'assessment_plan') {
+            $rtmInstruction = <<<'PROMPT'
+Untuk Telaah Asesmen + RTM, perlakukan ASESMEN sebagai rencana pengukuran agregat dan RTM sebagai lembar instruksi tugas konkret bagi mahasiswa.
+
+ATURAN CAKUPAN RTM:
+1. Satu RTM BOLEH mengukur tepat satu Sub-CPMK ATAU beberapa Sub-CPMK sekaligus jika tugasnya integratif (proyek, praktikum, presentasi, tugas kasus, atau produk yang memang memerlukan beberapa capaian).
+2. `tasks[*].sub_cpmk_codes` tidak boleh dipaksa sama dengan Sub-CPMK pada pekan pengumpulan. `due_week` hanya menunjukkan jadwal/pengumpulan; cakupan akademik RTM ditentukan oleh kemampuan yang benar-benar diukur tugas tersebut.
+3. Seluruh `sub_cpmk_codes` sebuah RTM harus merupakan bagian dari `sub_cpmk_codes` asesmen induknya. RTM boleh mengukur sebagian atau seluruh cakupan asesmen induk.
+4. Jangan membuat banyak RTM hanya untuk memaksa pola satu RTM = satu Sub-CPMK. Jika satu tugas secara alami mengintegrasikan 2-4 Sub-CPMK, gunakan satu RTM integratif.
+
+KEDALAMAN ISI RTM:
+5. `purpose` harus berupa uraian substantif 1-2 paragraf pendek: jelaskan konteks penugasan, kemampuan yang dilatih/diukur, dan pekerjaan intelektual atau keterampilan yang harus ditunjukkan mahasiswa. Jangan menggunakan kalimat generik seperti "mengukur ketercapaian Sub-CPMK melalui tugas" saja.
+6. `instructions` harus operasional dan siap dibaca mahasiswa. Susun sedikitnya 5 langkah bernomor yang logis: persiapan/identifikasi masalah, pengumpulan atau pemilihan data/informasi bila relevan, proses analisis/perhitungan/perancangan/implementasi, pemeriksaan atau interpretasi hasil, dokumentasi, dan pengumpulan/presentasi. Sesuaikan dengan jenis mata kuliah dan Bahan Kajian aktif; jangan mengarang perangkat, data, ukuran kelompok, atau aplikasi yang tidak didukung konteks.
+7. Untuk proyek/tugas integratif yang berlangsung lintas pekan atau mengukur beberapa Sub-CPMK, masukkan bagian "Tahap/Milestone" di dalam `instructions`. Gunakan pekan yang masuk akal dari `weekly_plan` dan pastikan tahap akhir tidak melewati `due_week`. Jangan membuat jadwal di luar semester.
+8. `expected_output` harus menjelaskan luaran konkret dalam 3-5 butir, misalnya laporan, perhitungan/analisis, diagram/model, source code/notebook, peta, produk, atau bahan presentasi sesuai karakter mata kuliah. Jangan mengarang jumlah halaman, format file khusus, atau standar teknis yang tidak ada di konteks/instruksi dosen.
+9. `assessments[*].description` harus berisi indikator/kriteria penilaian yang spesifik terhadap tugas, bukan kalimat umum. Boleh merinci aspek ketepatan konsep/metode, kualitas proses, kualitas hasil/interpretasi, dan komunikasi/dokumentasi sepanjang sesuai konteks.
+10. Gunakan bahasa Indonesia akademik yang jelas, instruktif, dan cukup rinci seperti lembar Rencana Tugas Mahasiswa resmi. Hindari pengulangan kalimat template antar-RTM.
+PROMPT;
+
+            $effectiveInstruction = filled($effectiveInstruction)
+                ? trim((string) $effectiveInstruction)."\n\n".$rtmInstruction
+                : $rtmInstruction;
+        }
+
         $contextHash = hash(
             'sha256',
             json_encode(
                 [
                     'type' => $data['suggestion_type'],
                     'instruction' => trim((string) ($data['instruction'] ?? '')),
-                    'ai_policy_version' => 'bloom-guard-v2',
+                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v1' : 'bloom-guard-v2',
                     'context' => $context,
                 ],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES

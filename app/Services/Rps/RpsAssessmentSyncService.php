@@ -704,128 +704,116 @@ class RpsAssessmentSyncService
                 ->get(['assessment_id', 'rps_sub_cpmk_id'])
                 ->groupBy('assessment_id');
 
-        $weekSubs = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $versionId)
-            ->whereIn('week_number', array_merge(self::TEACHING_WEEKS, [8, 16]))
-            ->pluck('rps_sub_cpmk_id', 'week_number');
+        $taskLinks = DB::table('rps_task_subcpmks')
+            ->whereIn('rps_task_id', $tasks->pluck('id')->all())
+            ->get(['rps_task_id', 'rps_sub_cpmk_id'])
+            ->groupBy('rps_task_id');
 
         $linkedCount = 0;
+        $allowedAssessmentTypes = ['assignment', 'project', 'practicum', 'presentation'];
 
-        DB::transaction(function () use ($tasks, $assessments, $assessmentLinks, $weekSubs, &$linkedCount): void {
+        DB::transaction(function () use (
+            $tasks,
+            $assessments,
+            $assessmentLinks,
+            $taskLinks,
+            $allowedAssessmentTypes,
+            &$linkedCount
+        ): void {
             foreach ($tasks as $task) {
-                $dueWeek = (int) ($task->due_week ?? 0);
-                $weekSubId = filled($weekSubs->get($dueWeek))
-                    ? (string) $weekSubs->get($dueWeek)
-                    : null;
+                $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
                 $isGenerated = $this->isGeneratedTask($task);
-                $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
-
                 $currentAssessment = filled($task->assessment_id ?? null)
                     ? $assessments->first(
                         fn ($assessment) => (string) $assessment->id === (string) $task->assessment_id
                     )
                     : null;
 
-                // Keputusan dosen tidak boleh ditimpa oleh sinkronisasi.
-                // RTM manual tetap dipertahankan apa adanya; validator yang
-                // memberi rekomendasi bila judul/Sub-CPMK/pekannya tidak selaras.
-                // RTM legacy yang jelas memiliki sidik generator diperlakukan
-                // sebagai assessment_sync agar data lama yang salah induk dapat dibersihkan.
+                // RTM manual adalah keputusan dosen. Sinkronisasi tidak
+                // memindahkan asesmen atau mengubah cakupan Sub-CPMK-nya.
                 if (! $isGenerated) {
                     if ($currentAssessment) $linkedCount++;
                     continue;
                 }
 
-                $assessmentId = $currentAssessment ? (string) $currentAssessment->id : null;
-                $isCurrentValid = false;
+                $assessment = $currentAssessment;
 
-                if ($currentAssessment) {
-                    $type = strtolower((string) $currentAssessment->type);
-                    $titleMatches = $this->normalizeLabel((string) $currentAssessment->name)
-                        === $normalizedTaskTitle;
-
-                    if ($dueWeek === 8) {
-                        $scopeMatches = $type === 'uts';
-                    } elseif ($dueWeek === 16) {
-                        $scopeMatches = $type === 'uas';
-                    } elseif ($weekSubId && ! in_array($type, ['uts', 'uas'], true)) {
-                        $scopeMatches = collect($assessmentLinks->get($currentAssessment->id, []))
-                            ->pluck('rps_sub_cpmk_id')
-                            ->map(fn ($id) => (string) $id)
-                            ->contains($weekSubId);
-                    } else {
-                        $scopeMatches = false;
+                if (! $assessment || ! in_array(strtolower((string) $assessment->type), $allowedAssessmentTypes, true)) {
+                    // RTM AI yang sudah diterima dosen tidak dihapus hanya
+                    // karena judulnya berbeda atau relasi lama bermasalah.
+                    // Validator akan meminta dosen memperbaiki hubungan.
+                    if (in_array($sourceType, ['ai_accepted', 'ai_generated'], true)) {
+                        continue;
                     }
 
-                    $isCurrentValid = $titleMatches && $scopeMatches;
-                }
-
-                if ($isCurrentValid && strtolower(trim((string) ($task->source_type ?? ''))) !== 'assessment_sync') {
-                    DB::table('rps_tasks')->where('id', $task->id)->update([
-                        'source_type' => 'assessment_sync',
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                if (! $isCurrentValid) {
-                    $exact = $assessments->first(function ($assessment) use (
-                        $normalizedTaskTitle,
-                        $weekSubId,
-                        $dueWeek,
-                        $assessmentLinks
-                    ): bool {
-                        if ($this->normalizeLabel((string) $assessment->name) !== $normalizedTaskTitle) {
-                            return false;
-                        }
-
-                        $type = strtolower((string) $assessment->type);
-                        if ($dueWeek === 8) return $type === 'uts';
-                        if ($dueWeek === 16) return $type === 'uas';
-                        if (! $weekSubId || in_array($type, ['uts', 'uas'], true)) return false;
-
-                        return collect($assessmentLinks->get($assessment->id, []))
-                            ->pluck('rps_sub_cpmk_id')
-                            ->map(fn ($id) => (string) $id)
-                            ->contains($weekSubId);
+                    // Hanya RTM sinkronisasi/legacy mekanis yang boleh dicari
+                    // ulang berdasarkan nama asesmen yang sama.
+                    $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
+                    $assessment = $assessments->first(function ($candidate) use ($normalizedTaskTitle, $allowedAssessmentTypes): bool {
+                        return in_array(strtolower((string) $candidate->type), $allowedAssessmentTypes, true)
+                            && $this->normalizeLabel((string) $candidate->name) === $normalizedTaskTitle;
                     });
 
-                    if (! $exact) {
-                        DB::table('rps_task_subcpmks')
-                            ->where('rps_task_id', $task->id)
-                            ->delete();
+                    if (! $assessment) {
+                        DB::table('rps_task_subcpmks')->where('rps_task_id', $task->id)->delete();
                         DB::table('rps_tasks')->where('id', $task->id)->delete();
                         continue;
                     }
 
-                    $assessmentId = (string) $exact->id;
                     DB::table('rps_tasks')->where('id', $task->id)->update([
-                        'assessment_id' => $assessmentId,
+                        'assessment_id' => $assessment->id,
                         'source_type' => 'assessment_sync',
                         'updated_at' => now(),
                     ]);
                 }
 
-                $assessmentSubIds = collect($assessmentLinks->get($assessmentId, []))
+                $assessmentSubIds = collect($assessmentLinks->get($assessment->id, []))
                     ->pluck('rps_sub_cpmk_id')
                     ->map(fn ($id) => (string) $id)
                     ->unique()
                     ->values();
 
-                if (in_array($dueWeek, self::TEACHING_WEEKS, true) && $weekSubId) {
-                    $subIds = $assessmentSubIds->contains($weekSubId)
-                        ? collect([$weekSubId])
-                        : collect();
-                } else {
-                    $subIds = $assessmentSubIds;
+                if ($assessmentSubIds->isEmpty()) {
+                    $linkedCount++;
+                    continue;
                 }
 
-                DB::table('rps_task_subcpmks')->where('rps_task_id', $task->id)->delete();
-                foreach ($subIds as $subId) {
-                    DB::table('rps_task_subcpmks')->insert([
-                        'id' => (string) Str::uuid(),
-                        'rps_task_id' => $task->id,
-                        'rps_sub_cpmk_id' => $subId,
-                        'created_at' => now(),
+                $currentTaskSubIds = collect($taskLinks->get($task->id, []))
+                    ->pluck('rps_sub_cpmk_id')
+                    ->map(fn ($id) => (string) $id)
+                    ->unique()
+                    ->values();
+
+                // RTM dapat mengukur sebagian atau seluruh Sub-CPMK asesmen.
+                // Bila relasi RTM kosong/legacy-invalid, fallback ke seluruh
+                // cakupan asesmen. Tidak pernah dipersempit oleh due_week.
+                $normalizedSubIds = $currentTaskSubIds
+                    ->filter(fn ($id) => $assessmentSubIds->contains($id))
+                    ->values();
+
+                if ($normalizedSubIds->isEmpty()) {
+                    $normalizedSubIds = $assessmentSubIds;
+                }
+
+                $before = $currentTaskSubIds->sort()->values()->all();
+                $after = $normalizedSubIds->sort()->values()->all();
+
+                if ($before !== $after) {
+                    DB::table('rps_task_subcpmks')->where('rps_task_id', $task->id)->delete();
+                    foreach ($normalizedSubIds as $subId) {
+                        DB::table('rps_task_subcpmks')->insert([
+                            'id' => (string) Str::uuid(),
+                            'rps_task_id' => $task->id,
+                            'rps_sub_cpmk_id' => $subId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+
+                if ($sourceType !== 'ai_accepted' && $sourceType !== 'ai_generated' && $sourceType !== 'assessment_sync') {
+                    DB::table('rps_tasks')->where('id', $task->id)->update([
+                        'source_type' => 'assessment_sync',
                         'updated_at' => now(),
                     ]);
                 }
@@ -1056,36 +1044,27 @@ class RpsAssessmentSyncService
 
     public function taskAlignment(string $versionId): array
     {
-        $assessmentNamesById = DB::table('assessments')
-            ->where('rps_version_id', $versionId)
-            ->pluck('name', 'id');
-
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
             ->get(['id', 'assessment_id', 'due_week', 'title', 'source_type', 'purpose', 'instructions', 'expected_output'])
-            ->filter(function ($task) use ($assessmentNamesById): bool {
-                if (! $this->isGeneratedTask($task)) {
-                    return true;
-                }
-
-                $assessmentId = filled($task->assessment_id ?? null)
-                    ? (string) $task->assessment_id
-                    : null;
-                if (! $assessmentId || ! $assessmentNamesById->has($assessmentId)) return false;
-
-                return $this->normalizeLabel((string) $task->title)
-                    === $this->normalizeLabel((string) $assessmentNamesById->get($assessmentId));
-            })
             ->values();
 
         $linkedTasks = $tasks->filter(fn ($task) => filled($task->assessment_id ?? null));
         $assessmentIds = $linkedTasks->pluck('assessment_id')->filter()->unique()->values();
+
         $assessmentLinks = $assessmentIds->isEmpty()
             ? collect()
             : DB::table('assessment_subcpmks')
                 ->whereIn('assessment_id', $assessmentIds->all())
                 ->get(['assessment_id', 'rps_sub_cpmk_id'])
                 ->groupBy('assessment_id');
+
+        $validAssessmentIds = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('type', ['assignment', 'project', 'practicum', 'presentation'])
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->values();
 
         $taskLinks = $tasks->isEmpty()
             ? collect()
@@ -1097,42 +1076,51 @@ class RpsAssessmentSyncService
         $weekRows = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $versionId)
             ->whereIn('week_number', array_merge(self::TEACHING_WEEKS, [8, 16]))
-            ->get(['week_number', 'rps_sub_cpmk_id', 'assessment_weight'])
+            ->get(['week_number', 'assessment_weight'])
             ->keyBy('week_number');
 
         $mismatchCount = 0;
-        $dueWeekMismatchCount = 0;
+        $invalidDueWeekCount = 0;
         $unlinkedWeightedTaskCount = 0;
 
         foreach ($tasks as $task) {
             $dueWeek = (int) ($task->due_week ?? 0);
             $week = $weekRows->get($dueWeek);
             $actual = collect($taskLinks->get($task->id, []))
-                ->pluck('rps_sub_cpmk_id')->map(fn ($id) => (string) $id)->unique()->sort()->values()->all();
+                ->pluck('rps_sub_cpmk_id')
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values();
+
+            if ($dueWeek < 1 || $dueWeek > 16) {
+                $invalidDueWeekCount++;
+            }
 
             if (! filled($task->assessment_id ?? null)) {
-                if ($week && (float) ($week->assessment_weight ?? 0) > 0) $unlinkedWeightedTaskCount++;
+                if ($week && (float) ($week->assessment_weight ?? 0) > 0) {
+                    $unlinkedWeightedTaskCount++;
+                }
                 continue;
             }
 
-            $assessmentSubIds = collect($assessmentLinks->get($task->assessment_id, []))
-                ->pluck('rps_sub_cpmk_id')->map(fn ($id) => (string) $id)->unique()->sort()->values();
-
-            if (in_array($dueWeek, self::TEACHING_WEEKS, true) && $week && filled($week->rps_sub_cpmk_id ?? null)) {
-                $weekSubId = (string) $week->rps_sub_cpmk_id;
-                $expected = $assessmentSubIds->contains($weekSubId) ? [$weekSubId] : [];
-                if (! $assessmentSubIds->contains($weekSubId)) $dueWeekMismatchCount++;
-            } else {
-                $expected = $assessmentSubIds->all();
+            $assessmentId = (string) $task->assessment_id;
+            if (! $validAssessmentIds->contains($assessmentId)) {
+                $mismatchCount++;
+                continue;
             }
 
-            sort($expected);
-            if (in_array($dueWeek, self::TEACHING_WEEKS, true)) {
-                // Tampilan efektif RTM selalu mengikuti Sub-CPMK pekan. Pivot
-                // lama akan dirapikan pada aksi sinkronisasi berikutnya, jadi
-                // jangan menandai inkonsisten hanya karena data legacy itu.
-                if ($expected === []) $mismatchCount++;
-            } elseif ($expected !== $actual) {
+            $assessmentSubIds = collect($assessmentLinks->get($assessmentId, []))
+                ->pluck('rps_sub_cpmk_id')
+                ->map(fn ($id) => (string) $id)
+                ->unique()
+                ->values();
+
+            // RTM valid bila memiliki minimal satu Sub-CPMK dan seluruhnya
+            // berada di dalam cakupan asesmen induk. Tidak harus sama dengan
+            // Sub-CPMK pada pekan pengumpulan dan tidak harus mencakup seluruh
+            // asesmen induk.
+            $outside = $actual->reject(fn ($id) => $assessmentSubIds->contains($id));
+            if ($actual->isEmpty() || $assessmentSubIds->isEmpty() || $outside->isNotEmpty()) {
                 $mismatchCount++;
             }
         }
@@ -1144,7 +1132,11 @@ class RpsAssessmentSyncService
             ->pluck('id')->map(fn ($id) => (string) $id)->unique()->values();
 
         $coveredAssessmentIds = $linkedTasks->pluck('assessment_id')
-            ->filter()->map(fn ($id) => (string) $id)->unique()->values();
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->filter(fn ($id) => $validAssessmentIds->contains($id))
+            ->unique()
+            ->values();
         $missingRequired = $requiredAssessmentIds->diff($coveredAssessmentIds)->values();
 
         return [
@@ -1154,11 +1146,14 @@ class RpsAssessmentSyncService
             'missing_required_assessment_count' => $missingRequired->count(),
             'mapping_mismatch_count' => $mismatchCount,
             'unlinked_weighted_task_count' => $unlinkedWeightedTaskCount,
-            'due_week_subcpmk_mismatch_count' => $dueWeekMismatchCount,
+            // Nama key legacy dipertahankan untuk kompatibilitas UI/API. Nilai
+            // kini hanya menunjukkan jadwal pengumpulan yang tidak valid,
+            // bukan ketidaksamaan Sub-CPMK pekan dengan RTM.
+            'due_week_subcpmk_mismatch_count' => $invalidDueWeekCount,
             'is_aligned' => $missingRequired->isEmpty()
                 && $mismatchCount === 0
                 && $unlinkedWeightedTaskCount === 0
-                && $dueWeekMismatchCount === 0,
+                && $invalidDueWeekCount === 0,
         ];
     }
 
