@@ -208,6 +208,15 @@ class ObeWorkspaceService
         $assessmentSync = app(RpsAssessmentSyncService::class);
         $taskAlignment = $assessmentSync->taskAlignment($versionId);
         $assessmentSnapshot = $assessmentSync->snapshot($versionId);
+        $validatorDecisions = Schema::hasTable('rps_validator_decisions')
+            ? DB::table('rps_validator_decisions')
+                ->where('rps_version_id', $versionId)
+                ->where('decision', 'keep')
+                ->get(['check_key', 'subject_key'])
+            : collect();
+        $keptDecisionKeys = $validatorDecisions
+            ->pluck('subject_key')
+            ->mapWithKeys(fn ($key) => [(string) $key => true]);
         $assessmentBudgetMismatches = collect($assessmentSnapshot['assessment_budget_mismatches'] ?? []);
         $assessmentBudgetAligned = $assessmentBudgetMismatches->isEmpty();
 
@@ -256,6 +265,11 @@ class ObeWorkspaceService
         $evidenceSourcesByWeek = collect($assessmentSnapshot['assessment_evidence_source_by_week'] ?? []);
         $ambiguousEvidenceWeeks = collect($assessmentSnapshot['ambiguous_evidence_weeks'] ?? []);
         $weightedTeachingWeekNumbers = $weightedTeachingWeeks
+            ->pluck('week_number')
+            ->map(fn ($week) => (int) $week)
+            ->values();
+        $unweightedTeachingWeekNumbers = $teachingWeeks
+            ->filter(fn ($week) => (float) ($week->assessment_weight ?? 0) <= 0)
             ->pluck('week_number')
             ->map(fn ($week) => (int) $week)
             ->values();
@@ -362,6 +376,7 @@ class ObeWorkspaceService
                 ->groupBy(fn ($item) => (string) $item->assessment_id);
 
         $assessmentSemanticIssues = collect();
+        $confirmedAssessmentSemanticCount = 0;
         foreach ($nonExamAssessments as $assessment) {
             $linkedSubIds = collect($assessmentLinks->get((string) $assessment->id, []))
                 ->pluck('rps_sub_cpmk_id')->map('strval')->unique()->values();
@@ -392,7 +407,15 @@ class ObeWorkspaceService
 
                 if ($explicitMismatch || $clearlyCloserElsewhere) {
                     $bestSub = $subById->get($bestSubId);
+                    $decisionKey = 'assessment:'.(string) $assessment->id
+                        .':sub:'.(string) $linkedSub->id
+                        .':'.sha1($this->semanticNormalized($text).'|'.$this->semanticNormalized((string) $linkedSub->description));
+                    if ($keptDecisionKeys->has($decisionKey)) {
+                        $confirmedAssessmentSemanticCount++;
+                        continue;
+                    }
                     $assessmentSemanticIssues->push([
+                        'decision_key' => $decisionKey,
                         'assessment_id' => (string) $assessment->id,
                         'assessment_name' => trim((string) $assessment->name),
                         'linked_sub_id' => (string) $linkedSub->id,
@@ -416,6 +439,7 @@ class ObeWorkspaceService
             ->get(['id', 'code', 'title', 'assessment_id', 'due_week']);
         $assessmentById = $assessments->keyBy(fn ($item) => (string) $item->id);
         $rtmSemanticIssues = collect();
+        $confirmedRtmSemanticCount = 0;
         foreach ($taskRows as $task) {
             if (! filled($task->assessment_id ?? null)) continue;
             $assessment = $assessmentById->get((string) $task->assessment_id);
@@ -427,7 +451,15 @@ class ObeWorkspaceService
 
             $similarity = $this->semanticSimilarity($taskCore, $assessmentCore);
             if ($similarity < 0.34) {
+                $decisionKey = 'rtm:'.(string) $task->id
+                    .':assessment:'.(string) $assessment->id
+                    .':'.sha1($this->semanticNormalized((string) $task->title).'|'.$this->semanticNormalized((string) $assessment->name));
+                if ($keptDecisionKeys->has($decisionKey)) {
+                    $confirmedRtmSemanticCount++;
+                    continue;
+                }
                 $rtmSemanticIssues->push([
+                    'decision_key' => $decisionKey,
                     'task_id' => (string) $task->id,
                     'task_code' => (string) $task->code,
                     'task_title' => trim((string) $task->title),
@@ -476,6 +508,28 @@ class ObeWorkspaceService
         }
         $weeklyMaterialSemanticsAligned = $weeklyMaterialIssues->isEmpty();
 
+        $ambiguousEvidenceMessage = null;
+        if ($ambiguousWeightedWeeks->isNotEmpty()) {
+            $firstAmbiguous = $ambiguousWeightedWeeks->first();
+            $ambiguousWeek = (int) ($firstAmbiguous['week'] ?? 0);
+            $candidateTitles = collect($firstAmbiguous['candidates'] ?? [])
+                ->map(fn ($title) => trim((string) $title))
+                ->filter();
+            $candidateLabels = $taskRows
+                ->filter(fn ($task) => (int) ($task->due_week ?? 0) === $ambiguousWeek)
+                ->filter(fn ($task) => $candidateTitles->isEmpty() || $candidateTitles->contains(trim((string) $task->title)))
+                ->map(fn ($task) => trim((string) $task->code).' '.trim((string) $task->title))
+                ->filter()
+                ->unique()
+                ->values();
+            if ($candidateLabels->isEmpty()) {
+                $candidateLabels = $candidateTitles->values();
+            }
+            $ambiguousEvidenceMessage = 'Pekan '.$ambiguousWeek.' memiliki lebih dari satu bukti penilaian'
+                .($candidateLabels->isNotEmpty() ? ': '.$candidateLabels->implode(' dan ') : '')
+                .'.';
+        }
+
         $cplMessage = $scopeCplCount === 0
             ? "{$mappedCpmkCount}/{$cpmks->count()} CPMK terpetakan · CPL belum tersedia."
             : "{$mappedCpmkCount}/{$cpmks->count()} CPMK · {$mappedScopeCplCount}/{$scopeCplCount} CPL terpetakan.";
@@ -523,6 +577,7 @@ class ObeWorkspaceService
             [
                 'key' => 'material_quality',
                 'label' => 'Kualitas Bahan Kajian',
+                'severity' => 'advisory',
                 'done' => $materialQualityAligned,
                 'message' => $materialQualityAligned
                     ? 'Tidak ada bahan kajian yang duplikat.'
@@ -536,6 +591,7 @@ class ObeWorkspaceService
             [
                 'key' => 'weekly_material_semantics',
                 'label' => 'Kesesuaian Materi per Pekan',
+                'severity' => 'advisory',
                 'done' => $weeklyMaterialSemanticsAligned,
                 'message' => $weeklyMaterialSemanticsAligned
                     ? 'Materi pekan selaras dengan Sub-CPMK.'
@@ -599,14 +655,18 @@ class ObeWorkspaceService
             [
                 'key' => 'assessment_semantics',
                 'label' => 'Kesesuaian Asesmen',
+                'severity' => 'advisory',
                 'done' => $assessmentSemanticsAligned,
                 'message' => $assessmentSemanticsAligned
-                    ? 'Rumusan asesmen selaras dengan Sub-CPMK.'
+                    ? ($confirmedAssessmentSemanticCount > 0
+                        ? 'Rumusan asesmen diterima · '.$confirmedAssessmentSemanticCount.' keputusan dosen dipertahankan.'
+                        : 'Rumusan asesmen selaras dengan Sub-CPMK.')
                     : (($issue = $assessmentSemanticIssues->first())
-                        ? $issue['assessment_name'].': tag '.$issue['linked_sub_code'].' perlu ditelaah'.($issue['suggested_sub_code'] ? ' (lebih dekat ke '.$issue['suggested_sub_code'].').' : '.')
-                        : 'Ada tag asesmen yang perlu ditelaah.'),
+                        ? $issue['assessment_name'].': sistem menyarankan meninjau tag '.$issue['linked_sub_code'].($issue['suggested_sub_code'] ? ' (lebih dekat ke '.$issue['suggested_sub_code'].').' : '.').' Dosen boleh mempertahankan tag.'
+                        : 'Ada tag asesmen yang disarankan untuk ditelaah.'),
                 'details' => [
                     'issues' => $assessmentSemanticIssues->all(),
+                    'confirmed_count' => $confirmedAssessmentSemanticCount,
                 ],
             ],
             [
@@ -617,13 +677,15 @@ class ObeWorkspaceService
                     ? 'Semua penilaian sudah konsisten.'
                     : (! $assessmentBudgetAligned
                         ? $assessmentBudgetMismatches->count().' asesmen memiliki distribusi bobot pekan yang tidak sesuai.'
-                        : ($ambiguousWeekNumbers->isNotEmpty()
-                        ? 'Pekan '.$ambiguousWeekNumbers->implode(', ').' memiliki lebih dari satu bukti penilaian.'
-                        : ($missingWeekNumbers->isNotEmpty()
-                            ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
-                            : ($taskAlignment['missing_required_assessment_count'] > 0
-                                ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
-                                : 'Masih ada data penilaian yang belum konsisten.')))),
+                        : ($weightedTeachingWeeks->count() < 14
+                            ? $unweightedTeachingWeekNumbers->count().' pekan belum memiliki bobot penilaian.'
+                            : ($ambiguousWeekNumbers->isNotEmpty()
+                                ? ($ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.')
+                                : ($missingWeekNumbers->isNotEmpty()
+                                    ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
+                                    : ($taskAlignment['missing_required_assessment_count'] > 0
+                                        ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
+                                        : 'Masih ada data penilaian yang belum konsisten.'))))),
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
@@ -646,27 +708,35 @@ class ObeWorkspaceService
                 'done' => $weeklyEvidenceAligned,
                 'message' => $weeklyEvidenceAligned
                     ? '14/14 pekan memiliki satu bukti penilaian.'
-                    : ($ambiguousWeekNumbers->isNotEmpty()
-                        ? 'Pekan '.$ambiguousWeekNumbers->implode(', ').' memiliki lebih dari satu bukti.'
-                        : 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'),
+                    : ($weightedTeachingWeeks->count() < 14
+                        ? 'Belum dapat diperiksa: '.$unweightedTeachingWeekNumbers->count().' pekan belum memiliki bobot penilaian.'
+                        : ($ambiguousWeekNumbers->isNotEmpty()
+                            ? ($ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.')
+                            : 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.')),
                 'details' => [
                     'covered_weeks' => $coveredEvidenceWeeks->all(),
                     'missing_weeks' => $missingEvidenceWeeks->all(),
                     'ambiguous_weeks' => $ambiguousWeightedWeeks->all(),
                     'source_by_week' => $evidenceSourcesByWeek->all(),
+                    'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
+                    'unweighted_weeks' => $unweightedTeachingWeekNumbers->all(),
                 ],
             ],
             [
                 'key' => 'rtm_semantics',
                 'label' => 'Kesesuaian RTM',
+                'severity' => 'advisory',
                 'done' => $rtmSemanticsAligned,
                 'message' => $rtmSemanticsAligned
-                    ? 'Judul RTM selaras dengan asesmen induk.'
+                    ? ($confirmedRtmSemanticCount > 0
+                        ? 'Hubungan RTM diterima · '.$confirmedRtmSemanticCount.' keputusan dosen dipertahankan.'
+                        : 'Judul RTM selaras dengan asesmen induk.')
                     : (($issue = $rtmSemanticIssues->first())
-                        ? $issue['task_code'].' tidak selaras dengan asesmen induknya.'
-                        : 'Ada RTM yang perlu ditelaah.'),
+                        ? $issue['task_code'].' “'.$issue['task_title'].'” terhubung ke asesmen “'.$issue['assessment_name'].'”. Periksa asesmen terkait atau pertahankan hubungan jika memang disengaja.'
+                        : 'Ada hubungan RTM dan asesmen yang disarankan untuk ditelaah.'),
                 'details' => [
                     'issues' => $rtmSemanticIssues->all(),
+                    'confirmed_count' => $confirmedRtmSemanticCount,
                 ],
             ],
             [
@@ -682,13 +752,16 @@ class ObeWorkspaceService
             ],
         ];
 
-        $done = collect($checks)->where('done', true)->count();
-        $percent = (int) round(($done / count($checks)) * 100);
+        $blockingChecks = collect($checks)->reject(fn ($check) => ($check['severity'] ?? 'required') === 'advisory');
+        $done = $blockingChecks->where('done', true)->count();
+        $percent = $blockingChecks->isEmpty()
+            ? 100
+            : (int) round(($done / $blockingChecks->count()) * 100);
 
         return [
             'checks' => $checks,
             'percent' => $percent,
-            'is_valid' => $done === count($checks),
+            'is_valid' => $done === $blockingChecks->count(),
             'assessment_weight_total' => $weightTotal,
             'cpl_scope' => [
                 'curriculum' => $officialCplCount,

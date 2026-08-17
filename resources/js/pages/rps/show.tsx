@@ -140,6 +140,15 @@ function validatorFixLabel(check: any) {
     const meta = VALIDATOR_FIX_META[check?.key];
     if (!meta) return 'Perbaiki';
 
+    if (check?.key === 'weekly_assessment_evidence' && Number(check?.details?.weighted_teaching_weeks ?? 14) < 14) {
+        return 'Perbaiki Bobot';
+    }
+
+    if (check?.key === 'rtm_semantics') {
+        const issue = safeList(check?.details?.issues)[0];
+        if (issue?.task_code) return `Edit ${issue.task_code}`;
+    }
+
     const week = validatorProblemWeek(check);
     if (week && meta.target === 'validator-target-rtm') {
         return `Periksa RTM Pekan ${week}`;
@@ -154,15 +163,27 @@ function goToValidatorFix(check: any) {
 
     const week = validatorProblemWeek(check);
     let targets: HTMLElement[] = [];
+    let targetId = meta.target;
 
-    if (week && meta.target === 'validator-target-rtm') {
+    if (check?.key === 'weekly_assessment_evidence' && Number(check?.details?.weighted_teaching_weeks ?? 14) < 14) {
+        targetId = 'validator-target-assessment';
+    }
+
+    const semanticIssue = safeList(check?.details?.issues)[0];
+    if (check?.key === 'rtm_semantics' && semanticIssue?.task_id) {
+        targets = Array.from(document.querySelectorAll<HTMLElement>(`[data-rtm-id="${semanticIssue.task_id}"]`));
+    } else if (check?.key === 'assessment_semantics' && semanticIssue?.assessment_id) {
+        targets = Array.from(document.querySelectorAll<HTMLElement>(`[data-assessment-id="${semanticIssue.assessment_id}"]`));
+    }
+
+    if (targets.length === 0 && week && targetId === 'validator-target-rtm') {
         targets = Array.from(
             document.querySelectorAll<HTMLElement>(`[data-rtm-week="${week}"]`),
         );
     }
 
     if (targets.length === 0) {
-        const section = document.getElementById(meta.target);
+        const section = document.getElementById(targetId);
         if (section) targets = [section];
     }
 
@@ -1078,17 +1099,45 @@ export default function RpsShow(props: any) {
                                                 ? <CheckCircle2 className="size-4 text-emerald-600" />
                                                 : <CircleAlert className="size-4 text-amber-600" />}
                                             <div className="font-bold text-slate-800">{check.label}</div>
+                                            {check.severity === 'advisory' && !check.done && (
+                                                <span className="rounded-full border border-amber-200 bg-white px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-700">Rekomendasi</span>
+                                            )}
                                         </div>
                                         <p className="mt-2 text-xs leading-5 text-slate-600">{check.message}</p>
-                                        {!check.done && VALIDATOR_FIX_META[check.key] && (
-                                            <button
-                                                type="button"
-                                                onClick={() => goToValidatorFix(check)}
-                                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[10px] font-bold text-amber-800 shadow-sm hover:bg-amber-100"
-                                            >
-                                                <Pencil className="size-3" />
-                                                {validatorFixLabel(check)}
-                                            </button>
+                                        {!check.done && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {VALIDATOR_FIX_META[check.key] && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => goToValidatorFix(check)}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[10px] font-bold text-amber-800 shadow-sm hover:bg-amber-100"
+                                                    >
+                                                        <Pencil className="size-3" />
+                                                        {validatorFixLabel(check)}
+                                                    </button>
+                                                )}
+                                                {['assessment_semantics', 'rtm_semantics'].includes(check.key) && safeList(check?.details?.issues)[0]?.decision_key && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const issue = safeList(check?.details?.issues)[0];
+                                                            router.post(
+                                                                `/rps/${rps.id}/validator-decisions`,
+                                                                { check_key: check.key, subject_key: issue.decision_key },
+                                                                actionOptions(
+                                                                    check.key === 'assessment_semantics'
+                                                                        ? 'Tag Sub-CPMK dipertahankan sebagai keputusan dosen.'
+                                                                        : 'Hubungan RTM dipertahankan sebagai keputusan dosen.',
+                                                                ),
+                                                            );
+                                                        }}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-[10px] font-bold text-teal-800 shadow-sm hover:bg-teal-100"
+                                                    >
+                                                        <CheckCircle2 className="size-3" />
+                                                        {check.key === 'assessment_semantics' ? 'Pertahankan Tag' : 'Pertahankan Hubungan'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 ))}
@@ -4304,6 +4353,7 @@ function AssessmentCard({ rpsId, assessment, subCpmks, assessmentTotal }: any) {
                     },
                 );
             }}
+            data-assessment-id={assessment.id}
             className="rounded-xl border border-slate-100 bg-white/60 p-4"
         >
             <div className="grid gap-3 md:grid-cols-[1.6fr_.8fr_.55fr_.55fr_auto]">
@@ -4449,6 +4499,7 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
         return (
             <div
                 data-rtm-week={task.due_week ?? ''}
+                data-rtm-id={task.id}
                 className="rounded-xl border border-slate-100 bg-white/60 p-4 transition-shadow"
             >
                 <div className="flex items-start justify-between gap-3">
@@ -4473,7 +4524,20 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                             title="Hapus RTM"
                             onClick={() => {
                                 if (confirm(`Hapus ${task.code} - ${task.title}?`)) {
-                                    router.delete(`/rps/${rpsId}/tasks/${task.id}`, actionOptions('RTM berhasil dihapus.'));
+                                    router.delete(`/rps/${rpsId}/tasks/${task.id}`, {
+                                        preserveScroll: true,
+                                        onSuccess: () => {
+                                            notify('success', `${task.code} berhasil dihapus.`);
+                                            router.reload({
+                                                only: ['tasks', 'progress', 'weeks'],
+                                                preserveScroll: true,
+                                                preserveState: true,
+                                            });
+                                        },
+                                        onError: (errors: Record<string, any>) => {
+                                            notify('error', `RTM tidak dihapus. ${firstError(errors)}`);
+                                        },
+                                    });
                                 }
                             }}
                             className="rounded-lg border border-slate-200 bg-white p-2 text-slate-400 hover:text-rose-600"
@@ -4510,6 +4574,8 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                     actionOptions('RTM berhasil diperbarui.', () => { setEditing(false); onDone?.(); }),
                 );
             }}
+            data-rtm-week={form.data.due_week || task.due_week || ''}
+            data-rtm-id={task.id}
             className="rounded-xl border border-teal-200 bg-teal-50/40 p-4 md:col-span-2"
         >
             <div className="flex items-center justify-between gap-3">

@@ -12,6 +12,7 @@ use App\Http\Controllers\RpsController;
 use App\Http\Controllers\RpsDeleteController;
 use App\Http\Controllers\RpsDocumentController;
 use App\Http\Controllers\RpsTaskController;
+use App\Http\Controllers\RpsValidatorDecisionController;
 use App\Http\Middleware\EnsureAssessmentPlanWeightLimit;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -71,6 +72,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
         Route::post('{rps}/weeks/apply-time-standard', [ObeWorkspaceController::class, 'applyTimeStandard'])->name('weeks.apply-time-standard');
         Route::post('{rps}/weeks/normalize-references', [ObeWorkspaceController::class, 'normalizeReferences'])->name('weeks.normalize-references');
         Route::post('{rps}/validate-obe', [RpsAutomationController::class, 'validateObe'])->name('validate-obe');
+        Route::post('{rps}/validator-decisions', RpsValidatorDecisionController::class)->name('validator-decisions.store');
 
         Route::post('{rps}/assessments', [RpsAssessmentController::class, 'store'])->name('assessments.store');
         Route::put('{rps}/assessments/{assessment}', [RpsAssessmentController::class, 'update'])->name('assessments.update');
