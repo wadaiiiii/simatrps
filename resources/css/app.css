@@ -507,3 +507,50 @@ body {
         page-break-inside: avoid !important;
     }
 }
+
+/* Patch: RPS generated-artifact cleanup + compact two-line weekly gap */
+@media print {
+    html.rps-print-mode .rps-print-week-gap {
+        display: block !important;
+        height: 20px !important;
+        min-height: 20px !important;
+        max-height: 20px !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    html.rps-print-mode .rps-print-institution-grid > div:nth-child(2) > div {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm {
+        page: rpsPortrait;
+        break-before: page !important;
+        page-break-before: always !important;
+        break-after: auto !important;
+        page-break-after: auto !important;
+        padding-bottom: 0 !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-sheet {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        break-after: auto !important;
+        page-break-after: auto !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-sheet + .rps-print-rtm-sheet {
+        break-before: page !important;
+        page-break-before: always !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-sheet:last-child,
+    html.rps-print-mode .rps-print-rtm-sheet:last-child .rps-print-rtm-table {
+        break-after: auto !important;
+        page-break-after: auto !important;
+        margin-bottom: 0 !important;
+    }
+}
+

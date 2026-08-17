@@ -476,6 +476,7 @@ class RpsAssessmentSyncService
     {
         $indicatorFixes = $this->syncWeeklyIndicators($versionId);
         $narrativeFixes = $this->syncWeeklySubCpmkNarratives($versionId);
+        $assessmentScopeFixes = $this->syncGeneratedAssessmentScopes($versionId);
 
         // Petakan RTM lama terlebih dahulu agar asesmen yang sebenarnya sudah
         // mempunyai bukti tidak dibuatkan RTM duplikat.
@@ -519,7 +520,7 @@ class RpsAssessmentSyncService
         return [
             ...$refreshed,
             'created_required_tasks' => $createdTasks,
-            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot; {$manualWeightCount} pembagian bobot pekan ditetapkan manual; {$linkedTasks} RTM terhubung ke asesmen; {$createdTasks} RTM wajib dibuat otomatis dari Detail Asesmen; {$indicatorFixes} indikator dan {$narrativeFixes} narasi pekan yang salah Sub-CPMK diperbaiki.",
+            'message' => "Sinkronisasi asesmen diterapkan: {$weightedTeachingWeeks}/14 pekan pembelajaran memiliki bobot; {$manualWeightCount} pembagian bobot pekan ditetapkan manual; {$linkedTasks} RTM terhubung ke asesmen; {$createdTasks} RTM wajib dibuat otomatis dari Detail Asesmen; {$assessmentScopeFixes} tag asesmen AI yang eksplisit diperbaiki; {$indicatorFixes} indikator dan {$narrativeFixes} narasi pekan yang salah Sub-CPMK diperbaiki.",
         ];
     }
 
@@ -937,11 +938,92 @@ class RpsAssessmentSyncService
         return $fixed;
     }
 
+    private function syncGeneratedAssessmentScopes(string $versionId): int
+    {
+        $subs = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $versionId)
+            ->get(['id', 'code']);
+
+        if ($subs->isEmpty()) return 0;
+
+        $subIdByNumber = [];
+        foreach ($subs as $sub) {
+            if (preg_match('/(\d+)$/', (string) $sub->code, $match) === 1) {
+                $subIdByNumber[(int) $match[1]] = (string) $sub->id;
+            }
+        }
+
+        if ($subIdByNumber === []) return 0;
+
+        $assessments = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('source_type', ['ai_accepted', 'ai_generated', 'automation'])
+            ->whereNotIn('type', ['uts', 'uas'])
+            ->get(['id', 'name', 'description']);
+
+        $fixed = 0;
+
+        DB::transaction(function () use ($assessments, $subIdByNumber, &$fixed): void {
+            foreach ($assessments as $assessment) {
+                $text = trim((string) ($assessment->name ?? '').' '.(string) ($assessment->description ?? ''));
+                preg_match_all('/Sub[\s\-‐‑‒–—]*CPMK[\s\-‐‑‒–—]*(\d+)/iu', $text, $matches);
+
+                $numbers = collect($matches[1] ?? [])
+                    ->map(fn ($value) => (int) $value)
+                    ->filter(fn ($number) => isset($subIdByNumber[$number]))
+                    ->unique()
+                    ->values();
+
+                // Hanya perbaiki asesmen AI bila teksnya menyebut tepat satu
+                // Sub-CPMK secara eksplisit. Ini konservatif dan tidak menebak
+                // cakupan asesmen hanya dari judul/topik.
+                if ($numbers->count() !== 1) continue;
+
+                $targetId = $subIdByNumber[(int) $numbers->first()];
+                $current = DB::table('assessment_subcpmks')
+                    ->where('assessment_id', $assessment->id)
+                    ->pluck('rps_sub_cpmk_id')
+                    ->map('strval')
+                    ->unique()
+                    ->values();
+
+                if ($current->count() === 1 && $current->first() === $targetId) continue;
+
+                DB::table('assessment_subcpmks')
+                    ->where('assessment_id', $assessment->id)
+                    ->delete();
+
+                DB::table('assessment_subcpmks')->insert([
+                    'id' => (string) Str::uuid(),
+                    'assessment_id' => $assessment->id,
+                    'rps_sub_cpmk_id' => $targetId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $fixed++;
+            }
+        });
+
+        return $fixed;
+    }
+
+    public function repairGeneratedArtifacts(string $versionId): array
+    {
+        $scopeFixes = $this->syncGeneratedAssessmentScopes($versionId);
+        $linkedTasks = $this->syncTaskMappings($versionId);
+
+        return [
+            'assessment_scope_fixes' => $scopeFixes,
+            'linked_generated_tasks' => $linkedTasks,
+        ];
+    }
+
     private function isGeneratedTask(object $task): bool
     {
         $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
 
-        if ($sourceType === 'assessment_sync') return true;
+        if (in_array($sourceType, ['assessment_sync', 'ai_accepted', 'ai_generated', 'automation'], true)) return true;
         if ($sourceType === 'manual') return false;
         if ($sourceType !== '' && $sourceType !== 'legacy') return false;
 

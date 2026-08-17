@@ -105,6 +105,7 @@ class RpsAssessmentController extends Controller
                 'weight' => $validated['weight'] === null || $validated['weight'] === ''
                     ? null
                     : $validated['weight'],
+                'source_type' => 'manual',
                 'updated_at' => now(),
             ]);
 
@@ -166,7 +167,9 @@ class RpsAssessmentController extends Controller
             'sub_cpmk_ids.*.exists' => 'Sub-CPMK yang dipilih tidak termasuk dalam RPS ini.',
         ]);
 
-        $updates = [];
+        // Perubahan dari tabel matriks adalah keputusan dosen dan harus
+        // dilindungi dari normalisasi otomatis AI berikutnya.
+        $updates = ['source_type' => 'manual'];
 
         if (array_key_exists('name', $validated) && filled($validated['name'])) {
             $updates['name'] = trim((string) $validated['name']);

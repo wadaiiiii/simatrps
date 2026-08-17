@@ -149,6 +149,11 @@ class RpsController extends Controller
 
         abort_unless($version, 404);
 
+        // Safe, idempotent repair only: normalize explicit AI assessment scope
+        // and remove/remap stale generated RTM. It never creates a replacement
+        // RTM while the page is merely being opened.
+        $assessmentSync->repairGeneratedArtifacts($version->id);
+
         $allCpls = DB::table('cpls')
             ->where('curriculum_id', $record->curriculum_id)
             ->orderBy('sequence_no')
@@ -555,7 +560,7 @@ Pendukung:
     {
         $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
 
-        if ($sourceType === 'assessment_sync') return true;
+        if (in_array($sourceType, ['assessment_sync', 'ai_accepted', 'ai_generated', 'automation'], true)) return true;
         if ($sourceType === 'manual') return false;
         if ($sourceType !== '' && $sourceType !== 'legacy') return false;
 

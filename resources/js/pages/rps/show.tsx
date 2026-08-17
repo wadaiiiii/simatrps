@@ -635,11 +635,11 @@ export default function RpsShow(props: any) {
                 {/* Printable RPS document */}
                 <section className="mx-auto max-w-[1500px] rounded-2xl border border-slate-300 bg-white font-sans text-[11px] leading-[1.45] shadow-[0_16px_50px_rgba(15,23,42,0.08)] print:max-w-none print:rounded-none print:border-0 print:shadow-none">
                     <div className="overflow-x-auto overflow-y-visible">
-                        <table className="min-w-[1080px] w-full border-collapse text-[11px] leading-[1.45] text-slate-800">
+                        <table className="rps-print-main-table min-w-[1080px] w-full border-collapse text-[11px] leading-[1.45] text-slate-800">
                             <tbody>
                                 <tr>
                                     <td colSpan={6} className="border border-slate-300 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 p-0">
-                                        <div className="grid min-h-[108px] grid-cols-[110px_1fr_110px] items-center px-4 py-3">
+                                        <div className="rps-print-institution-grid grid min-h-[108px] grid-cols-[110px_1fr_110px] items-center px-4 py-3">
                                             <div className="flex items-center justify-center">
                                                 <img
                                                     src="/logo-unsulbar.png"
@@ -932,7 +932,7 @@ export default function RpsShow(props: any) {
                     </div>
 
                     {/* Spacer nyata agar tabel identitas dan tabel pekan tidak menempel, termasuk di Chrome print preview. */}
-                    <div aria-hidden="true" className="w-full shrink-0" style={{ height: '32px' }} />
+                    <div aria-hidden="true" className="rps-print-week-gap w-full shrink-0" style={{ height: '20px' }} />
 
                     {/* Weekly toolbar */}
                     <div id="validator-target-weeks" className="scroll-mt-24 flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
@@ -2330,7 +2330,7 @@ function RtmDocumentSection({
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
     return (
-        <div className="border-x border-b border-slate-300 bg-white px-3 pb-5">
+        <div className="rps-print-rtm border-x border-b border-slate-300 bg-white px-3 pb-5">
             <div className="border-t-2 border-slate-400 pt-4">
                 <div className="text-center text-base font-black uppercase text-slate-900">
                     Lembar Rencana Tugas Mahasiswa
@@ -2369,7 +2369,7 @@ function RtmDocumentSection({
                             return (
                                 <div
                                     key={task.id}
-                                    className="break-inside-avoid overflow-hidden rounded-lg border border-slate-300 bg-white"
+                                    className="rps-print-rtm-sheet break-inside-avoid overflow-hidden rounded-lg border border-slate-300 bg-white"
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-200 bg-gradient-to-r from-cyan-100 via-sky-50 to-teal-100 px-3 py-2.5 print:hidden">
                                         <div>
@@ -2403,11 +2403,11 @@ function RtmDocumentSection({
                                         </div>
                                     )}
 
-                                    <table className="w-full border-collapse font-sans text-[11px] leading-[1.45]">
+                                    <table className="rps-print-rtm-table w-full border-collapse font-sans text-[11px] leading-[1.45]">
                                         <tbody>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 p-0">
-                                                    <div className="grid min-h-[92px] grid-cols-[95px_1fr_95px] items-center px-3 py-2">
+                                                    <div className="rps-print-institution-grid grid min-h-[92px] grid-cols-[95px_1fr_95px] items-center px-3 py-2">
                                                         <div className="flex items-center justify-center">
                                                             <img
                                                                 src="/logo-unsulbar.png"
