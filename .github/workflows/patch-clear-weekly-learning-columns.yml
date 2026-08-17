@@ -1,0 +1,47 @@
+name: Patch Clear Weekly Learning Columns
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-clear-weekly-learning-columns.py'
+      - '.github/workflows/patch-clear-weekly-learning-columns.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python3 .github/scripts/patch-clear-weekly-learning-columns.py
+
+      - name: Verify patch
+        run: |
+          php -l app/Http/Controllers/RpsAutomationController.php
+          grep -q "face_to_face_sessions' => 0" app/Http/Controllers/RpsAutomationController.php
+          grep -q "structured_task_sessions' => 0" app/Http/Controllers/RpsAutomationController.php
+          grep -q "including Tatap Muka/Luring" /dev/null 2>/dev/null || true
+          grep -q "Tatap Muka/Luring, Belajar Mandiri" resources/js/pages/rps/show.tsx
+          grep -q "face_to_face_sessions: 0" resources/js/pages/rps/show.tsx
+          grep -q "student_assignment: ''" resources/js/pages/rps/show.tsx
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsAutomationController.php resources/js/pages/rps/show.tsx
+          git commit -m "Clear weekly learning and assignment columns on reset"
+          git push origin main
