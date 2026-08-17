@@ -48,3 +48,5 @@ if old_activity not in text:
     raise SystemExit('learning_activity marker not found')
 text = text.replace(old_activity, new_activity, 1)
 controller.write_text(text)
+
+# Trigger marker: weekly-ai-timeout-guard-v1
