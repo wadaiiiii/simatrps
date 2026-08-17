@@ -203,6 +203,32 @@ function goToValidatorFix(check: any) {
     });
 }
 
+function goToAssessmentItem(assessmentId: any) {
+    const id = String(assessmentId ?? '').trim();
+    if (!id) {
+        const section = document.getElementById('validator-target-assessment');
+        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    const target = document.querySelector<HTMLElement>(`[data-assessment-id="${id}"]`);
+    if (!target) {
+        const section = document.getElementById('validator-target-assessment');
+        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        notify('info', 'Detail Asesmen terkait belum ditemukan pada tampilan.');
+        return;
+    }
+
+    const parentDetails = target.closest('details') as HTMLDetailsElement | null;
+    if (parentDetails && !parentDetails.open) parentDetails.open = true;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
+    window.setTimeout(() => {
+        target.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2');
+    }, 4200);
+}
+
 function actionOptions(message: string, afterSuccess?: () => void) {
     return {
         preserveScroll: true,
@@ -1188,10 +1214,10 @@ export default function RpsShow(props: any) {
                                                                     ? `Lanjut Semua (${count})`
                                                                     : 'Lanjut (Tidak Ikut Rekomendasi)';
                                                             }
-                                                            if (count > 1) return `Pertahankan Semua (${count})`;
+                                                            if (count > 1) return `Pertahankan Semua Isi (${count})`;
                                                             return check.key === 'assessment_semantics'
                                                                 ? 'Pertahankan Tag'
-                                                                : 'Pertahankan Hubungan';
+                                                                : 'Pertahankan Isi';
                                                         })()}
                                                     </button>
                                                 )}
@@ -4704,7 +4730,18 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                                             });
                                         },
                                         onError: (errors: Record<string, any>) => {
-                                            notify('error', `RTM tidak dihapus. ${firstError(errors)}`);
+                                            const linkedAssessment = assessments.find(
+                                                (item: any) => String(item.id) === String(task.assessment_id || ''),
+                                            );
+                                            const assessmentLabel = linkedAssessment
+                                                ? `${linkedAssessment.code || 'Asesmen'} “${linkedAssessment.name}”`
+                                                : 'asesmen induk terkait';
+
+                                            notify(
+                                                'error',
+                                                `RTM tidak dihapus. ${firstError(errors)} Buka Detail Asesmen → ${assessmentLabel}; item tersebut disorot untuk diperiksa.`,
+                                            );
+                                            window.setTimeout(() => goToAssessmentItem(task.assessment_id), 80);
                                         },
                                     });
                                 }

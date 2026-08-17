@@ -818,7 +818,7 @@ class ObeWorkspaceService
                         ? 'Hubungan RTM diterima · '.$confirmedRtmSemanticCount.' keputusan dosen dipertahankan.'
                         : 'Judul RTM selaras dengan asesmen induk.')
                     : (($issue = $rtmSemanticIssues->first())
-                        ? $issue['task_code'].' “'.$issue['task_title'].'” terhubung ke asesmen “'.$issue['assessment_name'].'”. Periksa asesmen terkait atau pertahankan hubungan jika memang disengaja.'
+                        ? $issue['task_code'].' “'.$issue['task_title'].'” terhubung ke asesmen “'.$issue['assessment_name'].'”. Periksa asesmen terkait atau pertahankan isi jika memang disengaja.'
                         : 'Ada hubungan RTM dan asesmen yang disarankan untuk ditelaah.'),
                 'details' => [
                     'issues' => $rtmSemanticIssues->all(),

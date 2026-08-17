@@ -171,7 +171,7 @@ class RpsTaskController extends Controller
             $assessment = DB::table('assessments')
                 ->where('id', $existing->assessment_id)
                 ->where('rps_version_id', $version->id)
-                ->first(['id', 'name', 'type', 'weight']);
+                ->first(['id', 'code', 'name', 'type', 'weight']);
 
             $requiresRtm = $assessment
                 && in_array(strtolower((string) $assessment->type), [
@@ -188,9 +188,13 @@ class RpsTaskController extends Controller
 
                 if ($otherRtmCount === 0) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
-                        'task' => 'RTM ini masih menjadi satu-satunya RTM untuk asesmen "'
+                        'task' => 'RTM ini masih menjadi satu-satunya RTM untuk asesmen '
+                            .trim((string) ($assessment->code ?? 'Asesmen')).' “'
                             .trim((string) $assessment->name)
-                            .'". Jika hanya bentrok pekan, ubah Pekan Pengumpulan. Jika asesmennya tidak diperlukan, ubah atau hapus asesmen pada Detail Asesmen.',
+                            .'”. Untuk menghapus RTM ini, buka Detail Asesmen → '
+                            .trim((string) ($assessment->code ?? 'Asesmen')).' “'
+                            .trim((string) $assessment->name)
+                            .'”, lalu ubah atau hapus asesmen tersebut terlebih dahulu. Jika hanya ingin memindahkan jadwal, ubah Pekan Pengumpulan RTM.',
                     ]);
                 }
             }
