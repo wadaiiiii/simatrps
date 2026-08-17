@@ -113,7 +113,6 @@ if old not in s:
     raise SystemExit('tasks block marker not found')
 s = s.replace(old, new, 1)
 
-# Add conservative read-side narrative normalization inside the existing weeks map.
 marker = """            $week->assessment_weight_manual = $isTeachingWeek
                 && $weightOverrides->has($weekNumber);
 
@@ -149,3 +148,4 @@ if marker not in s:
 s = s.replace(marker, replacement, 1)
 
 p.write_text(s)
+# trigger
