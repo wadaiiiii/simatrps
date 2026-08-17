@@ -129,12 +129,17 @@ class AiRpsProviderService
             ]);
         }
 
+        // Susun AI per pekan berjalan di Vercel Function dengan maxDuration 60 detik.
+        // Batasi dua provider per request agar fallback serial tidak melewati batas runtime.
+        // Provider yang gagal/rate-limited akan masuk cooldown sehingga percobaan berikutnya
+        // dapat bergerak ke provider sehat berikutnya.
         return $this->generateAcrossProviders(
             fn ($service) => $service->generateWeeklyBatch(
                 $context,
                 [$week],
                 $instruction
-            )
+            ),
+            2
         );
     }
 
@@ -294,7 +299,7 @@ class AiRpsProviderService
         }
     }
 
-    private function generateAcrossProviders(callable $callback): array
+    private function generateAcrossProviders(callable $callback, ?int $maxAttempts = null): array
     {
         $configured = $this->configuredProviders();
 
@@ -336,6 +341,10 @@ class AiRpsProviderService
         $attempted = [];
 
         foreach ($available as $name => $service) {
+            if ($maxAttempts !== null && count($attempted) >= $maxAttempts) {
+                break;
+            }
+
             $attempted[] = $name;
 
             try {
@@ -389,8 +398,12 @@ class AiRpsProviderService
 
         $allProblems = [...$skipped, ...$errors];
 
+        $safeBudgetNote = $maxAttempts !== null
+            ? ' Percobaan per request dibatasi '.count($attempted).' provider agar tidak melewati batas waktu server. Coba lagi; provider bermasalah akan dilewati selama masa cooldown.'
+            : '';
+
         throw ValidationException::withMessages([
-            'ai' => 'Semua provider AI aktif gagal. Sudah mencoba/melewati: '
+            'ai' => 'Provider AI yang dicoba pada request ini belum berhasil. Sudah mencoba/melewati: '
                 .collect(array_keys($allProblems))
                     ->map(fn ($name) => strtoupper($name))
                     ->implode(', ')
@@ -399,7 +412,8 @@ class AiRpsProviderService
                     ->map(fn ($message, $name) =>
                         strtoupper($name).': '.$message
                     )
-                    ->implode(' | '),
+                    ->implode(' | ')
+                .$safeBudgetNote,
         ]);
     }
 
@@ -411,7 +425,7 @@ class AiRpsProviderService
     private function shouldCooldown(string $message): bool
     {
         return (bool) preg_match(
-            '/tokens per day|TPD|daily quota|rate limit|high demand|temporarily unavailable|timeout|timed out|denied access|access denied|service unavailable|payment method is required|payment required|HTTP 402|invalid api key|unauthorized|HTTP 401/i',
+            '/tokens per day|TPD|daily quota|rate limit|high demand|temporarily unavailable|timeout|timed out|denied access|access denied|service unavailable|payment method is required|payment required|HTTP 402|invalid api key|unauthorized|HTTP 401|output JSON|JSON.*(?:diproses|dipulihkan)|syntax error|invalid json/i',
             $message
         );
     }

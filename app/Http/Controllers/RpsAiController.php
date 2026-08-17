@@ -408,6 +408,20 @@ PROMPT;
             $week
         );
 
+        try {
+            $scannableLearningActivity = $this->formatScannableLearningActivity(
+                (string) ($item['learning_activity'] ?? '')
+            );
+        } catch (\Throwable $error) {
+            // Formatter hanya untuk presentasi/scannability. Jangan biarkan output AI
+            // yang aneh menjatuhkan keseluruhan request menjadi HTTP 500.
+            report($error);
+            $rawLearningActivity = trim((string) ($item['learning_activity'] ?? ''));
+            $scannableLearningActivity = $rawLearningActivity !== ''
+                ? $rawLearningActivity
+                : null;
+        }
+
         $candidate = [
             'rps_sub_cpmk_id' => $subId,
             'material_text' => $resolvedMaterial,
@@ -420,7 +434,7 @@ PROMPT;
             'online_activity' => $item['online_activity'] ?? null,
             // learning_activity adalah rincian aktivitas dalam Metode Pembelajaran.
             // Belajar Mandiri hanya disimpan sebagai frekuensi/waktu.
-            'learning_activity' => $this->formatScannableLearningActivity((string) ($item['learning_activity'] ?? '')),
+            'learning_activity' => $scannableLearningActivity,
             'independent_study_sessions' => max(1, (int) ($weekly->independent_study_sessions ?? 1)),
             'assessment_indicator' => $item['assessment_indicator'] ?? null,
             'assessment_criteria' => $item['assessment_criteria'] ?? null,
