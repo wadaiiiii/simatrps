@@ -201,3 +201,5 @@ if old_start not in text:
 text = text.replace(old_start, new_start, 1)
 
 controller.write_text(text)
+
+# Trigger marker: weekly-ai-activity-quality-guard-v1
