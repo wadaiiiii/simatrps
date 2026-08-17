@@ -69,6 +69,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
         Route::post('{rps}/weeks/apply-method', [RpsAutomationController::class, 'applyMethod'])->name('weeks.apply-method');
         Route::post('{rps}/weeks/align-subcpmk', [ObeWorkspaceController::class, 'alignSubCpmkSequence'])->name('weeks.align-subcpmk');
         Route::post('{rps}/weeks/allocate-subcpmk', [RpsAutomationController::class, 'allocateSubCpmkMeetings'])->name('weeks.allocate-subcpmk');
+        Route::post('{rps}/weeks/clear-content', [RpsAutomationController::class, 'clearWeeklyContent'])->name('weeks.clear-content');
         Route::post('{rps}/weeks/apply-time-standard', [ObeWorkspaceController::class, 'applyTimeStandard'])->name('weeks.apply-time-standard');
         Route::post('{rps}/weeks/normalize-references', [ObeWorkspaceController::class, 'normalizeReferences'])->name('weeks.normalize-references');
         Route::post('{rps}/validate-obe', [RpsAutomationController::class, 'validateObe'])->name('validate-obe');

@@ -953,6 +953,26 @@ export default function RpsShow(props: any) {
                             </button>
                             <button
                                 type="button"
+                                onClick={() => {
+                                    if (!confirm(
+                                        'Kosongkan seluruh isi RPS pekanan?\n\n'
+                                        + 'Yang dikosongkan: indikator, kriteria/bentuk, metode, aktivitas, tugas, materi, pustaka, dan waktu pada 14 pekan pembelajaran.\n\n'
+                                        + 'Yang tetap dipertahankan: alokasi Sub-CPMK dari Atur Pertemuan, bobot penilaian, UTS/UAS, Asesmen Detail, dan RTM.'
+                                    )) return;
+
+                                    router.post(
+                                        `/rps/${rps.id}/weeks/clear-content`,
+                                        {},
+                                        actionOptions('Isi RPS pekanan berhasil dikosongkan. Anda dapat mulai mengisi ulang dari awal.'),
+                                    );
+                                }}
+                                className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100"
+                                title="Kosongkan isi 14 pekan pembelajaran tanpa menghapus alokasi Sub-CPMK, bobot, asesmen, atau RTM"
+                            >
+                                Kosongkan Isi Pekanan
+                            </button>
+                            <button
+                                type="button"
                                 title="Mengisi bagian RPS yang masih kosong dan menyinkronkan distribusi bobot dari Asesmen Detail. Pembagian bobot pekan yang sudah ditetapkan manual oleh dosen dipertahankan selama tetap sesuai anggaran Sub-CPMK."
                                 onClick={() => router.post(
                                     `/rps/${rps.id}/smart-draft`,
