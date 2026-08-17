@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('check_key', 80);
             $table->string('subject_key', 500);
             $table->string('decision', 30)->default('keep');
-            $table->uuid('decided_by')->nullable();
+            $table->unsignedBigInteger('decided_by')->nullable();
             $table->timestamps();
 
             $table->unique(
