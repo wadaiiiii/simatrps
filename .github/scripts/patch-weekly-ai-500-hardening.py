@@ -165,3 +165,5 @@ if old_update not in text:
     raise SystemExit('automation clear update marker not found')
 text = text.replace(old_update, new_update, 1)
 automation.write_text(text)
+
+# Trigger marker: weekly-ai-500-hardening-v1
