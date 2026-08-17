@@ -1,0 +1,43 @@
+name: Patch Weekly Hard Gate
+
+on:
+  push:
+    paths:
+      - '.github/scripts/patch-weekly-hard-gate.py'
+      - '.github/workflows/patch-weekly-hard-gate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python .github/scripts/patch-weekly-hard-gate.py
+      - name: Verify PHP and markers
+        run: |
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Http/Controllers/RpsAutomationController.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+          php -l app/Http/Controllers/RpsAiController.php
+          grep -q "meetingPlanReady" resources/js/pages/rps/show.tsx
+          grep -q "Lengkapi Data Teknis" resources/js/pages/rps/show.tsx
+          grep -q "Kosongkan Isi Pekanan" resources/js/pages/rps/show.tsx
+          grep -q "assertMeetingAllocationConfigured" app/Http/Controllers/RpsAiController.php
+          grep -q "assertMeetingAllocationConfigured" app/Http/Controllers/ObeWorkspaceController.php
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsController.php app/Http/Controllers/RpsAutomationController.php app/Http/Controllers/ObeWorkspaceController.php app/Http/Controllers/RpsAiController.php resources/js/pages/rps/show.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Require meeting allocation before weekly RPS editing"
+            git push
+          fi
