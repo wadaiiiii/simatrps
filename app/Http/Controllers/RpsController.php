@@ -288,6 +288,14 @@ class RpsController extends Controller
 
             $week->sub_cpmk_code = $sub?->code;
             $week->sub_cpmk_description = $sub?->description;
+
+            foreach (['assessment_criteria', 'learning_activity', 'student_assignment', 'online_activity'] as $field) {
+                $week->{$field} = $this->normalizeWeekSubCpmkNarrative(
+                    $week->{$field} ?? null,
+                    $sub?->code
+                );
+            }
+
             $storedWeight = $week->assessment_weight ?? null;
             $weekNumber = (int) $week->week_number;
 
@@ -541,6 +549,31 @@ Pendukung:
                 ? $workspace->progress($version->id)
                 : ['percent' => 0, 'checks' => [], 'assessment_weight_total' => 0],
         ]);
+    }
+
+    private function normalizeWeekSubCpmkNarrative(mixed $value, mixed $currentCode): mixed
+    {
+        if (! is_string($value) || trim($value) === '' || ! is_string($currentCode) || trim($currentCode) === '') {
+            return $value;
+        }
+
+        $pattern = '/Sub[\s\-‐‑‒–—]*CPMK[\s\-‐‑‒–—]*\d+/iu';
+        preg_match_all($pattern, $value, $matches);
+        $codes = collect($matches[0] ?? [])
+            ->map(fn ($match) => $this->normalizeRtmLabel((string) $match))
+            ->filter()->unique()->values();
+
+        if ($codes->count() !== 1) return $value;
+        if ($codes->first() === $this->normalizeRtmLabel($currentCode)) return $value;
+
+        return preg_replace($pattern, trim($currentCode), $value) ?? $value;
+    }
+
+    private function normalizeRtmLabel(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     private function splitReferenceGroups(string $text): array
