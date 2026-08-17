@@ -30,12 +30,7 @@ class RpsTaskController extends Controller
         ]);
 
         if ($validated['assessment_id'] ?? null) {
-            $assessmentOk = DB::table('assessments')
-                ->where('id', $validated['assessment_id'])
-                ->where('rps_version_id', $version->id)
-                ->exists();
-
-            abort_unless($assessmentOk, 422);
+            $validated = $this->applyAssessmentDefaults($validated, $version->id);
         }
 
         $next = (int) DB::table('rps_tasks')
@@ -114,16 +109,7 @@ class RpsTaskController extends Controller
         ]);
 
         if ($validated['assessment_id'] ?? null) {
-            $assessmentOk = DB::table('assessments')
-                ->where('id', $validated['assessment_id'])
-                ->where('rps_version_id', $version->id)
-                ->exists();
-
-            if (! $assessmentOk) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'assessment_id' => 'Asesmen RTM tidak valid untuk RPS ini.',
-                ]);
-            }
+            $validated = $this->applyAssessmentDefaults($validated, $version->id);
         }
 
         $allowedSubIds = DB::table('rps_sub_cpmks')
@@ -180,6 +166,44 @@ class RpsTaskController extends Controller
             ->delete();
 
         return back()->with('success', 'RTM dihapus.');
+    }
+
+    private function applyAssessmentDefaults(array $validated, string $versionId): array
+    {
+        $assessment = DB::table('assessments')
+            ->where('id', $validated['assessment_id'])
+            ->where('rps_version_id', $versionId)
+            ->first(['id', 'name', 'type', 'week_number']);
+
+        if (! $assessment) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'assessment_id' => 'Asesmen RTM tidak valid untuk RPS ini.',
+            ]);
+        }
+
+        $type = strtolower((string) $assessment->type);
+        $rtmTypes = ['assignment', 'project', 'practicum', 'presentation'];
+
+        if (! in_array($type, $rtmTypes, true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'assessment_id' => 'Pilih asesmen tugas, proyek, praktikum, atau presentasi untuk RTM.',
+            ]);
+        }
+
+        $validated['type'] = $type;
+        $validated['sub_cpmk_ids'] = DB::table('assessment_subcpmks')
+            ->where('assessment_id', $assessment->id)
+            ->pluck('rps_sub_cpmk_id')
+            ->map('strval')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($validated['due_week']) && filled($assessment->week_number)) {
+            $validated['due_week'] = (int) $assessment->week_number;
+        }
+
+        return $validated;
     }
 
     private function context(Request $request, string $rps): array

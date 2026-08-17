@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 
 const TEACHING_WEEKS = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+const RTM_ASSESSMENT_TYPES = ['assignment', 'project', 'practicum', 'presentation'];
 
 
 const LEARNING_FORM_OPTIONS = [
@@ -2837,25 +2838,39 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                         </select>
                         <select
                             value={form.data.assessment_id}
-                            onChange={(e) => {
-                                const assessmentId = e.target.value;
-                                form.setData('assessment_id', assessmentId);
-                                const selectedAssessment = assessments.find(
-                                    (item: any) => item.id === assessmentId,
-                                );
-                                if (selectedAssessment) {
-                                    form.setData(
-                                        'sub_cpmk_ids',
-                                        safeList(selectedAssessment.sub_cpmk_ids),
-                                    );
-                                }
-                            }}
-                            className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+                        onChange={(e) => {
+                            const assessmentId = e.target.value;
+                            const selectedAssessment = assessments.find(
+                                (item: any) => item.id === assessmentId,
+                            );
+
+                            if (!selectedAssessment) {
+                                form.setData('assessment_id', '');
+                                return;
+                            }
+
+                            form.setData({
+                                ...form.data,
+                                assessment_id: assessmentId,
+                                type: RTM_ASSESSMENT_TYPES.includes(String(selectedAssessment.type))
+                                    ? selectedAssessment.type
+                                    : form.data.type,
+                                due_week: selectedAssessment.week_number
+                                    ? String(selectedAssessment.week_number)
+                                    : form.data.due_week,
+                                sub_cpmk_ids: safeList(selectedAssessment.sub_cpmk_ids).map(String),
+                            });
+                        }}
+                        className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
                         >
                             <option value="">Tanpa asesmen khusus</option>
-                            {assessments.map((assessment: any) => (
-                                <option key={assessment.id} value={assessment.id}>{assessment.code} | {assessment.name}</option>
-                            ))}
+                            {assessments
+                                .filter((assessment: any) => RTM_ASSESSMENT_TYPES.includes(String(assessment.type)))
+                                .map((assessment: any) => (
+                                    <option key={assessment.id} value={assessment.id}>
+                                        {assessment.code} | {assessment.name} | Pekan {assessment.week_number || '-'}
+                                    </option>
+                                ))}
                         </select>
                         <input
                             type="number"
@@ -2905,13 +2920,30 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                     <button
                         type="button"
                         disabled={form.processing || !form.data.title.trim()}
-                        onClick={() => form.post(
-                            `/rps/${rpsId}/tasks`,
-                            actionOptions('RTM berhasil ditambahkan.', () => {
-                                form.reset();
-                                setOpen(false);
-                            }),
-                        )}
+                        onClick={() => {
+                            const selectedAssessment = assessments.find(
+                                (item: any) => item.id === form.data.assessment_id,
+                            );
+                            const assessmentWeek = Number(selectedAssessment?.week_number || 0);
+                            const dueWeek = Number(form.data.due_week || 0);
+
+                            if (
+                                assessmentWeek > 0
+                                && dueWeek > 0
+                                && assessmentWeek !== dueWeek
+                                && !confirm(`Pekan Pengumpulan RTM (${dueWeek}) berbeda dari jadwal asesmen (${assessmentWeek}). Tetap simpan?`)
+                            ) {
+                                return;
+                            }
+
+                            form.post(
+                                `/rps/${rpsId}/tasks`,
+                                actionOptions('RTM berhasil ditambahkan.', () => {
+                                    form.reset();
+                                    setOpen(false);
+                                }),
+                            );
+                        }}
                         className="rounded-lg bg-teal-700 px-3 py-1.5 text-[10px] font-bold text-white disabled:opacity-40"
                     >
                         Simpan RTM
@@ -4318,6 +4350,21 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
         <form
             onSubmit={(event) => {
                 event.preventDefault();
+                const selectedAssessment = assessments.find(
+                    (item: any) => item.id === form.data.assessment_id,
+                );
+                const assessmentWeek = Number(selectedAssessment?.week_number || 0);
+                const dueWeek = Number(form.data.due_week || 0);
+
+                if (
+                    assessmentWeek > 0
+                    && dueWeek > 0
+                    && assessmentWeek !== dueWeek
+                    && !confirm(`Pekan Pengumpulan RTM (${dueWeek}) berbeda dari jadwal asesmen (${assessmentWeek}). Tetap simpan?`)
+                ) {
+                    return;
+                }
+
                 form.put(
                     `/rps/${rpsId}/tasks/${task.id}`,
                     actionOptions('RTM berhasil diperbarui.', () => { setEditing(false); onDone?.(); }),
@@ -4369,26 +4416,38 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                     <select
                         value={form.data.assessment_id}
                         onChange={(e) => {
-                                const assessmentId = e.target.value;
-                                form.setData('assessment_id', assessmentId);
-                                const selectedAssessment = assessments.find(
-                                    (item: any) => item.id === assessmentId,
-                                );
-                                if (selectedAssessment) {
-                                    form.setData(
-                                        'sub_cpmk_ids',
-                                        safeList(selectedAssessment.sub_cpmk_ids),
-                                    );
-                                }
-                            }}
+                            const assessmentId = e.target.value;
+                            const selectedAssessment = assessments.find(
+                                (item: any) => item.id === assessmentId,
+                            );
+
+                            if (!selectedAssessment) {
+                                form.setData('assessment_id', '');
+                                return;
+                            }
+
+                            form.setData({
+                                ...form.data,
+                                assessment_id: assessmentId,
+                                type: RTM_ASSESSMENT_TYPES.includes(String(selectedAssessment.type))
+                                    ? selectedAssessment.type
+                                    : form.data.type,
+                                due_week: selectedAssessment.week_number
+                                    ? String(selectedAssessment.week_number)
+                                    : form.data.due_week,
+                                sub_cpmk_ids: safeList(selectedAssessment.sub_cpmk_ids).map(String),
+                            });
+                        }}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
                     >
                         <option value="">Tanpa asesmen khusus</option>
-                        {assessments.map((assessment: any) => (
-                            <option key={assessment.id} value={assessment.id}>
-                                {assessment.code} | {assessment.name}
-                            </option>
-                        ))}
+                        {assessments
+                            .filter((assessment: any) => RTM_ASSESSMENT_TYPES.includes(String(assessment.type)))
+                            .map((assessment: any) => (
+                                <option key={assessment.id} value={assessment.id}>
+                                    {assessment.code} | {assessment.name} | Pekan {assessment.week_number || '-'}
+                                </option>
+                            ))}
                     </select>
                 </label>
 
