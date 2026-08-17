@@ -425,6 +425,24 @@ Pendukung:
             'supporting_reference_text' => $effectiveSupportingReferenceText,
         ];
 
+        $documentInfoRequiredFields = [
+            'course_cluster',
+            'prepared_date',
+            'published_date',
+            'developer_name',
+            'coordinator_name',
+            'head_program_name',
+            'lecturer_names',
+            'software_media',
+            'hardware_media',
+            'prerequisite_text',
+            'description_short',
+        ];
+        $documentInfoReady = $storedMeta !== null
+            && collect($documentInfoRequiredFields)->every(
+                fn (string $field) => filled($storedMeta->{$field} ?? null)
+            );
+
         $masterSyllabus = [
             'description' => $masterDescription,
             'reference_text' => $masterReferenceGroups['utama'] ?? $masterReferenceText,
@@ -542,6 +560,7 @@ Pendukung:
             'bibliography' => $bibliography,
             'courseSummary' => $courseSummary,
             'documentMeta' => $documentMeta,
+            'documentInfoReady' => $documentInfoReady,
             'masterSyllabus' => $masterSyllabus,
             'weeks' => $weeks,
             'meetingPlanReady' => $meetingPlanReady,

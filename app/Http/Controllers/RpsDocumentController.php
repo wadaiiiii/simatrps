@@ -21,17 +21,17 @@ class RpsDocumentController extends Controller
         [, $version] = $this->context($request, $rps);
 
         $data = $request->validate([
-            'course_cluster' => ['nullable', 'string', 'max:255'],
-            'prepared_date' => ['nullable', 'date'],
-            'published_date' => ['nullable', 'date'],
-            'developer_name' => ['nullable', 'string', 'max:500'],
-            'coordinator_name' => ['nullable', 'string', 'max:500'],
-            'head_program_name' => ['nullable', 'string', 'max:500'],
-            'lecturer_names' => ['nullable', 'string', 'max:4000'],
-            'software_media' => ['nullable', 'string', 'max:4000'],
-            'hardware_media' => ['nullable', 'string', 'max:4000'],
-            'prerequisite_text' => ['nullable', 'string', 'max:4000'],
-            'description_short' => ['nullable', 'string', 'max:8000'],
+            'course_cluster' => ['required', 'string', 'max:255'],
+            'prepared_date' => ['required', 'date'],
+            'published_date' => ['required', 'date'],
+            'developer_name' => ['required', 'string', 'max:500'],
+            'coordinator_name' => ['required', 'string', 'max:500'],
+            'head_program_name' => ['required', 'string', 'max:500'],
+            'lecturer_names' => ['required', 'string', 'max:4000'],
+            'software_media' => ['required', 'string', 'max:4000'],
+            'hardware_media' => ['required', 'string', 'max:4000'],
+            'prerequisite_text' => ['required', 'string', 'max:4000'],
+            'description_short' => ['required', 'string', 'max:8000'],
             'reference_text' => ['nullable', 'string', 'max:30000'],
             'supporting_reference_text' => ['nullable', 'string', 'max:30000'],
         ]);

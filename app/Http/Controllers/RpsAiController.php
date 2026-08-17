@@ -38,6 +38,10 @@ class RpsAiController extends Controller
             'instruction' => ['nullable', 'string', 'max:3000'],
         ]);
 
+        if (in_array($data['suggestion_type'], ['cpmk_review', 'bloom_mapping', 'cpl_mapping'], true)) {
+            $this->assertDocumentInfoReady($version->id);
+        }
+
         if ($data['suggestion_type'] === 'weekly_plan') {
             $this->assertMeetingAllocationConfigured($version->id);
         }
@@ -467,6 +471,10 @@ PROMPT;
     {
         [$record, $version] = $this->context($request, $rps);
         $row = $this->suggestion($version->id, $suggestion);
+
+        if (in_array($row->suggestion_type, ['cpmk_review', 'bloom_mapping', 'cpl_mapping'], true)) {
+            $this->assertDocumentInfoReady($version->id);
+        }
 
         if ($row->suggestion_type === 'weekly_plan') {
             $this->assertMeetingAllocationConfigured($version->id);
@@ -2239,6 +2247,36 @@ PROMPT;
         abort_unless($row, 404);
 
         return $row;
+    }
+
+    private function assertDocumentInfoReady(string $versionId): void
+    {
+        $meta = DB::table('rps_document_meta')
+            ->where('rps_version_id', $versionId)
+            ->first();
+
+        $required = [
+            'course_cluster',
+            'prepared_date',
+            'published_date',
+            'developer_name',
+            'coordinator_name',
+            'head_program_name',
+            'lecturer_names',
+            'software_media',
+            'hardware_media',
+            'prerequisite_text',
+            'description_short',
+        ];
+        $missing = collect($required)
+            ->filter(fn (string $field) => ! filled($meta->{$field} ?? null))
+            ->values();
+
+        if (! $meta || $missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'document_info' => 'Lengkapi dan simpan Edit Informasi RPS terlebih dahulu sebelum mengatur Scope CPL atau menyusun CPMK.',
+            ]);
+        }
     }
 
     private function assertMeetingAllocationConfigured(string $versionId): void

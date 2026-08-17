@@ -13,6 +13,7 @@ class RpsCplScopeController extends Controller
     public function store(Request $request, string $rps): RedirectResponse
     {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertDocumentInfoReady($version->id);
 
         $data = $request->validate([
             'cpl_id' => ['required', 'uuid'],
@@ -75,6 +76,7 @@ class RpsCplScopeController extends Controller
         string $cpl
     ): RedirectResponse {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertDocumentInfoReady($version->id);
 
         $row = DB::table('rps_additional_cpls')
             ->join('cpls', 'cpls.id', '=', 'rps_additional_cpls.cpl_id')
@@ -113,6 +115,36 @@ class RpsCplScopeController extends Controller
             'success',
             "{$row->code} dihapus dari tambahan RPS beserta mapping CPMK terkait. Master kurikulum tetap."
         );
+    }
+
+    private function assertDocumentInfoReady(string $versionId): void
+    {
+        $meta = DB::table('rps_document_meta')
+            ->where('rps_version_id', $versionId)
+            ->first();
+
+        $required = [
+            'course_cluster',
+            'prepared_date',
+            'published_date',
+            'developer_name',
+            'coordinator_name',
+            'head_program_name',
+            'lecturer_names',
+            'software_media',
+            'hardware_media',
+            'prerequisite_text',
+            'description_short',
+        ];
+        $missing = collect($required)
+            ->filter(fn (string $field) => ! filled($meta->{$field} ?? null))
+            ->values();
+
+        if (! $meta || $missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'document_info' => 'Lengkapi dan simpan Edit Informasi RPS terlebih dahulu sebelum mengatur Scope CPL atau menyusun CPMK.',
+            ]);
+        }
     }
 
     private function context(Request $request, string $rps): array

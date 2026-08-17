@@ -17,6 +17,7 @@ class ObeWorkspaceController extends Controller
     public function storeCpmk(Request $request, string $rps): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
+        $this->assertDocumentInfoReady($version->id);
 
         $data = $request->validate([
             'description' => ['required', 'string', 'max:4000'],
@@ -46,6 +47,7 @@ class ObeWorkspaceController extends Controller
     public function importCurriculumCpmks(Request $request, string $rps): RedirectResponse
     {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertDocumentInfoReady($version->id);
 
         $masters = DB::table('curriculum_cpmks')
             ->where('course_id', $record->course_id)
@@ -198,6 +200,7 @@ class ObeWorkspaceController extends Controller
     public function saveCpmkCpl(Request $request, string $rps): RedirectResponse
     {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertDocumentInfoReady($version->id);
 
         $data = $request->validate([
             'mappings' => ['array'],
@@ -806,6 +809,36 @@ Pendukung:
                 ? "Pekan {$week} ({$examType}) berhasil disimpan."
                 : "Pekan {$week} berhasil disimpan."
         );
+    }
+
+    private function assertDocumentInfoReady(string $versionId): void
+    {
+        $meta = DB::table('rps_document_meta')
+            ->where('rps_version_id', $versionId)
+            ->first();
+
+        $required = [
+            'course_cluster',
+            'prepared_date',
+            'published_date',
+            'developer_name',
+            'coordinator_name',
+            'head_program_name',
+            'lecturer_names',
+            'software_media',
+            'hardware_media',
+            'prerequisite_text',
+            'description_short',
+        ];
+        $missing = collect($required)
+            ->filter(fn (string $field) => ! filled($meta->{$field} ?? null))
+            ->values();
+
+        if (! $meta || $missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'document_info' => 'Lengkapi dan simpan Edit Informasi RPS terlebih dahulu sebelum mengatur Scope CPL atau menyusun CPMK.',
+            ]);
+        }
     }
 
     private function assertMeetingAllocationConfigured(string $versionId): void

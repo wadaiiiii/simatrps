@@ -265,6 +265,7 @@ export default function RpsShow(props: any) {
         bibliography = [],
         courseSummary = { description: '', prerequisite: '', lecturer: '' },
         documentMeta = {},
+        documentInfoReady = false,
         masterSyllabus = { description: '', reference_text: '', supporting_reference_text: '', prerequisite_text: '' },
         weeks = [],
         meetingPlanReady = false,
@@ -629,6 +630,7 @@ export default function RpsShow(props: any) {
                 <DocumentMetaEditor
                     rpsId={rps.id}
                     meta={documentMeta}
+                    ready={documentInfoReady}
                     master={masterSyllabus}
                     aiInstruction={aiInstruction}
                 />
@@ -712,6 +714,7 @@ export default function RpsShow(props: any) {
                                             allCpls={allCpls}
                                             officialCplIds={officialCplIds}
                                             additionalCplIds={additionalCplIds}
+                                            disabled={!documentInfoReady}
                                         />
                                     </td>
                                 </tr>
@@ -732,11 +735,11 @@ export default function RpsShow(props: any) {
                                         <div className="flex items-center justify-between gap-2">
                                             <span>Capaian Pembelajaran Mata Kuliah (CPMK)</span>
                                             <div className="flex flex-wrap items-center justify-end gap-1.5 print:hidden">
-                                                <DocumentCpmkAdd rpsId={rps.id} />
+                                                <DocumentCpmkAdd rpsId={rps.id} disabled={!documentInfoReady} />
                                                 <SectionAiButton
                                                     label="Telaah CPMK AI"
                                                     busy={aiBusyType === 'cpmk_review'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
+                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('cpmk_review')}
                                                     suggestions={cpmkReviewSuggestions}
                                                     rpsId={rps.id}
@@ -744,7 +747,7 @@ export default function RpsShow(props: any) {
                                                 <SectionAiButton
                                                     label="Pemetaan Bloom AI"
                                                     busy={aiBusyType === 'bloom_mapping'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
+                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('bloom_mapping')}
                                                     suggestions={bloomMappingSuggestions}
                                                     rpsId={rps.id}
@@ -752,7 +755,7 @@ export default function RpsShow(props: any) {
                                                 <SectionAiButton
                                                     label="Pemetaan CPMK → CPL AI"
                                                     busy={aiBusyType === 'cpl_mapping'}
-                                                    disabled={!ai.configured || cpmks.length === 0}
+                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('cpl_mapping')}
                                                     suggestions={cplMappingSuggestions}
                                                     rpsId={rps.id}
@@ -952,7 +955,7 @@ export default function RpsShow(props: any) {
                                 className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm ${meetingPlanReady ? 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700' : 'border-amber-600 bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-200'}`}
                                 title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK sebelum menyusun isi pekanan"
                             >
-                                1. Atur Pertemuan
+                                Atur Pertemuan
                             </button>
                             <button
                                 type="button"
@@ -973,17 +976,17 @@ export default function RpsShow(props: any) {
                                 type="button"
                                 disabled={!meetingPlanReady}
                                 onClick={() => {
-                                    if (!confirm('Kosongkan isi akademik 14 pekan pembelajaran? Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
+                                    if (!confirm('Hapus isi seluruh 14 pekan pembelajaran? Isi akademik semua pekan akan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
                                     router.post(
                                         `/rps/${rps.id}/weeks/clear-content`,
                                         {},
-                                        actionOptions('Isi pekanan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
+                                        actionOptions('Isi seluruh pekan berhasil dihapus. Data teknis, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
                                     );
                                 }}
-                                className="rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"
-                                title={meetingPlanReady ? 'Kosongkan isi akademik tanpa mereset tatap muka, belajar mandiri, tugas mandiri/terstruktur, atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
+                                className="inline-flex size-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                title={meetingPlanReady ? 'Hapus isi seluruh pekan tanpa mereset data teknis atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
-                                Kosongkan Isi
+                                <Trash2 className="size-3.5" />
                             </button>
                         </div>
                     </div>
@@ -1421,7 +1424,7 @@ function PustakaInlineTools({ rpsId, meta, master, aiInstruction }: any) {
     );
 }
 
-function DocumentMetaEditor({ rpsId, meta, master, aiInstruction }: any) {
+function DocumentMetaEditor({ rpsId, meta, ready, master, aiInstruction }: any) {
     const [open, setOpen] = useState(false);
     const [aiLoading, setAiLoading] = useState(false);
 
@@ -1488,7 +1491,7 @@ function DocumentMetaEditor({ rpsId, meta, master, aiInstruction }: any) {
                 <button
                     type="button"
                     onClick={() => setOpen((value) => !value)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-teal-700 bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-teal-700"
+                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold text-white shadow-sm transition ${ready ? 'border-teal-700 bg-teal-600 hover:bg-teal-700' : 'border-amber-600 bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-200'}`} title={ready ? 'Informasi RPS sudah lengkap' : 'Wajib dilengkapi sebelum Scope CPL dan CPMK dapat diatur'}
                 >
                     <Pencil className="size-3.5" />
                     {open ? 'Tutup Informasi RPS' : 'Edit Informasi RPS'}
@@ -1673,7 +1676,19 @@ function CplScopeQuickEditor({
     allCpls,
     officialCplIds,
     additionalCplIds,
+    disabled = false,
 }: any) {
+    if (disabled) {
+        return (
+            <span
+                className="cursor-not-allowed text-[10px] font-bold text-slate-300"
+                title="Lengkapi dan simpan Edit Informasi RPS terlebih dahulu."
+            >
+                Atur Scope CPL RPS
+            </span>
+        );
+    }
+
     return (
         <details>
             <summary className="cursor-pointer text-[10px] font-bold text-sky-700">
@@ -2571,13 +2586,26 @@ function RtmDocumentSection({
     );
 }
 
-function DocumentCpmkAdd({ rpsId }: any) {
+function DocumentCpmkAdd({ rpsId, disabled = false }: any) {
     const [open, setOpen] = useState(false);
     const [restoringMaster, setRestoringMaster] = useState(false);
     const form = useForm({
         description: '',
         bloom_level: '',
     });
+
+    if (disabled) {
+        return (
+            <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-300" title="Lengkapi Edit Informasi RPS terlebih dahulu.">
+                    <RotateCcw className="size-3" /> Ambil CPMK Kurikulum
+                </button>
+                <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-300" title="Lengkapi Edit Informasi RPS terlebih dahulu.">
+                    <Plus className="size-3" /> Tambah CPMK
+                </button>
+            </div>
+        );
+    }
 
     if (!open) {
         const restoreFromCurriculum = () => {
