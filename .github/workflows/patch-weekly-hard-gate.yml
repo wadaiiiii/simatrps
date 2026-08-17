@@ -1,9 +1,9 @@
-name: Patch Document Information Gate
+name: Patch Weekly Material Decision
 
 on:
   push:
     paths:
-      - '.github/scripts/patch-document-info-gate.py'
+      - '.github/scripts/patch-weekly-material-decision.py'
       - '.github/workflows/patch-weekly-hard-gate.yml'
   workflow_dispatch:
 
@@ -19,31 +19,24 @@ jobs:
           fetch-depth: 0
 
       - name: Apply patch
-        run: python .github/scripts/patch-document-info-gate.py
+        run: python .github/scripts/patch-weekly-material-decision.py
 
       - name: Verify PHP and markers
         run: |
-          php -l app/Http/Controllers/RpsController.php
-          php -l app/Http/Controllers/RpsDocumentController.php
-          php -l app/Http/Controllers/ObeWorkspaceController.php
-          php -l app/Http/Controllers/RpsCplScopeController.php
-          php -l app/Http/Controllers/RpsAiController.php
-          grep -q "documentInfoReady" app/Http/Controllers/RpsController.php
-          grep -q "assertDocumentInfoReady" app/Http/Controllers/ObeWorkspaceController.php
-          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsCplScopeController.php
-          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsAiController.php
-          grep -q "documentInfoReady" resources/js/pages/rps/show.tsx
-          grep -q "Hapus isi seluruh 14 pekan" resources/js/pages/rps/show.tsx
-          grep -q "<Trash2 className=\"size-3.5\" />" resources/js/pages/rps/show.tsx
+          php -l app/Services/Rps/ObeWorkspaceService.php
+          php -l app/Http/Controllers/RpsValidatorDecisionController.php
+          grep -q "weekly_material_semantics" app/Http/Controllers/RpsValidatorDecisionController.php
+          grep -q "weekly-material:week:" app/Services/Rps/ObeWorkspaceService.php
+          grep -q "Lanjut (Tidak Ikut Rekomendasi)" resources/js/pages/rps/show.tsx
 
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/Http/Controllers/RpsController.php app/Http/Controllers/RpsDocumentController.php app/Http/Controllers/ObeWorkspaceController.php app/Http/Controllers/RpsCplScopeController.php app/Http/Controllers/RpsAiController.php resources/js/pages/rps/show.tsx
+          git add app/Services/Rps/ObeWorkspaceService.php app/Http/Controllers/RpsValidatorDecisionController.php resources/js/pages/rps/show.tsx
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Require RPS information before CPL and CPMK authoring"
+            git commit -m "Allow lecturer to keep weekly material decisions"
             git push origin HEAD:main
           fi
