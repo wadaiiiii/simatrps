@@ -38,6 +38,10 @@ class RpsAiController extends Controller
             'instruction' => ['nullable', 'string', 'max:3000'],
         ]);
 
+        if ($data['suggestion_type'] === 'weekly_plan') {
+            $this->assertMeetingAllocationConfigured($version->id);
+        }
+
         $context = $contextService->build($record, $version, $data['suggestion_type']);
 
         $providerType = $data['suggestion_type'] === 'bloom_mapping'
@@ -241,6 +245,7 @@ class RpsAiController extends Controller
         @ini_set('max_execution_time', '55');
 
         [$record, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $data = $request->validate([
             'instruction' => ['nullable', 'string', 'max:3000'],
@@ -462,6 +467,10 @@ PROMPT;
     {
         [$record, $version] = $this->context($request, $rps);
         $row = $this->suggestion($version->id, $suggestion);
+
+        if ($row->suggestion_type === 'weekly_plan') {
+            $this->assertMeetingAllocationConfigured($version->id);
+        }
 
         if ($row->status !== 'pending') {
             throw ValidationException::withMessages([
@@ -2230,6 +2239,24 @@ PROMPT;
         abort_unless($row, 404);
 
         return $row;
+    }
+
+    private function assertMeetingAllocationConfigured(string $versionId): void
+    {
+        $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+
+        $configured = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', $teachingWeeks)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->where('source_type', 'like', 'manual_allocation%')
+            ->count();
+
+        if ($configured !== count($teachingWeeks)) {
+            throw ValidationException::withMessages([
+                'ai' => 'Atur jumlah pertemuan setiap Sub-CPMK terlebih dahulu. Setelah total 14/14 disimpan, Susun AI per pekan akan aktif.',
+            ]);
+        }
     }
 
     private function context(Request $request, string $rps): array

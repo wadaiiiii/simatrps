@@ -230,6 +230,15 @@ class RpsController extends Controller
             ->orderBy('week_number')
             ->get();
 
+        $teachingWeekNumbers = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+        $meetingPlanReady = $weeks
+            ->filter(fn ($week) =>
+                in_array((int) $week->week_number, $teachingWeekNumbers, true)
+                && filled($week->rps_sub_cpmk_id ?? null)
+                && str_starts_with((string) ($week->source_type ?? ''), 'manual_allocation')
+            )
+            ->count() === count($teachingWeekNumbers);
+
         $assessments = Schema::hasTable('assessments')
             ? DB::table('assessments')
                 ->where('rps_version_id', $version->id)
@@ -535,6 +544,7 @@ Pendukung:
             'documentMeta' => $documentMeta,
             'masterSyllabus' => $masterSyllabus,
             'weeks' => $weeks,
+            'meetingPlanReady' => $meetingPlanReady,
             'assessments' => $assessments,
             'tasks' => $tasks,
             'simulationScores' => $simulationScores,

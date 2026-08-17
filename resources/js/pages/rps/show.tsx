@@ -267,6 +267,7 @@ export default function RpsShow(props: any) {
         documentMeta = {},
         masterSyllabus = { description: '', reference_text: '', supporting_reference_text: '', prerequisite_text: '' },
         weeks = [],
+        meetingPlanReady = false,
         assessments = [],
         tasks = [],
         simulationScores = {},
@@ -938,50 +939,51 @@ export default function RpsShow(props: any) {
                     <div id="validator-target-weeks" className="scroll-mt-24 flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
                         <div>
                             <div className="text-xs font-bold text-slate-600">Rencana Pembelajaran Semester</div>
-                            <div className="mt-0.5 text-[10px] text-slate-400">
-                                Mulai dengan Atur Pertemuan, lalu lengkapi isi RPS pekanan.
+                            <div className={`mt-1 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[9px] font-bold ${meetingPlanReady ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`}>
+                                {meetingPlanReady
+                                    ? 'Alokasi 14 pertemuan sudah ditetapkan. Edit Pekan dan Susun AI sudah aktif.'
+                                    : 'Wajib: Atur jumlah pertemuan setiap Sub-CPMK terlebih dahulu (14/14).'}
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                             <button
                                 type="button"
                                 onClick={() => setMeetingPlannerOpen(true)}
-                                className="rounded-lg border border-emerald-600 bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700"
-                                title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK"
+                                className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm ${meetingPlanReady ? 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700' : 'border-amber-600 bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-200'}`}
+                                title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK sebelum menyusun isi pekanan"
                             >
                                 1. Atur Pertemuan
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    if (!confirm(
-                                        'Kosongkan seluruh isi RPS pekanan?\n\n'
-                                        + 'Yang dikosongkan: indikator, kriteria/bentuk, metode, aktivitas, tugas, materi, pustaka, dan waktu pada 14 pekan pembelajaran.\n\n'
-                                        + 'Yang tetap dipertahankan: alokasi Sub-CPMK dari Atur Pertemuan, bobot penilaian, UTS/UAS, Asesmen Detail, dan RTM.'
-                                    )) return;
-
-                                    router.post(
-                                        `/rps/${rps.id}/weeks/clear-content`,
-                                        {},
-                                        actionOptions('Isi RPS pekanan berhasil dikosongkan. Anda dapat mulai mengisi ulang dari awal.'),
-                                    );
-                                }}
-                                className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 transition hover:bg-rose-100"
-                                title="Kosongkan isi 14 pekan pembelajaran tanpa menghapus alokasi Sub-CPMK, bobot, asesmen, atau RTM"
+                                disabled={!meetingPlanReady}
+                                onClick={() => router.post(
+                                    `/rps/${rps.id}/weeks/apply-time-standard`,
+                                    {},
+                                    actionOptions('Data teknis pekanan berhasil dilengkapi tanpa mengubah isi akademik.'),
+                                )}
+                                className="rounded-lg border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-35"
+                                title={meetingPlanReady
+                                    ? 'Mengisi bentuk pembelajaran dasar dan estimasi waktu sesuai SKS. Tidak membuat indikator, materi, aktivitas, kriteria, atau tugas.'
+                                    : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
-                                Kosongkan Isi Pekanan
+                                Lengkapi Data Teknis
                             </button>
                             <button
                                 type="button"
-                                title="Mengisi bagian RPS yang masih kosong dan menyinkronkan distribusi bobot dari Asesmen Detail. Pembagian bobot pekan yang sudah ditetapkan manual oleh dosen dipertahankan selama tetap sesuai anggaran Sub-CPMK."
-                                onClick={() => router.post(
-                                    `/rps/${rps.id}/smart-draft`,
-                                    { mode: 'fill_empty' },
-                                    actionOptions('Bagian RPS yang masih kosong berhasil diisi tanpa menimpa edit manual atau hasil Susun AI.'),
-                                )}
-                                className="rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white"
+                                disabled={!meetingPlanReady}
+                                onClick={() => {
+                                    if (!confirm('Kosongkan seluruh isi akademik 14 pekan pembelajaran? Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
+                                    router.post(
+                                        `/rps/${rps.id}/weeks/clear-content`,
+                                        {},
+                                        actionOptions('Isi pekanan dikosongkan. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
+                                    );
+                                }}
+                                className="rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                title={meetingPlanReady ? 'Reset isi akademik pekanan tanpa menghapus struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
-                                2. Isi Bagian Kosong
+                                Kosongkan Isi Pekanan
                             </button>
                         </div>
                     </div>
@@ -1026,6 +1028,7 @@ export default function RpsShow(props: any) {
                                         credits={rps.credits}
                                         bibliography={bibliography}
                                         aiConfigured={ai.configured}
+                                        meetingPlanReady={meetingPlanReady}
                                         aiBusy={aiBusyWeek === week.week_number}
                                         onGenerateAi={(overwrite: boolean) => generateWeekAi(week.week_number, overwrite)}
                                     />
@@ -3748,6 +3751,7 @@ function DocumentWeekRow({
     credits,
     bibliography,
     aiConfigured,
+    meetingPlanReady,
     aiBusy,
     onGenerateAi,
 }: any) {
@@ -3963,16 +3967,20 @@ function DocumentWeekRow({
                 <div className="mt-2 flex flex-col gap-1 print:hidden">
                     <button
                         type="button"
+                        disabled={!meetingPlanReady}
                         onClick={() => setEditing(true)}
-                        className="rounded-lg border border-sky-700 bg-sky-600 px-2 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition hover:bg-sky-700"
+                        title={meetingPlanReady ? 'Edit isi pekan' : 'Atur Pertemuan harus disimpan 14/14 terlebih dahulu.'}
+                        className="rounded-lg border border-sky-700 bg-sky-600 px-2 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
                     >
                         Edit Pekan
                     </button>
                     <button
                         type="button"
-                        disabled={!aiConfigured || aiBusy}
+                        disabled={!meetingPlanReady || !aiConfigured || aiBusy}
                         onClick={() => onGenerateAi(info.count >= 7)}
-                        title="Susun rekomendasi AI untuk pekan ini"
+                        title={!meetingPlanReady
+                            ? 'Atur Pertemuan harus disimpan 14/14 terlebih dahulu.'
+                            : 'Susun rekomendasi AI untuk pekan ini'}
                         className="rounded-lg border border-violet-700 bg-violet-600 px-2 py-1.5 text-[10px] font-extrabold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {aiBusy ? 'AI...' : '✨ Susun AI'}

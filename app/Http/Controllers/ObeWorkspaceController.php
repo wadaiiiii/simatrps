@@ -596,26 +596,49 @@ class ObeWorkspaceController extends Controller
         string $rps
     ): RedirectResponse {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $credits = max(1, (int) (
             DB::table('courses')->where('id', $record->course_id)->value('credits') ?? 1
         ));
 
-        $time = "Tatap muka: 1 × ({$credits} × 50 menit); "
-            ."Tugas terstruktur: 1 × ({$credits} × 60 menit); "
-            ."Belajar mandiri: 1 × ({$credits} × 60 menit)";
-
-        DB::table('rps_weekly_plans')
+        $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+        $weeks = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $version->id)
-            ->whereNotIn('week_number', [8, 16])
-            ->update([
-                'time_estimate' => $time,
-                'updated_at' => now(),
-            ]);
+            ->whereIn('week_number', $teachingWeeks)
+            ->get();
+
+        $updated = 0;
+
+        DB::transaction(function () use ($weeks, $credits, &$updated): void {
+            foreach ($weeks as $week) {
+                $face = max(1, (int) ($week->face_to_face_sessions ?? 0));
+                $structured = max(1, (int) ($week->structured_task_sessions ?? 0));
+                $independent = max(1, (int) ($week->independent_study_sessions ?? 0));
+
+                $technical = [
+                    'learning_form' => filled($week->learning_form ?? null)
+                        ? $week->learning_form
+                        : 'Kuliah tatap muka',
+                    'face_to_face_sessions' => $face,
+                    'structured_task_sessions' => $structured,
+                    'independent_study_sessions' => $independent,
+                    'time_estimate' => "Tatap muka: {$face} × ({$credits} × 50 menit); "
+                        ."Tugas terstruktur: {$structured} × ({$credits} × 60 menit); "
+                        ."Belajar mandiri: {$independent} × ({$credits} × 60 menit)",
+                    'updated_at' => now(),
+                ];
+
+                DB::table('rps_weekly_plans')
+                    ->where('id', $week->id)
+                    ->update($technical);
+                $updated++;
+            }
+        });
 
         return back()->with(
             'success',
-            "Estimasi waktu {$credits} SKS diterapkan ke 14 pekan pembelajaran."
+            "Data teknis {$updated} pekan dilengkapi: bentuk pembelajaran dasar dan estimasi waktu sesuai {$credits} SKS. Isi akademik tidak diubah."
         );
     }
 
@@ -691,6 +714,7 @@ Pendukung:
     public function updateWeek(Request $request, string $rps, int $week, RpsAssessmentSyncService $assessmentSync): RedirectResponse
     {
         [, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         abort_unless($week >= 1 && $week <= 16, 404);
 
@@ -782,6 +806,24 @@ Pendukung:
                 ? "Pekan {$week} ({$examType}) berhasil disimpan."
                 : "Pekan {$week} berhasil disimpan."
         );
+    }
+
+    private function assertMeetingAllocationConfigured(string $versionId): void
+    {
+        $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+
+        $configured = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', $teachingWeeks)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->where('source_type', 'like', 'manual_allocation%')
+            ->count();
+
+        if ($configured !== count($teachingWeeks)) {
+            throw ValidationException::withMessages([
+                'weeks' => 'Atur jumlah pertemuan setiap Sub-CPMK terlebih dahulu. Setelah total 14/14 disimpan, editor pekanan akan aktif.',
+            ]);
+        }
     }
 
     private function nextAvailableSubSequence(string $versionId): int

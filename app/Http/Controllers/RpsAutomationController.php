@@ -21,6 +21,7 @@ class RpsAutomationController extends Controller
         RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [$record, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $validated = $request->validate([
             'mode' => ['nullable', Rule::in(['fill_empty', 'overwrite'])],
@@ -204,6 +205,7 @@ class RpsAutomationController extends Controller
         string $rps
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
 
@@ -245,6 +247,7 @@ class RpsAutomationController extends Controller
         RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $service->copyPreviousWeek($version->id, $week);
         $assessmentSync->syncVersion($version->id);
@@ -258,6 +261,7 @@ class RpsAutomationController extends Controller
         RpsSmartDraftService $service
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
+        $this->assertMeetingAllocationConfigured($version->id);
 
         $validated = $request->validate([
             'weeks' => ['required', 'array', 'min:1'],
@@ -289,6 +293,24 @@ class RpsAutomationController extends Controller
                 ? 'Validasi OBE selesai: seluruh pemeriksaan lulus.'
                 : "Validasi OBE selesai: kelengkapan {$result['percent']}%."
         );
+    }
+
+    private function assertMeetingAllocationConfigured(string $versionId): void
+    {
+        $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+
+        $configured = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', $teachingWeeks)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->where('source_type', 'like', 'manual_allocation%')
+            ->count();
+
+        if ($configured !== count($teachingWeeks)) {
+            throw ValidationException::withMessages([
+                'weeks' => 'Atur jumlah pertemuan setiap Sub-CPMK terlebih dahulu. Setelah total 14/14 disimpan, penyusunan RPS pekanan akan aktif.',
+            ]);
+        }
     }
 
     private function isManualAllocationSource(string $source): bool
