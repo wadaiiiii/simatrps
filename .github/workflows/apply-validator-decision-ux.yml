@@ -36,7 +36,7 @@ jobs:
       - name: Frontend build
         run: |
           npm ci --no-audit --no-fund
-          npm run build
+          VERCEL=1 npm run build
 
       - name: Commit implementation and cleanup
         run: |
