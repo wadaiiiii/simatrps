@@ -534,7 +534,7 @@ export default function RpsShow(props: any) {
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-amber-50 text-amber-700'
                         }`}>
-                            Bobot {totalWeeklyWeight}% / 100%
+                            Bobot tersimpan {totalWeeklyWeight}% / 100%
                         </div>
 
                         <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
@@ -1041,6 +1041,7 @@ export default function RpsShow(props: any) {
                                     rpsId={rps.id}
                                     assessment={assessment}
                                     subCpmks={subCpmks}
+                                    assessmentTotal={progress.assessment_weight_total}
                                 />
                             ))}
                         </div>
@@ -4214,7 +4215,7 @@ function CpmkCard({ rpsId, cpmk, cpls, selectedCplIds, onToggle }: any) {
     );
 }
 
-function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
+function AssessmentCard({ rpsId, assessment, subCpmks, assessmentTotal }: any) {
     const form = useForm({
         name: assessment.name ?? '',
         type: assessment.type ?? 'assignment',
@@ -4233,6 +4234,20 @@ function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
     };
 
     const systemExam = ['UTS', 'UAS'].includes(assessment.code);
+    const storedAssessmentTotal = Number(assessmentTotal || 0);
+    const originalAssessmentWeight = Number(assessment.weight || 0);
+    const draftAssessmentWeight = form.data.weight === ''
+        ? 0
+        : Number(form.data.weight);
+    const safeDraftAssessmentWeight = Number.isFinite(draftAssessmentWeight)
+        ? draftAssessmentWeight
+        : 0;
+    const projectedAssessmentTotal = Math.round((
+        storedAssessmentTotal - originalAssessmentWeight + safeDraftAssessmentWeight
+    ) * 100) / 100;
+    const weightChanged = Math.abs(safeDraftAssessmentWeight - originalAssessmentWeight) > 0.001;
+    const weightWouldIncreaseOverLimit = projectedAssessmentTotal > 100.001
+        && projectedAssessmentTotal > storedAssessmentTotal + 0.001;
 
     useEffect(() => {
         form.setData({
@@ -4258,6 +4273,14 @@ function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
         <form
             onSubmit={(e) => {
                 e.preventDefault();
+
+                if (weightWouldIncreaseOverLimit) {
+                    notify(
+                        'error',
+                        `Jika disimpan total bobot menjadi ${projectedAssessmentTotal}%. Kurangi bobot asesmen lain terlebih dahulu.`,
+                    );
+                    return;
+                }
 
                 form.put(
                     `/rps/${rpsId}/assessments/${assessment.id}`,
@@ -4331,11 +4354,27 @@ function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
                         step="0.01"
                         value={form.data.weight}
                         onChange={(e) => form.setData('weight', e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                        className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm ${
+                            weightWouldIncreaseOverLimit
+                                ? 'border-rose-300 bg-rose-50/40 text-rose-800 focus:border-rose-400'
+                                : 'border-slate-200'
+                        }`}
                     />
+                    {weightChanged && (
+                        <div className={`mt-1 text-[10px] font-semibold ${
+                            weightWouldIncreaseOverLimit ? 'text-rose-700' : 'text-slate-500'
+                        }`}>
+                            Jika disimpan: {projectedAssessmentTotal}%
+                            {weightWouldIncreaseOverLimit
+                                ? ` · kelebihan ${Number((projectedAssessmentTotal - 100).toFixed(2))}%`
+                                : projectedAssessmentTotal < 99.999
+                                  ? ` · sisa ${Number((100 - projectedAssessmentTotal).toFixed(2))}%`
+                                  : ' · total tepat 100%'}
+                        </div>
+                    )}
                 </label>
                 <div className="flex items-end gap-1">
-                    <button disabled={form.processing} className="h-11 rounded-xl bg-teal-700 px-3 text-xs font-bold text-white disabled:opacity-50">{form.processing ? 'Menyimpan...' : 'Simpan'}</button>
+                    <button disabled={form.processing || weightWouldIncreaseOverLimit} title={weightWouldIncreaseOverLimit ? `Total akan menjadi ${projectedAssessmentTotal}%. Kurangi bobot asesmen lain.` : undefined} className="h-11 rounded-xl bg-teal-700 px-3 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{form.processing ? 'Menyimpan...' : 'Simpan'}</button>
                     {!systemExam && (
                         <button
                             type="button"
@@ -4347,6 +4386,12 @@ function AssessmentCard({ rpsId, assessment, subCpmks }: any) {
                     )}
                 </div>
             </div>
+
+            {weightWouldIncreaseOverLimit && (
+                <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[10px] font-semibold text-rose-700">
+                    Total tersimpan {storedAssessmentTotal}%. Jika disimpan menjadi {projectedAssessmentTotal}%. Kurangi bobot asesmen lain terlebih dahulu.
+                </div>
+            )}
 
             <div className="mt-3">
                 <div className="text-xs font-bold text-slate-500">Sub-CPMK yang diukur</div>
