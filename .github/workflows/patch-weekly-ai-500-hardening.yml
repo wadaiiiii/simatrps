@@ -1,0 +1,47 @@
+name: Patch Weekly AI 500 Hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-weekly-ai-500-hardening.py'
+      - '.github/workflows/patch-weekly-ai-500-hardening.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python3 .github/scripts/patch-weekly-ai-500-hardening.py
+
+      - name: Verify patch
+        run: |
+          php -l app/Services/Rps/AiRpsProviderService.php
+          php -l app/Http/Controllers/RpsAiController.php
+          php -l app/Http/Controllers/RpsAutomationController.php
+          grep -q "applyWeeklyTimeoutBudget(14)" app/Services/Rps/AiRpsProviderService.php
+          grep -q "generateWeekInternal" app/Http/Controllers/RpsAiController.php
+          grep -q "Request dihentikan dengan aman" app/Http/Controllers/RpsAiController.php
+          grep -q "Isi pekanan belum berhasil dikosongkan" app/Http/Controllers/RpsAutomationController.php
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/Rps/AiRpsProviderService.php app/Http/Controllers/RpsAiController.php app/Http/Controllers/RpsAutomationController.php
+          git commit -m "Harden weekly AI and reset against server 500"
+          git push origin main
