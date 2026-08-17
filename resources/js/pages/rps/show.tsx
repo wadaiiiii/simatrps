@@ -1116,25 +1116,43 @@ export default function RpsShow(props: any) {
                                                         {validatorFixLabel(check)}
                                                     </button>
                                                 )}
-                                                {['assessment_semantics', 'rtm_semantics'].includes(check.key) && safeList(check?.details?.issues)[0]?.decision_key && (
+                                                {['assessment_semantics', 'rtm_semantics'].includes(check.key) && safeList(check?.details?.issues).some((issue: any) => issue?.decision_key) && (
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            const issue = safeList(check?.details?.issues)[0];
+                                                            const decisionKeys = safeList(check?.details?.issues)
+                                                                .map((issue: any) => issue?.decision_key)
+                                                                .filter(Boolean);
+                                                            const decisionCount = decisionKeys.length;
+
                                                             router.post(
                                                                 `/rps/${rps.id}/validator-decisions`,
-                                                                { check_key: check.key, subject_key: issue.decision_key },
+                                                                { check_key: check.key, subject_keys: decisionKeys },
                                                                 actionOptions(
-                                                                    check.key === 'assessment_semantics'
-                                                                        ? 'Tag Sub-CPMK dipertahankan sebagai keputusan dosen.'
-                                                                        : 'Hubungan RTM dipertahankan sebagai keputusan dosen.',
+                                                                    decisionCount > 1
+                                                                        ? `${decisionCount} keputusan dosen dipertahankan sekaligus.`
+                                                                        : check.key === 'assessment_semantics'
+                                                                            ? 'Tag Sub-CPMK dipertahankan sebagai keputusan dosen.'
+                                                                            : 'Hubungan RTM dipertahankan sebagai keputusan dosen.',
+                                                                    () => router.reload({
+                                                                        only: ['progress'],
+                                                                        preserveScroll: true,
+                                                                        preserveState: true,
+                                                                    }),
                                                                 ),
                                                             );
                                                         }}
                                                         className="inline-flex items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-[10px] font-bold text-teal-800 shadow-sm hover:bg-teal-100"
                                                     >
                                                         <CheckCircle2 className="size-3" />
-                                                        {check.key === 'assessment_semantics' ? 'Pertahankan Tag' : 'Pertahankan Hubungan'}
+                                                        {(() => {
+                                                            const count = safeList(check?.details?.issues)
+                                                                .filter((issue: any) => issue?.decision_key).length;
+                                                            if (count > 1) return `Pertahankan Semua (${count})`;
+                                                            return check.key === 'assessment_semantics'
+                                                                ? 'Pertahankan Tag'
+                                                                : 'Pertahankan Hubungan';
+                                                        })()}
                                                     </button>
                                                 )}
                                             </div>
