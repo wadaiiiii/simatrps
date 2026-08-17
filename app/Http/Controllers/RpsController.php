@@ -419,11 +419,35 @@ Pendukung:
         $weekSubByNumber = $weeks
             ->pluck('rps_sub_cpmk_id', 'week_number');
 
+        $assessmentById = $assessments->keyBy(fn ($assessment) => (string) $assessment->id);
+        $normalizeAssessmentLabel = static function (string $value): string {
+            $value = mb_strtolower(trim($value));
+            $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+            return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
+        };
+
         $tasks = Schema::hasTable('rps_tasks')
             ? DB::table('rps_tasks')
                 ->where('rps_version_id', $version->id)
                 ->orderBy('code')
                 ->get()
+                ->filter(function ($task) use ($assessmentById, $normalizeAssessmentLabel): bool {
+                    if (strtolower((string) ($task->source_type ?? 'manual')) !== 'assessment_sync') {
+                        return true;
+                    }
+
+                    $assessmentId = filled($task->assessment_id ?? null)
+                        ? (string) $task->assessment_id
+                        : null;
+                    if (! $assessmentId) return false;
+
+                    $assessment = $assessmentById->get($assessmentId);
+                    if (! $assessment) return false;
+
+                    return $normalizeAssessmentLabel((string) $assessment->name)
+                        === $normalizeAssessmentLabel((string) $task->title);
+                })
+                ->values()
                 ->map(function ($task) use ($weekSubByNumber): object {
                     $dueWeek = (int) ($task->due_week ?? 0);
                     $weekSubId = filled($weekSubByNumber->get($dueWeek))

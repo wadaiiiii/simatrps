@@ -38,6 +38,24 @@ class RpsAssessmentSyncService
             ->orderBy('code')
             ->get(['id', 'code', 'due_week', 'title', 'assessment_id', 'type']);
 
+        $assessmentById = $assessments->keyBy(fn ($assessment) => (string) $assessment->id);
+        $tasks = $tasks->filter(function ($task) use ($assessmentById): bool {
+            if (strtolower((string) ($task->source_type ?? 'manual')) !== 'assessment_sync') {
+                return true;
+            }
+
+            $assessmentId = filled($task->assessment_id ?? null)
+                ? (string) $task->assessment_id
+                : null;
+            if (! $assessmentId) return false;
+
+            $assessment = $assessmentById->get($assessmentId);
+            if (! $assessment) return false;
+
+            return $this->normalizeLabel((string) $assessment->name)
+                === $this->normalizeLabel((string) $task->title);
+        })->values();
+
         $taskIds = $tasks->pluck('id')->all();
         $taskLinks = $taskIds === []
             ? collect()
@@ -664,7 +682,7 @@ class RpsAssessmentSyncService
             ->where('rps_version_id', $versionId)
             ->orderByRaw('COALESCE(due_week, 99)')
             ->orderBy('code')
-            ->get(['id', 'assessment_id', 'title', 'type', 'due_week']);
+            ->get(['id', 'assessment_id', 'title', 'type', 'due_week', 'source_type']);
 
         if ($tasks->isEmpty()) return 0;
 
@@ -706,8 +724,49 @@ class RpsAssessmentSyncService
                     if (! $currentLinks->contains($weekSubId)) $assessmentId = null;
                 }
 
+                $sourceType = strtolower((string) ($task->source_type ?? 'manual'));
+                $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
+
+                // RTM yang dibuat otomatis dari asesmen tidak boleh dipindahkan
+                // ke asesmen lain hanya karena asesmen asalnya sudah dihapus.
+                // Jika relasi aktif tidak lagi memiliki nama yang sama, cari hanya
+                // pasangan exact yang masih valid; bila tidak ada, RTM auto stale
+                // dibuang agar tidak menjadi bukti palsu pada validator.
+                if ($sourceType === 'assessment_sync' && $assessmentId) {
+                    $currentAssessment = $assessments->first(
+                        fn ($item) => (string) $item->id === $assessmentId
+                    );
+                    if (! $currentAssessment
+                        || $this->normalizeLabel((string) $currentAssessment->name) !== $normalizedTaskTitle
+                    ) {
+                        $assessmentId = null;
+                    }
+                }
+
+                if (! $assessmentId && $sourceType === 'assessment_sync') {
+                    $exactAuto = $assessments->first(function ($assessment) use ($normalizedTaskTitle, $weekSubId, $dueWeek, $assessmentLinks): bool {
+                        if ($this->normalizeLabel((string) $assessment->name) !== $normalizedTaskTitle) return false;
+                        $type = strtolower((string) $assessment->type);
+                        if ($dueWeek === 8) return $type === 'uts';
+                        if ($dueWeek === 16) return $type === 'uas';
+                        if (! $weekSubId || in_array($type, ['uts', 'uas'], true)) return false;
+                        return collect($assessmentLinks->get($assessment->id, []))
+                            ->pluck('rps_sub_cpmk_id')->map(fn ($id) => (string) $id)->contains($weekSubId);
+                    });
+
+                    if ($exactAuto) {
+                        $assessmentId = (string) $exactAuto->id;
+                        DB::table('rps_tasks')->where('id', $task->id)->update([
+                            'assessment_id' => $assessmentId,
+                            'updated_at' => now(),
+                        ]);
+                    } else {
+                        DB::table('rps_tasks')->where('id', $task->id)->delete();
+                        continue;
+                    }
+                }
+
                 if (! $assessmentId) {
-                    $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
                     $exact = $assessments->first(function ($assessment) use ($normalizedTaskTitle, $weekSubId, $dueWeek, $assessmentLinks): bool {
                         if ($this->normalizeLabel((string) $assessment->name) !== $normalizedTaskTitle) return false;
                         $type = strtolower((string) $assessment->type);

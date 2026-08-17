@@ -230,13 +230,37 @@ class RpsAssessmentController extends Controller
             return back()->with('success', 'UTS/UAS adalah asesmen sistem. Bobot dan cakupannya dapat diedit, tetapi tidak dihapus.');
         }
 
-        $oldWeek = $row->week_number ? (int) $row->week_number : null;
+        $linkedTaskIds = DB::table('rps_tasks')
+            ->where('rps_version_id', $version->id)
+            ->where('assessment_id', $assessment)
+            ->pluck('id')
+            ->all();
 
-        DB::table('assessments')->where('id', $assessment)->delete();
+        DB::transaction(function () use ($assessment, $linkedTaskIds): void {
+            if ($linkedTaskIds !== []) {
+                DB::table('rps_task_subcpmks')
+                    ->whereIn('rps_task_id', $linkedTaskIds)
+                    ->delete();
+
+                DB::table('rps_tasks')
+                    ->whereIn('id', $linkedTaskIds)
+                    ->delete();
+            }
+
+            DB::table('assessments')->where('id', $assessment)->delete();
+        });
 
         $sync->syncVersion($version->id);
 
-        return back()->with('success', 'Asesmen dihapus dan distribusi bobot pekan serta RTM terkait disinkronkan ulang.');
+        $rtmCount = count($linkedTaskIds);
+        $rtmMessage = $rtmCount > 0
+            ? " {$rtmCount} RTM terkait ikut dihapus."
+            : '';
+
+        return back()->with(
+            'success',
+            'Asesmen dihapus.' . $rtmMessage . ' Distribusi bobot dan validator disinkronkan ulang.'
+        );
     }
 
     private function syncWeekPrintWeight(
