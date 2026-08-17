@@ -208,6 +208,46 @@ class ObeWorkspaceService
         $assessmentSnapshot = $assessmentSync->snapshot($versionId);
         $assessmentBudgetMismatches = collect($assessmentSnapshot['assessment_budget_mismatches'] ?? []);
         $assessmentBudgetAligned = $assessmentBudgetMismatches->isEmpty();
+
+        // Gunakan bobot efektif hasil snapshot sebagai sumber kebenaran untuk
+        // tampilan/validator. Database lama boleh belum tersinkron sampai aksi
+        // tulis berikutnya, tetapi pengguna tidak lagi melihat dua versi bobot.
+        $expectedWeeklyWeights = collect($assessmentSnapshot['expected_weekly_weights'] ?? []);
+        $effectiveWeeks = $weeks->map(function ($week) use ($expectedWeeklyWeights) {
+            $copy = clone $week;
+            $number = (int) $copy->week_number;
+            if ($expectedWeeklyWeights->has($number)) {
+                $copy->assessment_weight = (float) $expectedWeeklyWeights->get($number, 0);
+            }
+            return $copy;
+        });
+        $weightTotal = round((float) $effectiveWeeks->sum(
+            fn ($week) => (float) ($week->assessment_weight ?? 0)
+        ), 2);
+        $teachingWeeks = $effectiveWeeks->filter(
+            fn ($week) => ! in_array((int) $week->week_number, [8, 16], true)
+        );
+        $weightedTeachingWeeks = $teachingWeeks->filter(
+            fn ($week) => (float) ($week->assessment_weight ?? 0) > 0
+        );
+        $teachingWeightTotal = round((float) $teachingWeeks->sum(
+            fn ($week) => (float) ($week->assessment_weight ?? 0)
+        ), 2);
+        $weightedWeeklySubCount = $weightedTeachingWeeks
+            ->pluck('rps_sub_cpmk_id')->filter()->unique()->count();
+        $weeklySubBudgets = $teachingWeeks
+            ->filter(fn ($week) => filled($week->rps_sub_cpmk_id ?? null))
+            ->groupBy(fn ($week) => (string) $week->rps_sub_cpmk_id)
+            ->map(fn ($items) => round((float) $items->sum(
+                fn ($week) => (float) ($week->assessment_weight ?? 0)
+            ), 2));
+        $subBudgetAligned = $subCpmkIds->isNotEmpty()
+            && $subCpmkIds->every(function ($subId) use ($weeklySubBudgets, $aggregateSubBudgets): bool {
+                $weekly = (float) $weeklySubBudgets->get((string) $subId, 0);
+                $aggregate = (float) $aggregateSubBudgets->get((string) $subId, 0);
+                return $aggregate > 0 && abs($weekly - $aggregate) < 0.011;
+            });
+
         $tasks = (int) $taskAlignment['task_total'];
 
         $evidenceNamesByWeek = collect($assessmentSnapshot['assessment_names_by_week'] ?? []);

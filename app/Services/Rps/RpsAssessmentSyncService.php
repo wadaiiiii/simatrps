@@ -890,7 +890,14 @@ class RpsAssessmentSyncService
             }
 
             sort($expected);
-            if ($expected !== $actual) $mismatchCount++;
+            if (in_array($dueWeek, self::TEACHING_WEEKS, true)) {
+                // Tampilan efektif RTM selalu mengikuti Sub-CPMK pekan. Pivot
+                // lama akan dirapikan pada aksi sinkronisasi berikutnya, jadi
+                // jangan menandai inkonsisten hanya karena data legacy itu.
+                if ($expected === []) $mismatchCount++;
+            } elseif ($expected !== $actual) {
+                $mismatchCount++;
+            }
         }
 
         $requiredAssessmentIds = DB::table('assessments')

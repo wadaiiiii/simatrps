@@ -255,6 +255,9 @@ class RpsController extends Controller
                 2
             ));
         $assessmentSyncSnapshot = $assessmentSync->snapshot($version->id);
+        $expectedWeeklyWeights = collect(
+            $assessmentSyncSnapshot['expected_weekly_weights'] ?? []
+        );
         $assessmentNamesByWeek = collect(
             $assessmentSyncSnapshot['assessment_names_by_week'] ?? []
         );
@@ -270,6 +273,7 @@ class RpsController extends Controller
         $weeks = $weeks->map(function ($week) use (
             $subById,
             $assessmentWeightsByWeek,
+            $expectedWeeklyWeights,
             $assessmentNamesByWeek,
             $assessmentOwnerByWeek,
             $assessmentOwnerNameByWeek,
@@ -294,7 +298,9 @@ class RpsController extends Controller
             $week->assessment_weight = in_array($weekNumber, [8, 16], true)
                 && $assessmentWeightsByWeek->has($weekNumber)
                     ? (float) $assessmentWeightsByWeek->get($weekNumber, 0)
-                    : (float) ($storedWeight ?? 0);
+                    : ($expectedWeeklyWeights->has($weekNumber)
+                        ? (float) $expectedWeeklyWeights->get($weekNumber, 0)
+                        : (float) ($storedWeight ?? 0));
 
             $week->assessment_names = $assessmentNamesByWeek->get($weekNumber, '');
             $subId = filled($week->rps_sub_cpmk_id ?? null)
@@ -410,16 +416,31 @@ Pendukung:
             'lecturer' => $documentMeta['lecturer_names'],
         ];
 
+        $weekSubByNumber = $weeks
+            ->pluck('rps_sub_cpmk_id', 'week_number');
+
         $tasks = Schema::hasTable('rps_tasks')
             ? DB::table('rps_tasks')
                 ->where('rps_version_id', $version->id)
                 ->orderBy('code')
                 ->get()
-                ->map(function ($task): object {
-                    $task->sub_cpmk_ids = DB::table('rps_task_subcpmks')
-                        ->where('rps_task_id', $task->id)
-                        ->pluck('rps_sub_cpmk_id')
-                        ->all();
+                ->map(function ($task) use ($weekSubByNumber): object {
+                    $dueWeek = (int) ($task->due_week ?? 0);
+                    $weekSubId = filled($weekSubByNumber->get($dueWeek))
+                        ? (string) $weekSubByNumber->get($dueWeek)
+                        : null;
+
+                    // RTM pada pekan pembelajaran adalah bukti spesifik pekan.
+                    // Untuk tampilan/PDF gunakan Sub-CPMK pekan sebagai sumber
+                    // efektif tanpa menulis database saat halaman dibuka.
+                    if (in_array($dueWeek, [1,2,3,4,5,6,7,9,10,11,12,13,14,15], true) && $weekSubId) {
+                        $task->sub_cpmk_ids = [$weekSubId];
+                    } else {
+                        $task->sub_cpmk_ids = DB::table('rps_task_subcpmks')
+                            ->where('rps_task_id', $task->id)
+                            ->pluck('rps_sub_cpmk_id')
+                            ->all();
+                    }
 
                     return $task;
                 })
