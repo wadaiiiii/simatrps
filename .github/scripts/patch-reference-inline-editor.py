@@ -109,7 +109,8 @@ new_save = r'''    const syncEditorFromMeta = (nextMeta: any = meta) => {
         );
     };
 '''
-s = replace_once(s, old_save, new_save, 'PustakaInlineTools save')\n
+s = replace_once(s, old_save, new_save, 'PustakaInlineTools save')
+
 s = replace_once(
     s,
     '                    onClick={() => setOpen((value) => !value)}\n                    className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-bold transition ${',
