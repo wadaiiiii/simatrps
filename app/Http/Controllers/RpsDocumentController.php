@@ -70,6 +70,43 @@ class RpsDocumentController extends Controller
         return back()->with('success', 'Informasi dokumen RPS berhasil disimpan.');
     }
 
+    public function updateReferences(
+        Request $request,
+        string $rps
+    ): RedirectResponse {
+        [, $version] = $this->context($request, $rps);
+
+        $data = $request->validate([
+            'reference_text' => ['nullable', 'string', 'max:30000'],
+            'supporting_reference_text' => ['nullable', 'string', 'max:30000'],
+        ]);
+
+        $values = [
+            'reference_text' => trim((string) ($data['reference_text'] ?? '')),
+            'supporting_reference_text' => trim((string) ($data['supporting_reference_text'] ?? '')),
+            'updated_at' => now(),
+        ];
+
+        $existing = DB::table('rps_document_meta')
+            ->where('rps_version_id', $version->id)
+            ->first();
+
+        if ($existing) {
+            DB::table('rps_document_meta')
+                ->where('id', $existing->id)
+                ->update($values);
+        } else {
+            DB::table('rps_document_meta')->insert([
+                'id' => (string) Str::uuid(),
+                'rps_version_id' => $version->id,
+                ...$values,
+                'created_at' => now(),
+            ]);
+        }
+
+        return back()->with('success', 'Pustaka berhasil diperbarui.');
+    }
+
     public function generateAiReferences(
         Request $request,
         string $rps,

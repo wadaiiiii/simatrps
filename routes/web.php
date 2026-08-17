@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
         Route::delete('{rps}', [RpsDeleteController::class, 'destroy'])->name('destroy');
 
         Route::put('{rps}/document-meta', [RpsDocumentController::class, 'updateMeta'])->name('document-meta.update');
+        Route::put('{rps}/document-meta/references', [RpsDocumentController::class, 'updateReferences'])->name('document-meta.references.update');
         Route::post('{rps}/document-meta/ai-references', [RpsDocumentController::class, 'generateAiReferences'])->name('document-meta.ai-references');
         Route::put('{rps}/simulation/{week}', [RpsDocumentController::class, 'updateSimulationScore'])->name('simulation.update');
         Route::put('{rps}/weeks/{week}/weight', [RpsDocumentController::class, 'updateWeekWeight'])->name('weeks.weight.update');

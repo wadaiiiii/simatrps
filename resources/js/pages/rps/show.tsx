@@ -1289,10 +1289,32 @@ function PustakaInlineTools({ rpsId, meta, master, aiInstruction }: any) {
         });
     }, [meta?.reference_text, meta?.supporting_reference_text]);
 
+    const syncEditorFromMeta = (nextMeta: any = meta) => {
+        form.setData({
+            reference_text: nextMeta?.reference_text ?? '',
+            supporting_reference_text: nextMeta?.supporting_reference_text ?? '',
+        });
+        form.clearErrors();
+    };
+
+    const toggleEditor = () => {
+        if (!open) syncEditorFromMeta(meta);
+        setOpen((value) => !value);
+    };
+
     const save = () => {
         form.put(
-            `/rps/${rpsId}/document-meta`,
-            actionOptions('Pustaka berhasil diperbarui.', () => setOpen(false)),
+            `/rps/${rpsId}/document-meta/references`,
+            {
+                preserveScroll: true,
+                onSuccess: (page: any) => {
+                    const refreshed = page?.props?.documentMeta ?? meta;
+                    syncEditorFromMeta(refreshed);
+                    setOpen(false);
+                    notify('success', 'Pustaka berhasil diperbarui.');
+                },
+                onError: (errors: any) => notify('error', firstError(errors)),
+            },
         );
     };
 
@@ -1319,10 +1341,14 @@ function PustakaInlineTools({ rpsId, meta, master, aiInstruction }: any) {
             { instruction: aiInstruction },
             {
                 preserveScroll: true,
-                onSuccess: () => notify(
-                    'success',
-                    'Pustaka berhasil ditelaah AI berdasarkan Bahan Kajian aktif.',
-                ),
+                onSuccess: (page: any) => {
+                    const refreshed = page?.props?.documentMeta ?? {};
+                    syncEditorFromMeta(refreshed);
+                    notify(
+                        'success',
+                        'Pustaka berhasil ditelaah AI berdasarkan Bahan Kajian aktif. Editor sudah disinkronkan dengan hasil terbaru.',
+                    );
+                },
                 onError: (errors: any) => notify('error', firstError(errors)),
                 onFinish: () => setAiLoading(false),
             },
@@ -1334,7 +1360,7 @@ function PustakaInlineTools({ rpsId, meta, master, aiInstruction }: any) {
             <div className="flex flex-wrap items-center justify-end gap-1.5">
                 <button
                     type="button"
-                    onClick={() => setOpen((value) => !value)}
+                    onClick={toggleEditor}
                     className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[10px] font-bold transition ${
                         open
                             ? 'border-teal-300 bg-teal-50 text-teal-800'
