@@ -5,9 +5,9 @@ path = Path('resources/js/pages/rps/show.tsx')
 text = path.read_text(encoding='utf-8')
 original = text
 
-# 1) Make the stored total explicit in the UI badge.
-if 'Total bobot:' in text:
-    text = text.replace('Total bobot:', 'Total tersimpan:', 1)
+# 1) Make stored totals explicit anywhere the UI labels the current aggregate.
+text = text.replace('Total bobot', 'Total tersimpan')
+text = text.replace('Bobot {totalWeeklyWeight}% / 100%', 'Bobot tersimpan {totalWeeklyWeight}% / 100%')
 
 # 2) Pass the persisted assessment total into every assessment editor card.
 pattern = re.compile(
@@ -72,10 +72,10 @@ if text == original:
 
 # Sanity markers.
 for marker in [
-    'Total tersimpan:',
     'assessmentTotal={progress.assessment_weight_total}',
     'Jika disimpan: {projectedAssessmentTotal}%',
     'weightWouldIncreaseOverLimit',
+    'Total tersimpan {storedAssessmentTotal}%',
 ]:
     if marker not in text:
         raise SystemExit(f'Missing expected marker: {marker}')
