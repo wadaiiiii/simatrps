@@ -1,0 +1,38 @@
+name: Fix assessment-owned weekly budgets
+on:
+  push:
+    paths:
+      - '.github/scripts/fix-assessment-owned-weekly-budgets.py'
+      - '.github/workflows/fix-assessment-owned-weekly-budgets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: python .github/scripts/fix-assessment-owned-weekly-budgets.py
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Services/Rps/RpsAssessmentSyncService.php
+          php -l app/Services/Rps/ObeWorkspaceService.php
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Http/Controllers/RpsTaskController.php
+          php -l app/Http/Controllers/RpsDocumentController.php
+      - name: Validate frontend markers
+        run: |
+          grep -q "assessment_group_budget" resources/js/pages/rps/show.tsx
+          grep -q "assessment_owner_name" resources/js/pages/rps/show.tsx
+          grep -q "assessment_budget_mismatches" app/Services/Rps/ObeWorkspaceService.php
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/scripts/fix-assessment-owned-weekly-budgets.py
+          rm -f .github/workflows/fix-assessment-owned-weekly-budgets.yml
+          git add -A
+          git commit -m 'Align weekly weights to assessment budgets and RTM weeks'
+          git push
