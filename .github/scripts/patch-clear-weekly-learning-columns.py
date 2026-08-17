@@ -129,3 +129,5 @@ text = text.replace(
 )
 
 show.write_text(text)
+
+# Trigger marker: clear-weekly-learning-columns-v1
