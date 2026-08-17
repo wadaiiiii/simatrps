@@ -963,7 +963,7 @@ export default function RpsShow(props: any) {
 
                     {/* Weekly table, exact print columns */}
                     <div className="overflow-x-auto">
-                        <table className="min-w-[1180px] w-full border-separate border-spacing-0 text-[11px] leading-[1.45]">
+                        <table className="rps-print-weekly min-w-[1180px] w-full border-separate border-spacing-0 text-[11px] leading-[1.45]">
                             <thead className="sticky top-0 z-10 bg-gradient-to-r from-sky-100 via-cyan-50 to-teal-50 text-center font-bold text-slate-800 shadow-sm">
                                 <tr>
                                     <th rowSpan={2} className="w-[70px] border border-slate-400 px-2 py-2">Pekan<br />Ke-</th>
@@ -992,10 +992,9 @@ export default function RpsShow(props: any) {
                                     <th className="border border-slate-300 px-2 py-0.5 leading-4">(8)</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {weeks.map((week: any) => (
+                            {weeks.map((week: any) => (
+                                <tbody key={week.week_number} className="rps-print-week-block">
                                     <DocumentWeekRow
-                                        key={week.week_number}
                                         rpsId={rps.id}
                                         week={week}
                                         subCpmks={subCpmks}
@@ -1005,8 +1004,8 @@ export default function RpsShow(props: any) {
                                         aiBusy={aiBusyWeek === week.week_number}
                                         onGenerateAi={(overwrite: boolean) => generateWeekAi(week.week_number, overwrite)}
                                     />
-                                ))}
-                            </tbody>
+                                </tbody>
+                            ))}
                         </table>
                     </div>
 

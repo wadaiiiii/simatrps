@@ -1,4 +1,4 @@
-﻿@import './simatrps-theme.css';
+@import './simatrps-theme.css';
 @import 'tailwindcss';
 
 @import 'tw-animate-css';
@@ -402,14 +402,11 @@ body {
         width: 17% !important;
     }
 
-    html.rps-print-mode .rps-print-weekly tbody tr {
-        break-inside: auto !important;
-        page-break-inside: auto !important;
-    }
-
-    html.rps-print-mode .rps-print-weekly tbody td {
-        break-inside: auto !important;
-        page-break-inside: auto !important;
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr > td {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
 
     /* Evaluation and simulation: portrait page, visually compact like reference page 10. */
@@ -497,11 +494,16 @@ body {
     /* Let long official tables continue naturally across pages. */
     html.rps-print-mode .rps-print-main-table tr,
     html.rps-print-mode .rps-print-main-table td,
-    html.rps-print-mode .rps-print-weekly tr,
-    html.rps-print-mode .rps-print-weekly td,
     html.rps-print-mode .rps-print-rtm-table tr,
     html.rps-print-mode .rps-print-rtm-table td {
         break-inside: auto !important;
         page-break-inside: auto !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr > td {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
     }
 }

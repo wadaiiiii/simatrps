@@ -36,11 +36,14 @@ class RpsAssessmentSyncService
             ->whereNotNull('due_week')
             ->orderBy('due_week')
             ->orderBy('code')
-            ->get(['id', 'code', 'due_week', 'title', 'assessment_id', 'type', 'source_type']);
+            ->get(['id', 'code', 'due_week', 'title', 'assessment_id', 'type', 'source_type', 'purpose', 'instructions', 'expected_output']);
 
         $assessmentById = $assessments->keyBy(fn ($assessment) => (string) $assessment->id);
         $tasks = $tasks->filter(function ($task) use ($assessmentById): bool {
-            if (strtolower((string) ($task->source_type ?? 'manual')) !== 'assessment_sync') {
+            // RTM manual dosen selalu dipertahankan. RTM hasil sinkronisasi baru
+            // maupun RTM legacy yang memiliki sidik teks generator harus tunduk
+            // pada pemeriksaan induk asesmen yang ketat.
+            if (! $this->isGeneratedTask($task)) {
                 return true;
             }
 
@@ -683,7 +686,7 @@ class RpsAssessmentSyncService
             ->where('rps_version_id', $versionId)
             ->orderByRaw('COALESCE(due_week, 99)')
             ->orderBy('code')
-            ->get(['id', 'assessment_id', 'title', 'type', 'due_week', 'source_type']);
+            ->get(['id', 'assessment_id', 'title', 'type', 'due_week', 'source_type', 'purpose', 'instructions', 'expected_output']);
 
         if ($tasks->isEmpty()) return 0;
 
@@ -713,7 +716,7 @@ class RpsAssessmentSyncService
                 $weekSubId = filled($weekSubs->get($dueWeek))
                     ? (string) $weekSubs->get($dueWeek)
                     : null;
-                $sourceType = strtolower((string) ($task->source_type ?? 'manual'));
+                $isGenerated = $this->isGeneratedTask($task);
                 $normalizedTaskTitle = $this->normalizeLabel((string) $task->title);
 
                 $currentAssessment = filled($task->assessment_id ?? null)
@@ -725,7 +728,9 @@ class RpsAssessmentSyncService
                 // Keputusan dosen tidak boleh ditimpa oleh sinkronisasi.
                 // RTM manual tetap dipertahankan apa adanya; validator yang
                 // memberi rekomendasi bila judul/Sub-CPMK/pekannya tidak selaras.
-                if ($sourceType !== 'assessment_sync') {
+                // RTM legacy yang jelas memiliki sidik generator diperlakukan
+                // sebagai assessment_sync agar data lama yang salah induk dapat dibersihkan.
+                if (! $isGenerated) {
                     if ($currentAssessment) $linkedCount++;
                     continue;
                 }
@@ -752,6 +757,13 @@ class RpsAssessmentSyncService
                     }
 
                     $isCurrentValid = $titleMatches && $scopeMatches;
+                }
+
+                if ($isCurrentValid && strtolower(trim((string) ($task->source_type ?? ''))) !== 'assessment_sync') {
+                    DB::table('rps_tasks')->where('id', $task->id)->update([
+                        'source_type' => 'assessment_sync',
+                        'updated_at' => now(),
+                    ]);
                 }
 
                 if (! $isCurrentValid) {
@@ -787,6 +799,7 @@ class RpsAssessmentSyncService
                     $assessmentId = (string) $exact->id;
                     DB::table('rps_tasks')->where('id', $task->id)->update([
                         'assessment_id' => $assessmentId,
+                        'source_type' => 'assessment_sync',
                         'updated_at' => now(),
                     ]);
                 }
@@ -924,6 +937,34 @@ class RpsAssessmentSyncService
         return $fixed;
     }
 
+    private function isGeneratedTask(object $task): bool
+    {
+        $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
+
+        if ($sourceType === 'assessment_sync') return true;
+        if ($sourceType === 'manual') return false;
+        if ($sourceType !== '' && $sourceType !== 'legacy') return false;
+
+        $purpose = mb_strtolower(trim((string) ($task->purpose ?? '')));
+        $instructions = mb_strtolower(trim((string) ($task->instructions ?? '')));
+        $output = mb_strtolower(trim((string) ($task->expected_output ?? '')));
+        $signals = 0;
+
+        if (str_starts_with($purpose, 'mengukur ketercapaian sub-cpmk melalui')) {
+            $signals++;
+        }
+        if (str_starts_with($instructions, 'kerjakan ')
+            && str_contains($instructions, 'sesuai arahan dosen')) {
+            $signals++;
+        }
+        if (str_starts_with($output, 'luaran ')
+            && str_contains($output, 'sesuai ketentuan asesmen')) {
+            $signals++;
+        }
+
+        return $signals >= 2;
+    }
+
     private function normalizeLabel(string $value): string
     {
         $value = mb_strtolower(trim($value));
@@ -939,9 +980,9 @@ class RpsAssessmentSyncService
 
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->get(['id', 'assessment_id', 'due_week', 'title', 'source_type'])
+            ->get(['id', 'assessment_id', 'due_week', 'title', 'source_type', 'purpose', 'instructions', 'expected_output'])
             ->filter(function ($task) use ($assessmentNamesById): bool {
-                if (strtolower((string) ($task->source_type ?? 'manual')) !== 'assessment_sync') {
+                if (! $this->isGeneratedTask($task)) {
                     return true;
                 }
 

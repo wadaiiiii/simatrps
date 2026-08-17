@@ -440,7 +440,7 @@ Pendukung:
                 ->orderBy('code')
                 ->get()
                 ->filter(function ($task) use ($assessmentById, $normalizeAssessmentLabel): bool {
-                    if (strtolower((string) ($task->source_type ?? 'manual')) !== 'assessment_sync') {
+                    if (! $this->isGeneratedRtm($task)) {
                         return true;
                     }
 
@@ -549,6 +549,28 @@ Pendukung:
                 ? $workspace->progress($version->id)
                 : ['percent' => 0, 'checks' => [], 'assessment_weight_total' => 0],
         ]);
+    }
+
+    private function isGeneratedRtm(object $task): bool
+    {
+        $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
+
+        if ($sourceType === 'assessment_sync') return true;
+        if ($sourceType === 'manual') return false;
+        if ($sourceType !== '' && $sourceType !== 'legacy') return false;
+
+        $purpose = mb_strtolower(trim((string) ($task->purpose ?? '')));
+        $instructions = mb_strtolower(trim((string) ($task->instructions ?? '')));
+        $output = mb_strtolower(trim((string) ($task->expected_output ?? '')));
+        $signals = 0;
+
+        if (str_starts_with($purpose, 'mengukur ketercapaian sub-cpmk melalui')) $signals++;
+        if (str_starts_with($instructions, 'kerjakan ')
+            && str_contains($instructions, 'sesuai arahan dosen')) $signals++;
+        if (str_starts_with($output, 'luaran ')
+            && str_contains($output, 'sesuai ketentuan asesmen')) $signals++;
+
+        return $signals >= 2;
     }
 
     private function normalizeWeekSubCpmkNarrative(mixed $value, mixed $currentCode): mixed
