@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/patch-weekly-scannable-activities.py'
+      - '.github/scripts/patch-weekly-ai-timeout-guard.py'
       - '.github/workflows/patch-weekly-scannable-activities.yml'
 
 permissions:
@@ -18,14 +19,23 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Apply weekly scannable activity patch
-        run: python .github/scripts/patch-weekly-scannable-activities.py
+      - name: Keep weekly scannable activity patch idempotent
+        run: |
+          if ! grep -q "FORMAT SCANNABLE METODE DAN AKTIVITAS PEMBELAJARAN" app/Http/Controllers/RpsAiController.php; then
+            python .github/scripts/patch-weekly-scannable-activities.py
+          fi
+      - name: Apply weekly AI timeout guard
+        run: python3 .github/scripts/patch-weekly-ai-timeout-guard.py
       - name: PHP syntax check
-        run: php -l app/Http/Controllers/RpsAiController.php
+        run: |
+          php -l app/Http/Controllers/RpsAiController.php
+          php -l app/Services/Rps/AiRpsProviderService.php
       - name: Verify markers
         run: |
           grep -q "FORMAT SCANNABLE METODE DAN AKTIVITAS PEMBELAJARAN" app/Http/Controllers/RpsAiController.php
           grep -q "formatScannableLearningActivity" app/Http/Controllers/RpsAiController.php
+          grep -q "generateAcrossProviders(callable \$callback, ?int \$maxAttempts = null)" app/Services/Rps/AiRpsProviderService.php
+          grep -q "Percobaan per request dibatasi" app/Services/Rps/AiRpsProviderService.php
           grep -q "Aktivitas Kelas:" resources/js/pages/rps/show.tsx
           git diff --check
       - name: Commit patch
@@ -36,6 +46,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/Http/Controllers/RpsAiController.php resources/js/pages/rps/show.tsx
-          git commit -m "Make weekly AI learning activities scannable"
+          git add app/Http/Controllers/RpsAiController.php app/Services/Rps/AiRpsProviderService.php resources/js/pages/rps/show.tsx
+          git commit -m "Prevent weekly AI requests from timing out"
           git push origin HEAD:main
