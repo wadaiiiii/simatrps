@@ -714,7 +714,7 @@ class ObeWorkspaceService
 
     private function explicitSubCpmkNumbers(string $text): array
     {
-        preg_match_all('/sub\s*[- ]?cpmk\s*[- ]?(\d{1,2})/iu', $text, $matches);
+        preg_match_all('/sub\s*[\p{Pd}\- ]?cpmk\s*[\p{Pd}\- ]?(\d{1,2})/iu', $text, $matches);
 
         return collect($matches[1] ?? [])->map('intval')->unique()->values()->all();
     }
