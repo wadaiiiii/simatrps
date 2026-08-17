@@ -1,0 +1,42 @@
+name: Patch RTM Constructive Alignment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-rtm-constructive-alignment.py'
+      - '.github/workflows/patch-rtm-constructive-alignment.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply constructive alignment patch
+        run: python3 .github/scripts/patch-rtm-constructive-alignment.py
+      - name: PHP syntax check
+        run: php -l app/Http/Controllers/RpsAiController.php
+      - name: Verify markers
+        run: |
+          grep -q "CONSTRUCTIVE ALIGNMENT DESKRIPSI RTM" app/Http/Controllers/RpsAiController.php
+          grep -q "sanitizeAssessmentPlanPayload" app/Http/Controllers/RpsAiController.php
+          grep -q "rtm-integrative-v3-constructive-alignment" app/Http/Controllers/RpsAiController.php
+          git diff --check
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsAiController.php
+          git commit -m "Strengthen RTM constructive alignment with Sub-CPMK"
+          git push origin main
