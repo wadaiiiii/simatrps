@@ -1,0 +1,40 @@
+name: Repair Legacy RTM and RPS Print
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-legacy-rtm-print.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply patch
+        run: python .github/scripts/patch-legacy-rtm-print.py
+
+      - name: Verify focused changes
+        run: |
+          python -m py_compile .github/scripts/patch-legacy-rtm-print.py
+          grep -q "private function isGeneratedTask" app/Services/Rps/RpsAssessmentSyncService.php
+          grep -q "private function isGeneratedRtm" app/Http/Controllers/RpsController.php
+          grep -q "rps-print-week-block" resources/js/pages/rps/show.tsx
+          grep -q "rps-print-week-block" resources/css/app.css
+          test "$(grep -c 'JURUSAN MATEMATIKA' resources/js/pages/rps/show.tsx)" -ge 2
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/Rps/RpsAssessmentSyncService.php app/Http/Controllers/RpsController.php resources/js/pages/rps/show.tsx resources/css/app.css
+          git commit -m "Repair legacy RTM provenance and weekly print pagination"
+          git push
