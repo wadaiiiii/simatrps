@@ -162,10 +162,10 @@ class RpsSmartDraftService
                 ? 'Ceramah interaktif, demonstrasi, latihan terbimbing, diskusi, dan praktikum.'
                 : 'Ceramah interaktif, diskusi, studi kasus/contoh, dan latihan terbimbing.';
 
-            $activity = 'Mahasiswa mempelajari '
-                .($materialText ?: 'bahan kajian yang ditetapkan')
-                .', mendiskusikan contoh, dan menyelesaikan latihan yang mendukung '
-                .$sub->code.'.';
+            $activity = $this->learningActivityForWeek(
+                $sub,
+                $hasPracticum
+            );
 
             $indicator = $this->indicatorFromSubCpmk((string) $sub->description);
 
@@ -738,6 +738,13 @@ class RpsSmartDraftService
             return array_fill(0, $weekCount, null);
         }
 
+        // Maksimal dua topik inti per pekan. Daftar Bahan Kajian asli tetap utuh;
+        // pembatasan ini hanya untuk penyajian pada tabel rencana pertemuan.
+        $maxTitles = max(1, $weekCount * 2);
+        if (count($titles) > $maxTitles) {
+            $titles = array_slice($titles, 0, $maxTitles);
+        }
+
         $materialCount = count($titles);
         $groups = [];
 
@@ -821,7 +828,7 @@ class RpsSmartDraftService
                 ->all();
         }
 
-        $titles = $materials
+        $materialRows = $materials
             ->values()
             ->map(function ($material, $index) use ($sub, $linkedMaterialIds): array {
                 $title = trim((string) ($material->title ?? ''));
@@ -840,22 +847,67 @@ class RpsSmartDraftService
                     ),
                 ];
             })
-            ->filter(fn (array $item) =>
-                $item['title'] !== '' && ($item['linked'] || $item['score'] > 0)
-            )
-            ->sort(function (array $a, array $b): int {
-                if ($a['linked'] !== $b['linked']) {
-                    return $a['linked'] ? -1 : 1;
-                }
-                if ($a['score'] !== $b['score']) {
-                    return $b['score'] <=> $a['score'];
-                }
-                return $a['index'] <=> $b['index'];
-            })
+            ->filter(fn (array $item) => $item['title'] !== '')
+            ->values();
+
+        $linkedTitles = $materialRows
+            ->filter(fn (array $item) => $item['linked'])
+            ->sortBy('index')
             ->pluck('title')
             ->unique()
             ->values()
             ->all();
+
+        if ($linkedTitles !== []) {
+            // Relasi eksplisit adalah keputusan akademik dosen/AI material plan.
+            // Jangan campurkan materi lain hanya karena memiliki satu kata yang sama.
+            $titles = $linkedTitles;
+        } else {
+            $scored = $materialRows
+                ->filter(fn (array $item) => $item['score'] > 0)
+                ->sort(function (array $a, array $b): int {
+                    if ($a['score'] !== $b['score']) {
+                        return $b['score'] <=> $a['score'];
+                    }
+                    return $a['index'] <=> $b['index'];
+                })
+                ->values();
+
+            $bestScore = $scored->isEmpty() ? 0 : (int) $scored->max('score');
+            $candidateLimit = max(1, $weekCount * 2);
+
+            // Satu kecocokan kata pada banyak materi adalah sinyal ambigu.
+            // Gunakan urutan kurikulum sebagai fallback, bukan memasukkan semuanya.
+            $ambiguous = $bestScore <= 1 && $scored->count() > $candidateLimit;
+
+            if (! $ambiguous && $bestScore > 0) {
+                $minimumScore = max(1, $bestScore - 1);
+                $titles = $scored
+                    ->filter(fn (array $item) => $item['score'] >= $minimumScore)
+                    ->take($candidateLimit)
+                    ->sortBy('index')
+                    ->pluck('title')
+                    ->unique()
+                    ->values()
+                    ->all();
+            } else {
+                $allTitles = $materialRows->sortBy('index')->pluck('title')->values();
+                $totalMaterials = $allTitles->count();
+                $subTotal = max(1, DB::table('rps_sub_cpmks')
+                    ->where('rps_version_id', $sub->rps_version_id)
+                    ->count());
+                $subIndex = max(0, min($subTotal - 1, ((int) ($sub->sequence_no ?? 1)) - 1));
+                $start = (int) floor(($subIndex * $totalMaterials) / $subTotal);
+                $end = (int) floor((($subIndex + 1) * $totalMaterials) / $subTotal);
+                $length = max(1, $end - $start);
+
+                $titles = $allTitles
+                    ->slice($start, $length)
+                    ->take($candidateLimit)
+                    ->values()
+                    ->all();
+            }
+        }
 
         if ($titles === []) {
             return null;
@@ -892,6 +944,27 @@ class RpsSmartDraftService
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function learningActivityForWeek(object $sub, bool $hasPracticum): string
+    {
+        $code = trim((string) ($sub->code ?? 'Sub-CPMK')) ?: 'Sub-CPMK';
+        $level = strtoupper(trim((string) ($sub->bloom_level ?? '')));
+
+        $activity = match ($level) {
+            'C1', 'C2' => 'Mengidentifikasi konsep utama, mendiskusikan contoh, dan melakukan latihan pemahaman.',
+            'C3' => 'Menerapkan konsep melalui contoh dan latihan terarah, kemudian membahas hasilnya.',
+            'C4' => 'Menganalisis kasus/contoh, membandingkan hasil, dan menyusun alasan atas temuan.',
+            'C5' => 'Mengevaluasi kasus atau hasil kerja menggunakan kriteria yang ditetapkan dan memberikan argumentasi.',
+            'C6' => 'Merancang atau mengembangkan solusi, menguji hasil, dan melakukan perbaikan berdasarkan umpan balik.',
+            default => 'Membahas konsep, menganalisis contoh, dan menyelesaikan latihan terarah.',
+        };
+
+        if ($hasPracticum) {
+            $activity = rtrim($activity, '.').' melalui diskusi dan/atau praktikum.';
+        }
+
+        return $activity.' Aktivitas diarahkan untuk mencapai '.$code.'.';
     }
 
     private function indicatorFromSubCpmk(string $description): string

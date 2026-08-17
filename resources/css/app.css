@@ -554,3 +554,27 @@ body {
     }
 }
 
+/* Patch: compact Smart Draft + continuous weekly print flow */
+@media print {
+    html.rps-print-mode .rps-print-week-gap {
+        display: block !important;
+        height: 10px !important;
+        min-height: 10px !important;
+        max-height: 10px !important;
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    /* Pekan boleh terbelah pada pergantian halaman. Header tabel tetap diulang,
+       sehingga tabel terlihat sebagai satu rangkaian kontinu dan tidak menyisakan
+       ruang kosong besar hanya untuk memindahkan satu pekan secara utuh. */
+    html.rps-print-mode .rps-print-weekly,
+    html.rps-print-mode .rps-print-weekly tbody,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr,
+    html.rps-print-mode .rps-print-weekly .rps-print-week-block > tr > td {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+}
+

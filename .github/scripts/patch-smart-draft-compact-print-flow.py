@@ -139,7 +139,7 @@ service = replace_once(
 helper = r'''    private function learningActivityForWeek(object $sub, bool $hasPracticum): string
     {
         $code = trim((string) ($sub->code ?? 'Sub-CPMK')) ?: 'Sub-CPMK';
-        $level = strtoupper(trim((string) ($sub->bloom_level ?? ''));
+        $level = strtoupper(trim((string) ($sub->bloom_level ?? '')));
 
         $activity = match ($level) {
             'C1', 'C2' => 'Mengidentifikasi konsep utama, mendiskusikan contoh, dan melakukan latihan pemahaman.',
