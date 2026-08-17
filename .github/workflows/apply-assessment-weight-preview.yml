@@ -1,0 +1,36 @@
+name: Apply assessment weight preview
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-assessment-weight-preview.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python .github/scripts/patch_assessment_weight_preview.py
+
+      - name: Validate frontend markers
+        run: |
+          grep -q "Total tersimpan:" resources/js/pages/rps/show.tsx
+          grep -q "Jika disimpan: {projectedAssessmentTotal}%" resources/js/pages/rps/show.tsx
+          grep -q "weightWouldIncreaseOverLimit" resources/js/pages/rps/show.tsx
+
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/js/pages/rps/show.tsx
+          git rm .github/scripts/patch_assessment_weight_preview.py
+          git rm .github/workflows/apply-assessment-weight-preview.yml
+          git commit -m "Preview assessment totals before saving weights"
+          git push
