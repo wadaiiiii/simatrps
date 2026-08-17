@@ -473,6 +473,7 @@ class ObeWorkspaceService
         $rtmSemanticsAligned = $rtmSemanticIssues->isEmpty();
 
         $weeklyMaterialIssues = collect();
+        $confirmedWeeklyMaterialCount = 0;
         foreach ($teachingWeeks as $week) {
             $currentSubId = filled($week->rps_sub_cpmk_id ?? null)
                 ? (string) $week->rps_sub_cpmk_id
@@ -496,7 +497,21 @@ class ObeWorkspaceService
             ) {
                 $currentSub = $subById->get($currentSubId);
                 $bestSub = $subById->get($bestSubId);
+                $decisionKey = 'weekly-material:week:'.(int) $week->week_number
+                    .':sub:'.$currentSubId
+                    .':'.sha1(
+                        $this->semanticNormalized($materialText)
+                        .'|'.$currentSubId
+                        .'|'.$bestSubId
+                    );
+
+                if ($keptDecisionKeys->has($decisionKey)) {
+                    $confirmedWeeklyMaterialCount++;
+                    continue;
+                }
+
                 $weeklyMaterialIssues->push([
+                    'decision_key' => $decisionKey,
                     'week' => (int) $week->week_number,
                     'material' => $materialText,
                     'current_sub_code' => (string) ($currentSub?->code ?? ''),
@@ -594,12 +609,15 @@ class ObeWorkspaceService
                 'severity' => 'advisory',
                 'done' => $weeklyMaterialSemanticsAligned,
                 'message' => $weeklyMaterialSemanticsAligned
-                    ? 'Materi pekan selaras dengan Sub-CPMK.'
+                    ? ($confirmedWeeklyMaterialCount > 0
+                        ? 'Materi pekan diterima · '.$confirmedWeeklyMaterialCount.' keputusan dosen untuk tidak mengikuti rekomendasi dipertahankan.'
+                        : 'Materi pekan selaras dengan Sub-CPMK.')
                     : (($issue = $weeklyMaterialIssues->first())
-                        ? 'Pekan '.$issue['week'].': materi lebih dekat ke '.$issue['suggested_sub_code'].' daripada '.$issue['current_sub_code'].'.'
+                        ? 'Pekan '.$issue['week'].': materi lebih dekat ke '.$issue['suggested_sub_code'].' daripada '.$issue['current_sub_code'].'. Dosen boleh memperbaiki materi atau melanjutkan tanpa mengikuti rekomendasi.'
                         : 'Ada materi pekan yang perlu ditelaah.'),
                 'details' => [
                     'issues' => $weeklyMaterialIssues->all(),
+                    'confirmed_count' => $confirmedWeeklyMaterialCount,
                 ],
             ],
             [

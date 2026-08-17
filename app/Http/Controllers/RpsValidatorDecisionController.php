@@ -27,7 +27,7 @@ class RpsValidatorDecisionController extends Controller
         $this->ensureDecisionTable();
 
         $validated = $request->validate([
-            'check_key' => ['required', Rule::in(['assessment_semantics', 'rtm_semantics'])],
+            'check_key' => ['required', Rule::in(['assessment_semantics', 'rtm_semantics', 'weekly_material_semantics'])],
             'subject_key' => ['nullable', 'string', 'max:500', 'required_without:subject_keys'],
             'subject_keys' => ['nullable', 'array', 'max:100', 'required_without:subject_key'],
             'subject_keys.*' => ['required', 'string', 'max:500'],
