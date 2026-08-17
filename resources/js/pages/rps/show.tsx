@@ -98,6 +98,83 @@ function stripMaterialListPrefix(value: any) {
         .trim();
 }
 
+const VALIDATOR_FIX_META: Record<string, { label: string; target: string }> = {
+    cpmk_cpl: { label: 'Perbaiki CPMK ↔ CPL', target: 'validator-target-cpmk' },
+    sub_cpmk: { label: 'Perbaiki Sub-CPMK', target: 'validator-target-cpmk' },
+    materials: { label: 'Perbaiki Bahan Kajian', target: 'validator-target-materials' },
+    weeks: { label: 'Perbaiki Tabel RPS', target: 'validator-target-weeks' },
+    exam_weeks: { label: 'Perbaiki Asesmen', target: 'validator-target-assessment' },
+    assessment_weight: { label: 'Perbaiki Bobot', target: 'validator-target-assessment' },
+    subcpmk_assessed: { label: 'Atur Pertemuan', target: 'validator-target-weeks' },
+    assessment_chain_sync: { label: 'Periksa RTM', target: 'validator-target-rtm' },
+    weekly_assessment_evidence: { label: 'Periksa RTM', target: 'validator-target-rtm' },
+    rtm: { label: 'Perbaiki RTM', target: 'validator-target-rtm' },
+};
+
+function validatorProblemWeek(check: any): number | null {
+    const details = check?.details ?? {};
+    const ambiguous = safeList(details.ambiguous_weeks);
+    const missing = safeList(details.missing_weeks);
+    const candidate = ambiguous[0] ?? missing[0];
+    const raw = candidate && typeof candidate === 'object' ? candidate.week : candidate;
+    const numeric = Number(raw);
+
+    if (Number.isFinite(numeric) && numeric >= 1 && numeric <= 16) {
+        return numeric;
+    }
+
+    const match = String(check?.message ?? '').match(/Pekan\s+(\d{1,2})/i);
+    const fromMessage = match ? Number(match[1]) : Number.NaN;
+
+    return Number.isFinite(fromMessage) && fromMessage >= 1 && fromMessage <= 16
+        ? fromMessage
+        : null;
+}
+
+function validatorFixLabel(check: any) {
+    const meta = VALIDATOR_FIX_META[check?.key];
+    if (!meta) return 'Perbaiki';
+
+    const week = validatorProblemWeek(check);
+    if (week && meta.target === 'validator-target-rtm') {
+        return `Periksa RTM Pekan ${week}`;
+    }
+
+    return meta.label;
+}
+
+function goToValidatorFix(check: any) {
+    const meta = VALIDATOR_FIX_META[check?.key];
+    if (!meta) return;
+
+    const week = validatorProblemWeek(check);
+    let targets: HTMLElement[] = [];
+
+    if (week && meta.target === 'validator-target-rtm') {
+        targets = Array.from(
+            document.querySelectorAll<HTMLElement>(`[data-rtm-week="${week}"]`),
+        );
+    }
+
+    if (targets.length === 0) {
+        const section = document.getElementById(meta.target);
+        if (section) targets = [section];
+    }
+
+    if (targets.length === 0) {
+        notify('info', 'Bagian perbaikan belum ditemukan pada tampilan ini.');
+        return;
+    }
+
+    targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targets.forEach((target) => {
+        target.classList.add('ring-2', 'ring-amber-400', 'ring-offset-2');
+        window.setTimeout(() => {
+            target.classList.remove('ring-2', 'ring-amber-400', 'ring-offset-2');
+        }, 3200);
+    });
+}
+
 function actionOptions(message: string, afterSuccess?: () => void) {
     return {
         preserveScroll: true,
@@ -623,7 +700,7 @@ export default function RpsShow(props: any) {
                                     </tr>
                                 ))}
 
-                                <tr>
+                                <tr id="validator-target-cpmk" className="scroll-mt-24">
                                     <td colSpan={5} className="border border-slate-400 bg-slate-50 px-2 py-1.5 font-bold">
                                         <div className="flex items-center justify-between gap-2">
                                             <span>Capaian Pembelajaran Mata Kuliah (CPMK)</span>
@@ -720,7 +797,7 @@ export default function RpsShow(props: any) {
                                     </td>
                                 </tr>
 
-                                <tr>
+                                <tr id="validator-target-materials" className="scroll-mt-24">
                                     <td className="border border-slate-400 px-2 py-1.5 align-top font-bold">
                                         Bahan Kajian:
                                         <div className="font-normal">Materi Pembelajaran</div>
@@ -832,7 +909,7 @@ export default function RpsShow(props: any) {
                     <div aria-hidden="true" className="w-full shrink-0" style={{ height: '32px' }} />
 
                     {/* Weekly toolbar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
+                    <div id="validator-target-weeks" className="scroll-mt-24 flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
                         <div className="text-xs font-bold text-slate-600">Rencana Pembelajaran Semester</div>
                         <div className="flex flex-wrap gap-1.5">
                             <button
@@ -922,7 +999,7 @@ export default function RpsShow(props: any) {
                     </summary>
                     <div className="border-t border-cyan-200 bg-white p-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
+                            <div id="validator-target-assessment" className="scroll-mt-24">
                                 <div className="font-bold text-slate-900">Asesmen Detail & RTM</div>
                                 <p className="mt-1 text-xs text-slate-500">
                                     Asesmen menyimpan bobot agregat/anggaran penilaian (total 100%). Bobot non-UTS/UAS kemudian didistribusikan ke 14 pekan pada tabel RPS. Bobot pekan boleh dikoreksi langsung dari tabel RPS setelah asesmen/tag Sub-CPMK tersedia; perubahan hanya mengatur distribusi pekan, tidak mengubah bobot agregat, dan RTM serta Validator OBE ikut tersinkron.
@@ -963,7 +1040,7 @@ export default function RpsShow(props: any) {
                             ))}
                         </div>
 
-                        <div className="mt-5 border-t border-slate-100 pt-4">
+                        <div id="validator-target-rtm" className="scroll-mt-24 mt-5 border-t border-slate-100 pt-4">
                             <div className="font-bold text-slate-900">RTM</div>
                             <div className="mt-3 grid gap-3 lg:grid-cols-2">
                                 {tasks.map((task: any) => (
@@ -997,6 +1074,16 @@ export default function RpsShow(props: any) {
                                             <div className="font-bold text-slate-800">{check.label}</div>
                                         </div>
                                         <p className="mt-2 text-xs leading-5 text-slate-600">{check.message}</p>
+                                        {!check.done && VALIDATOR_FIX_META[check.key] && (
+                                            <button
+                                                type="button"
+                                                onClick={() => goToValidatorFix(check)}
+                                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-[10px] font-bold text-amber-800 shadow-sm hover:bg-amber-100"
+                                            >
+                                                <Pencil className="size-3" />
+                                                {validatorFixLabel(check)}
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -4310,7 +4397,10 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
 
     if (!editing) {
         return (
-            <div className="rounded-xl border border-slate-100 bg-white/60 p-4">
+            <div
+                data-rtm-week={task.due_week ?? ''}
+                className="rounded-xl border border-slate-100 bg-white/60 p-4 transition-shadow"
+            >
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className="text-xs font-bold text-teal-700">{task.code}</div>
