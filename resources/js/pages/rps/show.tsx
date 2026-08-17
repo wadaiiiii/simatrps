@@ -104,7 +104,9 @@ const VALIDATOR_FIX_META: Record<string, { label: string; target: string }> = {
     bloom_hierarchy: { label: 'Perbaiki Bloom', target: 'validator-target-cpmk' },
     materials: { label: 'Perbaiki Bahan Kajian', target: 'validator-target-materials' },
     material_quality: { label: 'Rapikan Bahan Kajian', target: 'validator-target-materials' },
+    material_coverage: { label: 'Lengkapi Bahan Kajian', target: 'validator-target-materials' },
     weekly_material_semantics: { label: 'Periksa Materi Pekan', target: 'validator-target-weeks' },
+    concept_accuracy: { label: 'Periksa Konsep Pekan', target: 'validator-target-weeks' },
     weeks: { label: 'Perbaiki Tabel RPS', target: 'validator-target-weeks' },
     exam_weeks: { label: 'Perbaiki Asesmen', target: 'validator-target-assessment' },
     assessment_weight: { label: 'Perbaiki Bobot', target: 'validator-target-assessment' },
@@ -1082,6 +1084,7 @@ export default function RpsShow(props: any) {
                                 rpsId={rps.id}
                                 subCpmks={subCpmks}
                                 assessments={assessments}
+                                weeks={weeks}
                             />
                         </div>
 
@@ -2408,11 +2411,13 @@ function RtmDocumentSection({
     return (
         <div className="rps-print-rtm border-x border-b border-slate-300 bg-white px-3 pb-5">
             <div className="border-t-2 border-slate-400 pt-4">
-                <div className="text-center text-base font-black uppercase text-slate-900">
-                    Lembar Rencana Tugas Mahasiswa
-                </div>
-                <div className="text-center text-sm font-bold uppercase text-slate-700">
-                    Mata Kuliah {rps.course_name}
+                <div className="rps-print-rtm-heading">
+                    <div className="text-center text-base font-black uppercase text-slate-900">
+                        Lembar Rencana Tugas Mahasiswa
+                    </div>
+                    <div className="text-center text-sm font-bold uppercase text-slate-700">
+                        Mata Kuliah {rps.course_name}
+                    </div>
                 </div>
 
                 {tasks.length === 0 ? (
@@ -2425,6 +2430,36 @@ function RtmDocumentSection({
                             const assessment = task.assessment_id
                                 ? assessmentById.get(task.assessment_id)
                                 : null;
+
+                            const linkedSubIds = new Set(safeList(task.sub_cpmk_ids).map(String));
+                            const coverageWeeks = safeList(weeks)
+                                .filter((week: any) =>
+                                    TEACHING_WEEKS.includes(Number(week.week_number))
+                                    && linkedSubIds.has(String(week.rps_sub_cpmk_id || ''))
+                                )
+                                .sort((a: any, b: any) => Number(a.week_number) - Number(b.week_number));
+                            const coverageStart = coverageWeeks.length > 0 ? Number(coverageWeeks[0].week_number) : 0;
+                            const coverageEnd = coverageWeeks.length > 0 ? Number(coverageWeeks[coverageWeeks.length - 1].week_number) : 0;
+                            const assessmentWeeks = assessment
+                                ? safeList(weeks)
+                                    .filter((week: any) =>
+                                        TEACHING_WEEKS.includes(Number(week.week_number))
+                                        && String(week.assessment_owner_id || '') === String(assessment.id)
+                                        && Number(week.assessment_weight || 0) > 0
+                                    )
+                                    .sort((a: any, b: any) => Number(a.week_number) - Number(b.week_number))
+                                : [];
+                            const distributionLabel = assessmentWeeks
+                                .map((week: any) => `P${Number(week.week_number)}=${Number(week.assessment_weight || 0)}%`)
+                                .join('; ');
+                            const referenceNumbers = new Set<number>();
+                            [...coverageWeeks, ...assessmentWeeks].forEach((week: any) => {
+                                const matches = String(week.reference_text || '').matchAll(/\[\s*(\d+)\s*\]/g);
+                                for (const match of matches) referenceNumbers.add(Number(match[1]));
+                            });
+                            const taskBibliography = safeList(bibliography).filter((item: any) =>
+                                referenceNumbers.has(Number(item.number))
+                            );
 
                             const linkedSubs = safeList(task.sub_cpmk_ids)
                                 .map((id: string) => subById.get(id))
@@ -2579,9 +2614,12 @@ function RtmDocumentSection({
                                             </tr>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
-                                                    <div><strong>Bentuk penilaian pekan:</strong> {task.title}</div>
+                                                    <div><strong>Bentuk penilaian:</strong> {task.title}</div>
                                                     <div><strong>Kriteria:</strong> {assessment?.description || '-'}</div>
-                                                    <div><strong>Bobot pekan:</strong> {`${Number(weekByNumber.get(Number(task.due_week))?.assessment_weight || 0)}%`}</div>
+                                                    <div><strong>Bobot RTM/Asesmen:</strong> {assessment ? `${Number(assessment.weight || 0)}%` : `${Number(weekByNumber.get(Number(task.due_week))?.assessment_weight || 0)}%`}</div>
+                                                    {distributionLabel && (
+                                                        <div className="text-[10px] text-slate-500"><strong>Distribusi bobot pekan:</strong> {distributionLabel}</div>
+                                                    )}
                                                     {assessment && (
                                                         <div className="text-[10px] text-slate-500"><strong>Asesmen agregat:</strong> {assessment.name} ({Number(assessment.weight || 0)}%)</div>
                                                     )}
@@ -2592,7 +2630,11 @@ function RtmDocumentSection({
                                             </tr>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
-                                                    Pekan {task.due_week || '-'}
+                                                    {coverageStart > 0 && coverageEnd > 0
+                                                        ? (coverageStart === coverageEnd
+                                                            ? `Pelaksanaan: Pekan ${coverageStart} · Pengumpulan: Pekan ${task.due_week || coverageEnd}`
+                                                            : `Pelaksanaan: Pekan ${coverageStart}–${coverageEnd} · Pengumpulan: Pekan ${task.due_week || coverageEnd}`)
+                                                        : `Pengumpulan: Pekan ${task.due_week || '-'}`}
                                                 </td>
                                             </tr>
                                             <tr>
@@ -2600,8 +2642,8 @@ function RtmDocumentSection({
                                             </tr>
                                             <tr>
                                                 <td colSpan={4} className="border border-slate-300 px-2 py-1.5">
-                                                    {bibliography.length > 0
-                                                        ? bibliography.map((item: any) => (
+                                                    {taskBibliography.length > 0
+                                                        ? taskBibliography.map((item: any) => (
                                                             <div key={item.number}>{item.number}. {item.text}</div>
                                                         ))
                                                         : '-'}
@@ -3025,8 +3067,21 @@ function AssessmentQuickAdd({ rpsId, subCpmks }: any) {
     );
 }
 
-function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
+function TaskQuickAdd({ rpsId, subCpmks, assessments, weeks = [] }: any) {
     const [open, setOpen] = useState(false);
+
+    const latestWeekForSubIds = (ids: string[]) => {
+        const wanted = new Set(safeList(ids).map(String));
+        const covered = safeList(weeks)
+            .filter((week: any) =>
+                TEACHING_WEEKS.includes(Number(week.week_number))
+                && wanted.has(String(week.rps_sub_cpmk_id || ''))
+            )
+            .map((week: any) => Number(week.week_number))
+            .filter((week: number) => Number.isFinite(week));
+
+        return covered.length > 0 ? Math.max(...covered) : 0;
+    };
     const form = useForm({
         assessment_id: '',
         title: '',
@@ -3103,9 +3158,12 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                                 type: RTM_ASSESSMENT_TYPES.includes(String(selectedAssessment.type))
                                     ? selectedAssessment.type
                                     : form.data.type,
-                                due_week: selectedAssessment.week_number
-                                    ? String(selectedAssessment.week_number)
-                                    : form.data.due_week,
+                                due_week: String(
+                                    latestWeekForSubIds(safeList(selectedAssessment.sub_cpmk_ids).map(String))
+                                    || Number(selectedAssessment.week_number || 0)
+                                    || form.data.due_week
+                                    || ''
+                                ),
                                 sub_cpmk_ids: safeList(selectedAssessment.sub_cpmk_ids).map(String),
                             });
                         }}
@@ -3172,14 +3230,14 @@ function TaskQuickAdd({ rpsId, subCpmks, assessments }: any) {
                             const selectedAssessment = assessments.find(
                                 (item: any) => item.id === form.data.assessment_id,
                             );
-                            const assessmentWeek = Number(selectedAssessment?.week_number || 0);
                             const dueWeek = Number(form.data.due_week || 0);
+                            const latestCoverageWeek = latestWeekForSubIds(form.data.sub_cpmk_ids);
 
                             if (
-                                assessmentWeek > 0
+                                latestCoverageWeek > 0
                                 && dueWeek > 0
-                                && assessmentWeek !== dueWeek
-                                && !confirm(`Pekan Pengumpulan RTM (${dueWeek}) berbeda dari jadwal asesmen (${assessmentWeek}). Tetap simpan?`)
+                                && dueWeek < latestCoverageWeek
+                                && !confirm(`RTM mengukur Sub-CPMK yang dipelajari sampai Pekan ${latestCoverageWeek}, tetapi pengumpulan dipilih Pekan ${dueWeek}. Tetap simpan sebagai keputusan dosen?`)
                             ) {
                                 return;
                             }

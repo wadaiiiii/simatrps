@@ -405,6 +405,14 @@ Pendukung:
         );
 
         $bibliography = $this->parseBibliography($combinedReferenceText);
+        $bibliographyCount = count($bibliography);
+        $weeks = $weeks->map(function ($week) use ($bibliographyCount): object {
+            $week->reference_text = $this->filterWeeklyReferenceCodesForDisplay(
+                (string) ($week->reference_text ?? ''),
+                $bibliographyCount
+            );
+            return $week;
+        });
 
         $documentMeta = [
             'course_cluster' => $storedMeta?->course_cluster ?: $kbkName,
@@ -611,6 +619,20 @@ Pendukung:
         $value = mb_strtolower(trim($value));
         $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
         return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
+    }
+
+    private function filterWeeklyReferenceCodesForDisplay(string $value, int $entryCount): ?string
+    {
+        if ($entryCount <= 0 || trim($value) === '') return null;
+        preg_match_all('/\[\s*(\d+)\s*\]/', $value, $matches);
+        if (($matches[1] ?? []) === []) return $value;
+
+        $codes = collect($matches[1])
+            ->map(fn ($number) => (int) $number)
+            ->filter(fn ($number) => $number >= 1 && $number <= $entryCount)
+            ->unique()->sort()->map(fn ($number) => '['.$number.']')->implode(', ');
+
+        return $codes !== '' ? $codes : null;
     }
 
     private function splitReferenceGroups(string $text): array

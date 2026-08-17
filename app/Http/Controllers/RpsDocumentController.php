@@ -104,7 +104,12 @@ class RpsDocumentController extends Controller
             ]);
         }
 
-        return back()->with('success', 'Pustaka berhasil diperbarui.');
+        $normalized = $this->normalizeWeeklyReferenceCodes(
+            $version->id,
+            $this->referenceEntryCount($values['reference_text'], $values['supporting_reference_text'])
+        );
+
+        return back()->with('success', 'Pustaka berhasil diperbarui. '.$normalized.' pustaka pekan dinormalisasi.');
     }
 
     public function generateAiReferences(
@@ -180,6 +185,11 @@ class RpsDocumentController extends Controller
             ]);
         }
 
+        $normalized = $this->normalizeWeeklyReferenceCodes(
+            $version->id,
+            $this->referenceEntryCount($values['reference_text'], $values['supporting_reference_text'])
+        );
+
         $providerUsed = strtoupper((string) ($result['provider'] ?? 'AI'));
         $fallbackNote = (bool) ($result['fallback_used'] ?? false)
             ? " Provider utama dilewati/gagal; hasil dibuat dengan {$providerUsed}."
@@ -187,7 +197,8 @@ class RpsDocumentController extends Controller
 
         return back()->with(
             'success',
-            'Pustaka berhasil ditelaah AI dan disesuaikan dengan bahan kajian aktif.'
+            'Pustaka berhasil ditelaah AI dan disesuaikan dengan bahan kajian aktif. '
+                .$normalized.' pustaka pekan dinormalisasi.'
                 .$fallbackNote
         );
     }
@@ -268,6 +279,52 @@ class RpsDocumentController extends Controller
             'success',
             "Nilai simulasi pekan {$week} berhasil disimpan."
         );
+    }
+
+    private function referenceEntryCount(string $main, string $supporting): int
+    {
+        return collect(preg_split('/\r\n|\r|\n/', trim($main."\n".$supporting)) ?: [])
+            ->map(fn ($line) => trim((string) $line))
+            ->filter()
+            ->reject(fn ($line) => preg_match('/^(utama|pendukung|tambahan)\s*:?$/i', $line) === 1)
+            ->count();
+    }
+
+    private function normalizeWeeklyReferenceCodes(string $versionId, int $entryCount): int
+    {
+        if ($entryCount <= 0) return 0;
+
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereNotNull('reference_text')
+            ->get(['id', 'reference_text']);
+        $changed = 0;
+
+        foreach ($weeks as $week) {
+            $value = trim((string) $week->reference_text);
+            if ($value === '') continue;
+
+            preg_match_all('/\[\s*(\d+)\s*\]/', $value, $matches);
+            if (($matches[1] ?? []) === [] && preg_match('/^\s*\d+(?:\s*[,;]\s*\d+)*\s*$/', $value) !== 1) {
+                continue;
+            }
+            if (($matches[1] ?? []) === []) preg_match_all('/\d+/', $value, $matches);
+
+            $normalized = collect($matches[1] ?? $matches[0] ?? [])
+                ->map(fn ($number) => (int) $number)
+                ->filter(fn ($number) => $number >= 1 && $number <= $entryCount)
+                ->unique()->sort()->map(fn ($number) => '['.$number.']')->implode(', ');
+
+            if ($normalized === $value) continue;
+
+            DB::table('rps_weekly_plans')->where('id', $week->id)->update([
+                'reference_text' => $normalized !== '' ? $normalized : null,
+                'updated_at' => now(),
+            ]);
+            $changed++;
+        }
+
+        return $changed;
     }
 
     private function context(Request $request, string $rps): array

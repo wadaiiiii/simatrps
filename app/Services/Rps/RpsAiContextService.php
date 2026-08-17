@@ -399,6 +399,7 @@ Pendukung:
                 'target_weeks' => [$week],
                 'must_use_target_sub_cpmk' => true,
                 'do_not_move_backward_to_earlier_sub_cpmk' => true,
+                'concept_guard_bfs' => 'BFS untuk jalur terpendek hanya pada graf tak berbobot atau bobot seragam. Untuk graf berbobot positif gunakan Dijkstra; A* digunakan bila heuristik relevan.',
             ],
         ];
     }

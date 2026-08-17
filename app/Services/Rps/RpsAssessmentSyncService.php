@@ -483,6 +483,7 @@ class RpsAssessmentSyncService
         $this->syncTaskMappings($versionId);
         $createdTasks = $this->ensureRequiredTasks($versionId);
         $linkedTasks = $this->syncTaskMappings($versionId);
+        $this->repairGeneratedTaskDueWeeks($versionId);
 
         $snapshot = $this->snapshot($versionId);
 
@@ -610,27 +611,21 @@ class RpsAssessmentSyncService
                 }
 
                 $preferred = (int) ($assessment->week_number ?? 0);
-                $candidates = $weeks
+                $coverageWeeks = $weeks
                     ->filter(fn ($week) => $subIds->contains((string) $week->rps_sub_cpmk_id))
-                    ->sort(function ($a, $b) use ($preferred, $usedWeeks): int {
-                        $aWeek = (int) $a->week_number;
-                        $bWeek = (int) $b->week_number;
-                        $aDistance = $preferred > 0 ? abs($aWeek - $preferred) : $aWeek;
-                        $bDistance = $preferred > 0 ? abs($bWeek - $preferred) : $bWeek;
-
-                        if ($aDistance !== $bDistance) return $aDistance <=> $bDistance;
-
-                        $aUsed = in_array($aWeek, $usedWeeks, true) ? 1 : 0;
-                        $bUsed = in_array($bWeek, $usedWeeks, true) ? 1 : 0;
-                        if ($aUsed !== $bUsed) return $aUsed <=> $bUsed;
-
-                        return $aWeek <=> $bWeek;
-                    })
+                    ->pluck('week_number')
+                    ->map(fn ($week) => (int) $week)
+                    ->filter()
                     ->values();
 
-                $dueWeek = $candidates->isNotEmpty()
-                    ? (int) $candidates->first()->week_number
-                    : ($preferred > 0 ? $preferred : null);
+                // RTM multi-Sub-CPMK tidak boleh dikumpulkan sebelum seluruh
+                // Sub-CPMK yang diukurnya sudah memperoleh pertemuan. Jadwal
+                // default adalah pekan terakhir cakupan; asesmen boleh berada
+                // lebih akhir, tetapi tidak boleh memajukan pengumpulan.
+                $latestCoverageWeek = $coverageWeeks->isNotEmpty()
+                    ? (int) $coverageWeeks->max()
+                    : 0;
+                $dueWeek = max($latestCoverageWeek, $preferred) ?: null;
 
                 while (in_array('RTM-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT), $existingCodes, true)) {
                     $next++;
@@ -1000,11 +995,59 @@ class RpsAssessmentSyncService
     {
         $scopeFixes = $this->syncGeneratedAssessmentScopes($versionId);
         $linkedTasks = $this->syncTaskMappings($versionId);
+        $dueWeekFixes = $this->repairGeneratedTaskDueWeeks($versionId);
 
         return [
             'assessment_scope_fixes' => $scopeFixes,
             'linked_generated_tasks' => $linkedTasks,
+            'generated_due_week_fixes' => $dueWeekFixes,
         ];
+    }
+
+    private function repairGeneratedTaskDueWeeks(string $versionId): int
+    {
+        $tasks = DB::table('rps_tasks')
+            ->where('rps_version_id', $versionId)
+            ->get(['id', 'due_week', 'source_type', 'purpose', 'instructions', 'expected_output'])
+            ->filter(fn ($task) => $this->isGeneratedTask($task))
+            ->values();
+
+        if ($tasks->isEmpty()) return 0;
+
+        $taskLinks = DB::table('rps_task_subcpmks')
+            ->whereIn('rps_task_id', $tasks->pluck('id')->all())
+            ->get(['rps_task_id', 'rps_sub_cpmk_id'])
+            ->groupBy('rps_task_id');
+
+        $weeks = DB::table('rps_weekly_plans')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('week_number', self::TEACHING_WEEKS)
+            ->whereNotNull('rps_sub_cpmk_id')
+            ->get(['week_number', 'rps_sub_cpmk_id']);
+
+        $fixed = 0;
+        foreach ($tasks as $task) {
+            $subIds = collect($taskLinks->get($task->id, []))
+                ->pluck('rps_sub_cpmk_id')->map('strval')->unique()->values();
+            if ($subIds->isEmpty()) continue;
+
+            $latest = $weeks
+                ->filter(fn ($week) => $subIds->contains((string) $week->rps_sub_cpmk_id))
+                ->max('week_number');
+            $latest = $latest ? (int) $latest : 0;
+            if ($latest <= 0) continue;
+
+            $current = (int) ($task->due_week ?? 0);
+            if ($current >= $latest) continue;
+
+            DB::table('rps_tasks')->where('id', $task->id)->update([
+                'due_week' => $latest,
+                'updated_at' => now(),
+            ]);
+            $fixed++;
+        }
+
+        return $fixed;
     }
 
     private function isGeneratedTask(object $task): bool
@@ -1076,7 +1119,7 @@ class RpsAssessmentSyncService
         $weekRows = DB::table('rps_weekly_plans')
             ->where('rps_version_id', $versionId)
             ->whereIn('week_number', array_merge(self::TEACHING_WEEKS, [8, 16]))
-            ->get(['week_number', 'assessment_weight'])
+            ->get(['week_number', 'rps_sub_cpmk_id', 'assessment_weight'])
             ->keyBy('week_number');
 
         $mismatchCount = 0;
@@ -1094,6 +1137,18 @@ class RpsAssessmentSyncService
 
             if ($dueWeek < 1 || $dueWeek > 16) {
                 $invalidDueWeekCount++;
+            } else {
+                $latestCoverageWeek = $weekRows
+                    ->filter(fn ($row, $number) =>
+                        in_array((int) $number, self::TEACHING_WEEKS, true)
+                        && filled($row->rps_sub_cpmk_id ?? null)
+                        && $actual->contains((string) $row->rps_sub_cpmk_id)
+                    )
+                    ->keys()->map(fn ($number) => (int) $number)->max();
+
+                if ($latestCoverageWeek && $dueWeek < (int) $latestCoverageWeek) {
+                    $invalidDueWeekCount++;
+                }
             }
 
             if (! filled($task->assessment_id ?? null)) {

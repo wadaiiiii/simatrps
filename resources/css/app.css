@@ -631,3 +631,39 @@ body {
     }
 }
 
+/* Patch: audited RPS/RTM print flow */
+@media print {
+    /* Chrome may postpone the whole weekly table when the first very-tall row
+       must be kept with a repeating table-header-group. Treat the header as a
+       normal row group so the table can begin immediately after MK Prasyarat. */
+    html.rps-print-mode .rps-print-weekly thead {
+        display: table-row-group !important;
+    }
+
+    html.rps-print-mode .rps-print-weekly,
+    html.rps-print-mode .rps-print-weekly tbody,
+    html.rps-print-mode .rps-print-weekly tr,
+    html.rps-print-mode .rps-print-weekly th,
+    html.rps-print-mode .rps-print-weekly td {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+        break-before: auto !important;
+        page-break-before: auto !important;
+        break-after: auto !important;
+        page-break-after: auto !important;
+        orphans: 1 !important;
+        widows: 1 !important;
+    }
+
+    /* The RTM sheet already contains its own official institutional heading.
+       Hide the standalone section title in print so it cannot consume a page. */
+    html.rps-print-mode .rps-print-rtm-heading {
+        display: none !important;
+    }
+
+    html.rps-print-mode .rps-print-rtm-sheet {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+}
+

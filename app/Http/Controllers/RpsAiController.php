@@ -83,7 +83,7 @@ Untuk Telaah Asesmen + RTM, perlakukan ASESMEN sebagai rencana pengukuran agrega
 
 ATURAN CAKUPAN RTM:
 1. Satu RTM BOLEH mengukur tepat satu Sub-CPMK ATAU beberapa Sub-CPMK sekaligus jika tugasnya integratif (proyek, praktikum, presentasi, tugas kasus, atau produk yang memang memerlukan beberapa capaian).
-2. `tasks[*].sub_cpmk_codes` tidak boleh dipaksa sama dengan Sub-CPMK pada pekan pengumpulan. `due_week` hanya menunjukkan jadwal/pengumpulan; cakupan akademik RTM ditentukan oleh kemampuan yang benar-benar diukur tugas tersebut.
+2. `tasks[*].sub_cpmk_codes` tidak boleh dipaksa sama dengan Sub-CPMK pada pekan pengumpulan. `due_week` hanya menunjukkan jadwal/pengumpulan; cakupan akademik RTM ditentukan oleh kemampuan yang benar-benar diukur tugas tersebut. Untuk RTM multi-Sub-CPMK, `due_week` WAJIB berada pada atau setelah PEKAN TERAKHIR di `weekly_plan` yang memuat salah satu Sub-CPMK RTM; jangan mengumpulkan tugas sebelum seluruh capaian yang diukur selesai dipelajari.
 3. Seluruh `sub_cpmk_codes` sebuah RTM harus merupakan bagian dari `sub_cpmk_codes` asesmen induknya. RTM boleh mengukur sebagian atau seluruh cakupan asesmen induk.
 4. Jangan membuat banyak RTM hanya untuk memaksa pola satu RTM = satu Sub-CPMK. Jika satu tugas secara alami mengintegrasikan 2-4 Sub-CPMK, gunakan satu RTM integratif.
 
@@ -107,7 +107,7 @@ PROMPT;
                 [
                     'type' => $data['suggestion_type'],
                     'instruction' => trim((string) ($data['instruction'] ?? '')),
-                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v1' : 'bloom-guard-v2',
+                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v2' : 'bloom-guard-v2',
                     'context' => $context,
                 ],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES

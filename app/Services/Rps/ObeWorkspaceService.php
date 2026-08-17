@@ -368,6 +368,50 @@ class ObeWorkspaceService
         }
         $materialQualityAligned = $duplicateMaterials->isEmpty();
 
+
+        $materialCoverageIssues = collect();
+        foreach ($subCpmks as $sub) {
+            $scores = $materials->map(fn ($material) =>
+                $this->semanticSimilarity((string) $material->title, (string) $sub->description)
+            );
+            $bestScore = $scores->isNotEmpty() ? (float) $scores->max() : 0.0;
+            if ($bestScore < 0.10) {
+                $materialCoverageIssues->push([
+                    'sub_cpmk_id' => (string) $sub->id,
+                    'sub_cpmk_code' => (string) $sub->code,
+                    'best_score' => round($bestScore, 3),
+                ]);
+            }
+        }
+        $materialCoverageAligned = $materialCoverageIssues->isEmpty();
+
+        $conceptAccuracyIssues = collect();
+        foreach ($teachingWeeks as $week) {
+            $number = (int) $week->week_number;
+            $fields = [
+                'assessment_indicator' => (string) ($week->assessment_indicator ?? ''),
+                'learning_activity' => (string) ($week->learning_activity ?? ''),
+                'student_assignment' => (string) ($week->student_assignment ?? ''),
+                'online_activity' => (string) ($week->online_activity ?? ''),
+            ];
+            foreach ($fields as $field => $text) {
+                $normalized = mb_strtolower($text);
+                $mentionsBfsWeighted = str_contains($normalized, 'bfs')
+                    && preg_match('/graf\s+berbobot/u', $normalized) === 1
+                    && preg_match('/jalur\s+terpendek|shortest\s+path/u', $normalized) === 1
+                    && preg_match('/tak\s+berbobot|tidak\s+berbobot|bobot\s+seragam/u', $normalized) !== 1;
+                if ($mentionsBfsWeighted) {
+                    $conceptAccuracyIssues->push([
+                        'week' => $number,
+                        'field' => $field,
+                        'issue' => 'BFS shortest path pada graf berbobot perlu diperiksa; BFS tepat untuk graf tak berbobot/bobot seragam, sedangkan bobot positif umumnya memakai Dijkstra.',
+                    ]);
+                    break;
+                }
+            }
+        }
+        $conceptAccuracyAligned = $conceptAccuracyIssues->isEmpty();
+
         $assessmentLinks = $assessmentIds->isEmpty()
             ? collect()
             : DB::table('assessment_subcpmks')
@@ -604,6 +648,18 @@ class ObeWorkspaceService
                 ],
             ],
             [
+                'key' => 'material_coverage',
+                'label' => 'Cakupan Bahan Kajian',
+                'severity' => 'advisory',
+                'done' => $materialCoverageAligned,
+                'message' => $materialCoverageAligned
+                    ? 'Bahan Kajian memiliki keterkaitan minimum dengan seluruh Sub-CPMK.'
+                    : (($issue = $materialCoverageIssues->first())
+                        ? $issue['sub_cpmk_code'].' belum memiliki Bahan Kajian yang cukup dekat. Telaah/tambah Bahan Kajian sebelum menyusun pekan terkait.'
+                        : 'Ada Sub-CPMK yang belum ditopang Bahan Kajian.'),
+                'details' => ['issues' => $materialCoverageIssues->all()],
+            ],
+            [
                 'key' => 'weekly_material_semantics',
                 'label' => 'Kesesuaian Materi per Pekan',
                 'severity' => 'advisory',
@@ -619,6 +675,18 @@ class ObeWorkspaceService
                     'issues' => $weeklyMaterialIssues->all(),
                     'confirmed_count' => $confirmedWeeklyMaterialCount,
                 ],
+            ],
+            [
+                'key' => 'concept_accuracy',
+                'label' => 'Ketepatan Konsep Pekanan',
+                'severity' => 'advisory',
+                'done' => $conceptAccuracyAligned,
+                'message' => $conceptAccuracyAligned
+                    ? 'Tidak ditemukan risiko konsep yang dikenali rule-engine.'
+                    : (($issue = $conceptAccuracyIssues->first())
+                        ? 'Pekan '.$issue['week'].': '.$issue['issue']
+                        : 'Ada konsep pekanan yang perlu diperiksa.'),
+                'details' => ['issues' => $conceptAccuracyIssues->all()],
             ],
             [
                 'key' => 'weeks',
