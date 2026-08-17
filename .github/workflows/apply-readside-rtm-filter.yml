@@ -1,0 +1,38 @@
+name: Apply read-side RTM consistency patch
+
+on:
+  push:
+    paths:
+      - '.github/scripts/patch-readside-rtm-filter.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply patch
+        run: python .github/scripts/patch-readside-rtm-filter.py
+      - name: Validate PHP syntax
+        run: php -l app/Http/Controllers/RpsController.php
+      - name: Frontend build
+        env:
+          VERCEL: '1'
+        run: |
+          npm ci
+          npm run build
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/Http/Controllers/RpsController.php
+          git rm .github/scripts/patch-readside-rtm-filter.py .github/workflows/apply-readside-rtm-filter.yml
+          git commit -m 'Filter stale generated RTM from RPS views'
+          git push
