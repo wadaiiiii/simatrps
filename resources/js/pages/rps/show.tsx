@@ -92,6 +92,13 @@ function safeList(value: any): any[] {
     return Array.isArray(value) ? value : [];
 }
 
+function hasMeaningfulOnlineActivity(value: any): boolean {
+    const text = String(value ?? '').trim();
+    if (!text) return false;
+
+    return !/^(?:-|—|tidak ada|tidak tersedia|n\/?a|none)$/iu.test(text);
+}
+
 function stripMaterialListPrefix(value: any) {
     return String(value ?? '')
         .replace(/^\s*(?:(?:[a-z]|\d{1,2})[.)]\s*)+/iu, '')
@@ -4158,7 +4165,9 @@ function DocumentWeekRow({
                 <div className="font-bold">Tugas mandiri / terstruktur</div>
                 <div>{normalizeAcademicTerm(week.student_assignment) || '-'}</div>
                 <div>{formatStructuredTime(week, c)}</div>
-                <div className="mt-2">{normalizeAcademicTerm(week.online_activity) || '-'}</div>
+                {hasMeaningfulOnlineActivity(week.online_activity) && (
+                    <div className="mt-2">{normalizeAcademicTerm(week.online_activity)}</div>
+                )}
             </td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div>{week.material_text || '-'}</div>
@@ -5035,7 +5044,9 @@ function InlineWeekRow({
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div><strong>Penugasan:</strong> {week.student_assignment || '-'}</div>
                     <div className="mt-1 text-sky-700">{formatStructuredTime(week, c)}</div>
-                    <div className="mt-2"><strong>Daring/LMS:</strong> {week.online_activity || '-'}</div>
+                    {hasMeaningfulOnlineActivity(week.online_activity) && (
+                        <div className="mt-2"><strong>Daring/LMS:</strong> {week.online_activity}</div>
+                    )}
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div>{week.material_text || '-'}</div>
