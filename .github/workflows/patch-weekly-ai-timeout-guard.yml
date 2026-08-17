@@ -1,0 +1,44 @@
+name: Patch Weekly AI Timeout Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-weekly-ai-timeout-guard.py'
+      - '.github/workflows/patch-weekly-ai-timeout-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Apply patch
+        run: python3 .github/scripts/patch-weekly-ai-timeout-guard.py
+      - name: PHP syntax check
+        run: |
+          php -l app/Services/Rps/AiRpsProviderService.php
+          php -l app/Http/Controllers/RpsAiController.php
+      - name: Verify timeout guard
+        run: |
+          grep -q "generateAcrossProviders(callable \\$callback, ?int \\$maxAttempts = null)" app/Services/Rps/AiRpsProviderService.php
+          grep -q "Percobaan per request dibatasi" app/Services/Rps/AiRpsProviderService.php
+          grep -q "scannableLearningActivity" app/Http/Controllers/RpsAiController.php
+          git diff --check
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/Rps/AiRpsProviderService.php app/Http/Controllers/RpsAiController.php
+          git commit -m "Prevent weekly AI requests from timing out"
+          git push origin main
