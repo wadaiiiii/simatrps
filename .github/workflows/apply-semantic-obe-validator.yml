@@ -1,0 +1,36 @@
+name: Apply semantic OBE validator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch_semantic_obe_validator.py'
+      - '.github/workflows/apply-semantic-obe-validator.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python .github/scripts/patch_semantic_obe_validator.py
+      - name: Validate PHP syntax
+        run: php -l app/Services/Rps/ObeWorkspaceService.php
+      - name: Validate frontend markers
+        run: |
+          grep -q "bloom_hierarchy" resources/js/pages/rps/show.tsx
+          grep -q "assessment_semantics" resources/js/pages/rps/show.tsx
+          grep -q "rtm_semantics" resources/js/pages/rps/show.tsx
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/scripts/patch_semantic_obe_validator.py .github/workflows/apply-semantic-obe-validator.yml
+          git add -A
+          git commit -m "Add academic semantic checks to OBE validator"
+          git push
