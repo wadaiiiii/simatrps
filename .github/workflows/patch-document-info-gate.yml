@@ -1,0 +1,375 @@
+name: Patch Document Information Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-document-info-gate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply document information gate
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'Missing marker: {label}')
+              return text.replace(old, new, 1)
+
+          required_php = """[
+              'course_cluster',
+              'prepared_date',
+              'published_date',
+              'developer_name',
+              'coordinator_name',
+              'head_program_name',
+              'lecturer_names',
+              'software_media',
+              'hardware_media',
+              'prerequisite_text',
+              'description_short',
+          ]"""
+
+          # RpsController: expose documentInfoReady from actually saved metadata.
+          p = Path('app/Http/Controllers/RpsController.php')
+          s = p.read_text()
+          marker = """        ];
+
+        $masterSyllabus = [
+"""
+          insertion = f"""        ];
+
+        $documentInfoRequiredFields = {required_php};
+        $documentInfoReady = $storedMeta !== null
+            && collect($documentInfoRequiredFields)->every(
+                fn (string $field) => filled($storedMeta->{{$field}} ?? null)
+            );
+
+        $masterSyllabus = [
+"""
+          s = replace_once(s, marker, insertion, 'RpsController document info readiness')
+          s = replace_once(
+              s,
+              """            'documentMeta' => $documentMeta,
+            'masterSyllabus' => $masterSyllabus,
+""",
+              """            'documentMeta' => $documentMeta,
+            'documentInfoReady' => $documentInfoReady,
+            'masterSyllabus' => $masterSyllabus,
+""",
+              'RpsController documentInfoReady prop',
+          )
+          p.write_text(s)
+
+          # RpsDocumentController: core information must be complete when saved.
+          p = Path('app/Http/Controllers/RpsDocumentController.php')
+          s = p.read_text()
+          replacements = {
+              "'course_cluster' => ['nullable', 'string', 'max:255']": "'course_cluster' => ['required', 'string', 'max:255']",
+              "'prepared_date' => ['nullable', 'date']": "'prepared_date' => ['required', 'date']",
+              "'published_date' => ['nullable', 'date']": "'published_date' => ['required', 'date']",
+              "'developer_name' => ['nullable', 'string', 'max:500']": "'developer_name' => ['required', 'string', 'max:500']",
+              "'coordinator_name' => ['nullable', 'string', 'max:500']": "'coordinator_name' => ['required', 'string', 'max:500']",
+              "'head_program_name' => ['nullable', 'string', 'max:500']": "'head_program_name' => ['required', 'string', 'max:500']",
+              "'lecturer_names' => ['nullable', 'string', 'max:4000']": "'lecturer_names' => ['required', 'string', 'max:4000']",
+              "'software_media' => ['nullable', 'string', 'max:4000']": "'software_media' => ['required', 'string', 'max:4000']",
+              "'hardware_media' => ['nullable', 'string', 'max:4000']": "'hardware_media' => ['required', 'string', 'max:4000']",
+              "'prerequisite_text' => ['nullable', 'string', 'max:4000']": "'prerequisite_text' => ['required', 'string', 'max:4000']",
+              "'description_short' => ['nullable', 'string', 'max:8000']": "'description_short' => ['required', 'string', 'max:8000']",
+          }
+          for old, new in replacements.items():
+              s = replace_once(s, old, new, f'document validation {old}')
+          p.write_text(s)
+
+          helper = f"""    private function assertDocumentInfoReady(string $versionId): void
+    {{
+        $meta = DB::table('rps_document_meta')
+            ->where('rps_version_id', $versionId)
+            ->first();
+
+        $required = {required_php};
+        $missing = collect($required)
+            ->filter(fn (string $field) => ! filled($meta->{{$field}} ?? null))
+            ->values();
+
+        if (! $meta || $missing->isNotEmpty()) {{
+            throw ValidationException::withMessages([
+                'document_info' => 'Lengkapi dan simpan Edit Informasi RPS terlebih dahulu sebelum mengatur Scope CPL atau menyusun CPMK.',
+            ]);
+        }}
+    }}
+
+"""
+
+          # ObeWorkspaceController: hard gate Scope/CPMK writes.
+          p = Path('app/Http/Controllers/ObeWorkspaceController.php')
+          s = p.read_text()
+          for method_marker in [
+              "public function storeCpmk(Request $request, string $rps): RedirectResponse",
+              "public function importCurriculumCpmks(Request $request, string $rps): RedirectResponse",
+              "public function saveCpmkCpl(Request $request, string $rps): RedirectResponse",
+          ]:
+              start = s.find(method_marker)
+              if start < 0:
+                  raise SystemExit(f'Missing method {method_marker}')
+              ctx_end = s.find("\n", s.find("$this->context($request, $rps);", start))
+              if ctx_end < 0:
+                  raise SystemExit(f'Missing context in {method_marker}')
+              ctx_end += 1
+              if 'assertDocumentInfoReady' not in s[ctx_end:ctx_end+120]:
+                  s = s[:ctx_end] + "        $this->assertDocumentInfoReady($version->id);\n" + s[ctx_end:]
+          helper_marker = "    private function assertMeetingAllocationConfigured(string $versionId): void\n"
+          if helper_marker not in s:
+              raise SystemExit('Missing OBE meeting helper marker')
+          s = s.replace(helper_marker, helper + helper_marker, 1)
+          p.write_text(s)
+
+          # CPL scope controller: hard gate add/remove scope.
+          p = Path('app/Http/Controllers/RpsCplScopeController.php')
+          s = p.read_text()
+          for method_marker in [
+              "public function store(Request $request, string $rps): RedirectResponse",
+              "public function destroy(",
+          ]:
+              start = s.find(method_marker)
+              if start < 0:
+                  raise SystemExit(f'Missing CPL method {method_marker}')
+              ctxpos = s.find("$this->context($request, $rps);", start)
+              if ctxpos < 0:
+                  raise SystemExit(f'Missing CPL context in {method_marker}')
+              ctx_end = s.find('\n', ctxpos) + 1
+              if 'assertDocumentInfoReady' not in s[ctx_end:ctx_end+120]:
+                  s = s[:ctx_end] + "        $this->assertDocumentInfoReady($version->id);\n" + s[ctx_end:]
+          context_marker = "    private function context(Request $request, string $rps): array\n"
+          if context_marker not in s:
+              raise SystemExit('Missing CPL context helper')
+          s = s.replace(context_marker, helper + context_marker, 1)
+          p.write_text(s)
+
+          # AI controller: hard gate CPMK-related AI generation/apply.
+          p = Path('app/Http/Controllers/RpsAiController.php')
+          s = p.read_text()
+          weekly_gate = """        if ($data['suggestion_type'] === 'weekly_plan') {
+            $this->assertMeetingAllocationConfigured($version->id);
+        }
+"""
+          ai_gate = """        if (in_array($data['suggestion_type'], ['cpmk_review', 'bloom_mapping', 'cpl_mapping'], true)) {
+            $this->assertDocumentInfoReady($version->id);
+        }
+
+""" + weekly_gate
+          s = replace_once(s, weekly_gate, ai_gate, 'AI generate document gate')
+          apply_gate = """        if ($row->suggestion_type === 'weekly_plan') {
+            $this->assertMeetingAllocationConfigured($version->id);
+        }
+"""
+          apply_new = """        if (in_array($row->suggestion_type, ['cpmk_review', 'bloom_mapping', 'cpl_mapping'], true)) {
+            $this->assertDocumentInfoReady($version->id);
+        }
+
+""" + apply_gate
+          s = replace_once(s, apply_gate, apply_new, 'AI apply document gate')
+          helper_marker = "    private function assertMeetingAllocationConfigured(string $versionId): void\n"
+          if helper_marker not in s:
+              raise SystemExit('Missing AI meeting helper marker')
+          s = s.replace(helper_marker, helper + helper_marker, 1)
+          p.write_text(s)
+
+          # React UI.
+          p = Path('resources/js/pages/rps/show.tsx')
+          s = p.read_text()
+          s = replace_once(
+              s,
+              """        documentMeta = {},
+        masterSyllabus = { description: '', reference_text: '', supporting_reference_text: '', prerequisite_text: '' },
+""",
+              """        documentMeta = {},
+        documentInfoReady = false,
+        masterSyllabus = { description: '', reference_text: '', supporting_reference_text: '', prerequisite_text: '' },
+""",
+              'UI documentInfoReady prop',
+          )
+          s = replace_once(
+              s,
+              """                    meta={documentMeta}
+                    master={masterSyllabus}
+                    aiInstruction={aiInstruction}
+""",
+              """                    meta={documentMeta}
+                    ready={documentInfoReady}
+                    master={masterSyllabus}
+                    aiInstruction={aiInstruction}
+""",
+              'Meta editor ready prop',
+          )
+          s = replace_once(
+              s,
+              "function DocumentMetaEditor({ rpsId, meta, master, aiInstruction }: any)",
+              "function DocumentMetaEditor({ rpsId, meta, ready, master, aiInstruction }: any)",
+              'Meta editor signature',
+          )
+          old_meta_class = 'className="inline-flex items-center gap-2 rounded-xl border border-teal-700 bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-teal-700"'
+          new_meta_class = "className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold text-white shadow-sm transition ${ready ? 'border-teal-700 bg-teal-600 hover:bg-teal-700' : 'border-amber-600 bg-amber-600 hover:bg-amber-700 ring-2 ring-amber-200'}` } title={ready ? 'Informasi RPS sudah lengkap' : 'Wajib dilengkapi sebelum Scope CPL dan CPMK dapat diatur'}"
+          s = replace_once(s, old_meta_class, new_meta_class, 'Meta button ready style')
+
+          # Scope editor disabled until info ready.
+          s = replace_once(
+              s,
+              """                                            officialCplIds={officialCplIds}
+                                            additionalCplIds={additionalCplIds}
+""",
+              """                                            officialCplIds={officialCplIds}
+                                            additionalCplIds={additionalCplIds}
+                                            disabled={!documentInfoReady}
+""",
+              'Scope editor disabled prop',
+          )
+          s = replace_once(
+              s,
+              """    officialCplIds,
+    additionalCplIds,
+}: any) {
+    return (
+""",
+              """    officialCplIds,
+    additionalCplIds,
+    disabled = false,
+}: any) {
+    if (disabled) {
+        return (
+            <span
+                className="cursor-not-allowed text-[10px] font-bold text-slate-300"
+                title="Lengkapi dan simpan Edit Informasi RPS terlebih dahulu."
+            >
+                Atur Scope CPL RPS
+            </span>
+        );
+    }
+
+    return (
+""",
+              'Scope editor disabled state',
+          )
+
+          # CPMK add/import disabled state.
+          s = replace_once(s, '<DocumentCpmkAdd rpsId={rps.id} />', '<DocumentCpmkAdd rpsId={rps.id} disabled={!documentInfoReady} />', 'CPMK add disabled prop')
+          s = replace_once(s, 'function DocumentCpmkAdd({ rpsId }: any)', 'function DocumentCpmkAdd({ rpsId, disabled = false }: any)', 'CPMK add signature')
+          form_marker = """    const form = useForm({
+        description: '',
+        bloom_level: '',
+    });
+
+    if (!open) {
+"""
+          form_new = """    const form = useForm({
+        description: '',
+        bloom_level: '',
+    });
+
+    if (disabled) {
+        return (
+            <div className="flex flex-wrap items-center gap-1.5">
+                <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-300" title="Lengkapi Edit Informasi RPS terlebih dahulu.">
+                    <RotateCcw className="size-3" /> Ambil CPMK Kurikulum
+                </button>
+                <button type="button" disabled className="inline-flex cursor-not-allowed items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-300" title="Lengkapi Edit Informasi RPS terlebih dahulu.">
+                    <Plus className="size-3" /> Tambah CPMK
+                </button>
+            </div>
+        );
+    }
+
+    if (!open) {
+"""
+          s = replace_once(s, form_marker, form_new, 'CPMK disabled early return')
+
+          # Gate three CPMK AI buttons by label.
+          for label in ['Telaah CPMK AI', 'Pemetaan Bloom AI', 'Pemetaan CPMK → CPL AI']:
+              idx = s.find(f'label="{label}"')
+              if idx < 0:
+                  raise SystemExit(f'Missing AI label {label}')
+              didx = s.find('disabled={', idx, idx + 600)
+              dend = s.find('}', didx) + 1
+              current = s[didx:dend]
+              if 'documentInfoReady' not in current:
+                  inner = current[len('disabled={'):-1]
+                  replacement = f'disabled={{!documentInfoReady || {inner}}}'
+                  s = s[:didx] + replacement + s[dend:]
+
+          # Meeting label.
+          s = s.replace('1. Atur Pertemuan', 'Atur Pertemuan')
+
+          # Global clear becomes icon-only and explains whole-week deletion.
+          s = replace_once(
+              s,
+              "if (!confirm('Kosongkan isi akademik 14 pekan pembelajaran? Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;",
+              "if (!confirm('Hapus isi seluruh 14 pekan pembelajaran? Isi akademik semua pekan akan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;",
+              'Global clear confirmation',
+          )
+          s = replace_once(
+              s,
+              "actionOptions('Isi pekanan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),",
+              "actionOptions('Isi seluruh pekan berhasil dihapus. Data teknis, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),",
+              'Global clear notice',
+          )
+          s = replace_once(
+              s,
+              'className="rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"',
+              'className="inline-flex size-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"',
+              'Global clear icon class',
+          )
+          s = replace_once(
+              s,
+              "title={meetingPlanReady ? 'Kosongkan isi akademik tanpa mereset tatap muka, belajar mandiri, tugas mandiri/terstruktur, atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}",
+              "title={meetingPlanReady ? 'Hapus isi seluruh pekan tanpa mereset data teknis atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}",
+              'Global clear title',
+          )
+          s = replace_once(
+              s,
+              ">\n                                Kosongkan Isi\n                            </button>",
+              ">\n                                <Trash2 className=\"size-3.5\" />\n                            </button>",
+              'Global clear icon only',
+          )
+
+          p.write_text(s)
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Http/Controllers/RpsDocumentController.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+          php -l app/Http/Controllers/RpsCplScopeController.php
+          php -l app/Http/Controllers/RpsAiController.php
+          grep -q "documentInfoReady" app/Http/Controllers/RpsController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/ObeWorkspaceController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsCplScopeController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsAiController.php
+          grep -q "documentInfoReady" resources/js/pages/rps/show.tsx
+          grep -q "Atur Pertemuan" resources/js/pages/rps/show.tsx
+          ! grep -q ">1. Atur Pertemuan<" resources/js/pages/rps/show.tsx
+          grep -q "Hapus isi seluruh 14 pekan" resources/js/pages/rps/show.tsx
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-document-info-gate.yml
+          git add app/Http/Controllers/RpsController.php app/Http/Controllers/RpsDocumentController.php app/Http/Controllers/ObeWorkspaceController.php app/Http/Controllers/RpsCplScopeController.php app/Http/Controllers/RpsAiController.php resources/js/pages/rps/show.tsx
+          git commit -m "Require RPS information before CPL and CPMK authoring"
+          git push origin HEAD:main
