@@ -936,7 +936,12 @@ export default function RpsShow(props: any) {
 
                     {/* Weekly toolbar */}
                     <div id="validator-target-weeks" className="scroll-mt-24 flex flex-wrap items-center justify-between gap-2 border-x border-t border-slate-300 bg-slate-50 px-3 py-2 print:hidden">
-                        <div className="text-xs font-bold text-slate-600">Rencana Pembelajaran Semester</div>
+                        <div>
+                            <div className="text-xs font-bold text-slate-600">Rencana Pembelajaran Semester</div>
+                            <div className="mt-0.5 text-[10px] text-slate-400">
+                                Mulai dengan Atur Pertemuan, lalu lengkapi isi RPS pekanan.
+                            </div>
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                             <button
                                 type="button"
@@ -944,7 +949,7 @@ export default function RpsShow(props: any) {
                                 className="rounded-lg border border-emerald-600 bg-emerald-600 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-sm hover:bg-emerald-700"
                                 title="Tetapkan jumlah pertemuan untuk setiap Sub-CPMK"
                             >
-                                Atur Pertemuan
+                                1. Atur Pertemuan
                             </button>
                             <button
                                 type="button"
@@ -956,7 +961,7 @@ export default function RpsShow(props: any) {
                                 )}
                                 className="rounded-lg bg-teal-700 px-2.5 py-1.5 text-[11px] font-bold text-white"
                             >
-                                Isi Bagian Kosong
+                                2. Isi Bagian Kosong
                             </button>
                         </div>
                     </div>
@@ -3650,7 +3655,7 @@ function SubCpmkMeetingPlanner({ rpsId, subCpmks, weeks, onClose }: any) {
                                 <tr>
                                     <th className="border-b border-slate-200 px-3 py-2 text-left">Sub-CPMK</th>
                                     <th className="border-b border-slate-200 px-3 py-2 text-left">Rumusan</th>
-                                    <th className="w-36 border-b border-slate-200 px-3 py-2 text-center">Pertemuan</th>
+                                    <th className="w-36 border-b border-slate-200 px-3 py-2 text-center">Banyak Pertemuan</th>
                                 </tr>
                             </thead>
                             <tbody>
