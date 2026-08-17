@@ -21,9 +21,10 @@ jobs:
 
       - name: Validate frontend markers
         run: |
-          grep -q "Total tersimpan:" resources/js/pages/rps/show.tsx
+          grep -q "assessmentTotal={progress.assessment_weight_total}" resources/js/pages/rps/show.tsx
           grep -q "Jika disimpan: {projectedAssessmentTotal}%" resources/js/pages/rps/show.tsx
           grep -q "weightWouldIncreaseOverLimit" resources/js/pages/rps/show.tsx
+          grep -q "Total tersimpan {storedAssessmentTotal}%" resources/js/pages/rps/show.tsx
 
       - name: Commit implementation and cleanup
         run: |
