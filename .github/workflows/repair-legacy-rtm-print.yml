@@ -1,3 +1,4 @@
+# rerun: patch script is now present on main
 name: Repair Legacy RTM and RPS Print
 
 on:
