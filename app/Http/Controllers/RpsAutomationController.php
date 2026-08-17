@@ -216,11 +216,17 @@ class RpsAutomationController extends Controller
                 'assessment_indicator' => null,
                 'assessment_criteria' => null,
                 'assessment_method' => null,
+                'learning_form' => null,
                 'learning_method' => null,
+                'face_to_face_sessions' => 0,
                 'learning_activity' => null,
+                'independent_study_sessions' => 0,
+                'student_assignment' => null,
+                'structured_task_sessions' => 0,
                 'online_activity' => null,
                 'material_text' => null,
                 'reference_text' => null,
+                'time_estimate' => null,
                 // Tetap anggap struktur pekan berasal dari alokasi pertemuan,
                 // sehingga Isi Bagian Kosong dapat menyusun ulang dari awal.
                 'source_type' => 'manual_allocation_auto',
@@ -229,7 +235,7 @@ class RpsAutomationController extends Controller
 
         return back()->with(
             'success',
-            "Isi {$updated} pekan pembelajaran dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan."
+            "Isi {$updated} pekan pembelajaran dikosongkan, termasuk Tatap Muka/Luring, Belajar Mandiri, Tugas Mandiri/Terstruktur, dan Daring/LMS. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan."
         );
     }
 

@@ -1011,15 +1011,15 @@ export default function RpsShow(props: any) {
                                 type="button"
                                 disabled={!meetingPlanReady}
                                 onClick={() => {
-                                    if (!confirm('Hapus isi seluruh 14 pekan pembelajaran? Isi akademik semua pekan akan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
+                                    if (!confirm('Hapus isi seluruh 14 pekan pembelajaran? Indikator, kriteria/bentuk, Tatap Muka/Luring, metode, aktivitas kelas, Belajar Mandiri, Tugas Mandiri/Terstruktur, Daring/LMS, materi, dan pustaka akan dikosongkan. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
                                     router.post(
                                         `/rps/${rps.id}/weeks/clear-content`,
                                         {},
-                                        actionOptions('Isi seluruh pekan berhasil dihapus. Data teknis, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
+                                        actionOptions('Isi seluruh pekan berhasil dihapus, termasuk Tatap Muka/Luring dan Daring. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
                                     );
                                 }}
                                 className="inline-flex size-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"
-                                title={meetingPlanReady ? 'Hapus isi seluruh pekan tanpa mereset data teknis atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
+                                title={meetingPlanReady ? 'Hapus isi seluruh pekan termasuk Tatap Muka/Luring dan Daring, tanpa menghapus alokasi Sub-CPMK atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
                                 <Trash2 className="size-3.5" />
                             </button>
@@ -3983,7 +3983,7 @@ function DocumentWeekRow({
     };
 
     const clearWeekFields = () => {
-        if (!confirm(`Kosongkan isi Pekan ${week.week_number}? Tatap muka, belajar mandiri, tugas mandiri/terstruktur, Sub-CPMK, dan bobot penilaian tetap dipertahankan.`)) {
+        if (!confirm(`Kosongkan isi Pekan ${week.week_number}? Tatap Muka/Luring, Belajar Mandiri, Tugas Mandiri/Terstruktur, dan Daring/LMS juga akan dikosongkan. Sub-CPMK dan bobot penilaian tetap dipertahankan.`)) {
             return;
         }
 
@@ -3992,22 +3992,22 @@ function DocumentWeekRow({
             assessment_indicator: '',
             assessment_criteria: '',
             assessment_method: '',
-            learning_form: form.data.learning_form,
+            learning_form: '',
             learning_method: '',
-            face_to_face_sessions: form.data.face_to_face_sessions,
+            face_to_face_sessions: 0,
             learning_activity: '',
-            independent_study_sessions: form.data.independent_study_sessions,
-            student_assignment: form.data.student_assignment,
-            structured_task_sessions: form.data.structured_task_sessions,
+            independent_study_sessions: 0,
+            student_assignment: '',
+            structured_task_sessions: 0,
             online_activity: '',
             material_text: '',
             reference_text: '',
-            time_estimate: form.data.time_estimate,
+            time_estimate: '',
         });
 
         notify(
             'info',
-            `Isi akademik Pekan ${week.week_number} dikosongkan di editor. Data tatap muka, belajar mandiri, dan tugas mandiri/terstruktur tetap. Klik Simpan untuk menyimpan perubahan.`,
+            `Isi Pekan ${week.week_number} dikosongkan di editor, termasuk Tatap Muka/Luring, Belajar Mandiri, Tugas Mandiri/Terstruktur, dan Daring/LMS. Sub-CPMK dan bobot tetap. Klik Simpan untuk menyimpan perubahan.`,
         );
     };
 
@@ -4149,8 +4149,10 @@ function DocumentWeekRow({
                 <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || '-'}</div>
             </td>
             <td className="border border-slate-300 px-2 py-1.5">
-                <div className="font-bold">{week.learning_form || 'Tatap Muka'}</div>
-                <div>{formatFaceToFaceTime(week, c)}</div>
+                <div className="font-bold">{week.learning_form || '-'}</div>
+                {Number(week.face_to_face_sessions || 0) > 0 && (
+                    <div>{formatFaceToFaceTime(week, c)}</div>
+                )}
                 <div className="mt-2"><strong>Metode:</strong> {normalizeAcademicTerm(week.learning_method) || '-'}</div>
                 {week.learning_activity && (
                     <>
@@ -4158,13 +4160,19 @@ function DocumentWeekRow({
                         <div className="mt-1 whitespace-pre-line">{normalizeAcademicTerm(week.learning_activity)}</div>
                     </>
                 )}
-                <div className="mt-2 font-bold">Belajar Mandiri</div>
-                <div>{formatIndependentTime(week, c)}</div>
+                {Number(week.independent_study_sessions || 0) > 0 && (
+                    <>
+                        <div className="mt-2 font-bold">Belajar Mandiri</div>
+                        <div>{formatIndependentTime(week, c)}</div>
+                    </>
+                )}
             </td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div className="font-bold">Tugas mandiri / terstruktur</div>
                 <div>{normalizeAcademicTerm(week.student_assignment) || '-'}</div>
-                <div>{formatStructuredTime(week, c)}</div>
+                {Number(week.structured_task_sessions || 0) > 0 && (
+                    <div>{formatStructuredTime(week, c)}</div>
+                )}
                 {hasMeaningfulOnlineActivity(week.online_activity) && (
                     <div className="mt-2">{normalizeAcademicTerm(week.online_activity)}</div>
                 )}
@@ -5029,8 +5037,10 @@ function InlineWeekRow({
                     <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || '-'}</div>
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
-                    <div className="font-bold text-slate-800">{week.learning_form || 'Tatap Muka'}</div>
-                    <div className="mt-1">{formatFaceToFaceTime(week, c)}</div>
+                    <div className="font-bold text-slate-800">{week.learning_form || '-'}</div>
+                    {Number(week.face_to_face_sessions || 0) > 0 && (
+                        <div className="mt-1">{formatFaceToFaceTime(week, c)}</div>
+                    )}
                     <div className="mt-2"><strong>Metode:</strong> {week.learning_method || '-'}</div>
                     {week.learning_activity && (
                         <>
@@ -5038,12 +5048,18 @@ function InlineWeekRow({
                             <div className="mt-1 whitespace-pre-line">{week.learning_activity}</div>
                         </>
                     )}
-                    <div className="mt-2"><strong>Belajar Mandiri:</strong></div>
-                    <div className="mt-1 text-sky-700">{formatIndependentTime(week, c)}</div>
+                    {Number(week.independent_study_sessions || 0) > 0 && (
+                        <>
+                            <div className="mt-2"><strong>Belajar Mandiri:</strong></div>
+                            <div className="mt-1 text-sky-700">{formatIndependentTime(week, c)}</div>
+                        </>
+                    )}
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div><strong>Penugasan:</strong> {week.student_assignment || '-'}</div>
-                    <div className="mt-1 text-sky-700">{formatStructuredTime(week, c)}</div>
+                    {Number(week.structured_task_sessions || 0) > 0 && (
+                        <div className="mt-1 text-sky-700">{formatStructuredTime(week, c)}</div>
+                    )}
                     {hasMeaningfulOnlineActivity(week.online_activity) && (
                         <div className="mt-2"><strong>Daring/LMS:</strong> {week.online_activity}</div>
                     )}
