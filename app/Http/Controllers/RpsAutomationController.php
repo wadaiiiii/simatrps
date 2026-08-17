@@ -209,29 +209,37 @@ class RpsAutomationController extends Controller
 
         $teachingWeeks = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
 
-        $updated = DB::table('rps_weekly_plans')
-            ->where('rps_version_id', $version->id)
-            ->whereIn('week_number', $teachingWeeks)
-            ->update([
-                'assessment_indicator' => null,
-                'assessment_criteria' => null,
-                'assessment_method' => null,
-                'learning_form' => null,
-                'learning_method' => null,
-                'face_to_face_sessions' => 0,
-                'learning_activity' => null,
-                'independent_study_sessions' => 0,
-                'student_assignment' => null,
-                'structured_task_sessions' => 0,
-                'online_activity' => null,
-                'material_text' => null,
-                'reference_text' => null,
-                'time_estimate' => null,
-                // Tetap anggap struktur pekan berasal dari alokasi pertemuan,
-                // sehingga Isi Bagian Kosong dapat menyusun ulang dari awal.
-                'source_type' => 'manual_allocation_auto',
-                'updated_at' => now(),
+        try {
+            $updated = DB::table('rps_weekly_plans')
+                ->where('rps_version_id', $version->id)
+                ->whereIn('week_number', $teachingWeeks)
+                ->update([
+                    'assessment_indicator' => null,
+                    'assessment_criteria' => null,
+                    'assessment_method' => null,
+                    'learning_form' => null,
+                    'learning_method' => null,
+                    'face_to_face_sessions' => 0,
+                    'learning_activity' => null,
+                    'independent_study_sessions' => 0,
+                    'student_assignment' => null,
+                    'structured_task_sessions' => 0,
+                    'online_activity' => null,
+                    'material_text' => null,
+                    'reference_text' => null,
+                    'time_estimate' => null,
+                    // Tetap anggap struktur pekan berasal dari alokasi pertemuan,
+                    // sehingga Isi Data Teknis / Susun AI dapat menyusun ulang dari awal.
+                    'source_type' => 'manual_allocation_auto',
+                    'updated_at' => now(),
+                ]);
+        } catch (Throwable $error) {
+            report($error);
+
+            throw ValidationException::withMessages([
+                'weeks' => 'Isi pekanan belum berhasil dikosongkan. Tidak ada data yang sengaja dihapus sebagian. Muat ulang halaman lalu coba kembali.',
             ]);
+        }
 
         return back()->with(
             'success',

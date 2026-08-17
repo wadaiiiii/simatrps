@@ -276,6 +276,34 @@ PROMPT;
         AiRpsProviderService $aiProvider,
         RpsAiContextService $contextService
     ): RedirectResponse {
+        try {
+            return $this->generateWeekInternal(
+                $request,
+                $rps,
+                $week,
+                $aiProvider,
+                $contextService
+            );
+        } catch (ValidationException $error) {
+            throw $error;
+        } catch (\Throwable $error) {
+            report($error);
+
+            throw ValidationException::withMessages([
+                'ai' => 'Susun AI Pekan '.$week.' belum berhasil diproses. '
+                    .'Request dihentikan dengan aman agar tidak menjadi Server Error 500. '
+                    .'Coba sekali lagi; provider yang bermasalah akan dilewati melalui cooldown.',
+            ]);
+        }
+    }
+
+    private function generateWeekInternal(
+        Request $request,
+        string $rps,
+        int $week,
+        AiRpsProviderService $aiProvider,
+        RpsAiContextService $contextService
+    ): RedirectResponse {
         // One week = one AI request. Keep the request below common nginx/Herd
         // gateway timeouts instead of processing 14 weeks sequentially.
         if (function_exists('set_time_limit')) {

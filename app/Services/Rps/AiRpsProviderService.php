@@ -129,18 +129,29 @@ class AiRpsProviderService
             ]);
         }
 
-        // Susun AI per pekan berjalan di Vercel Function dengan maxDuration 60 detik.
-        // Batasi dua provider per request agar fallback serial tidak melewati batas runtime.
-        // Provider yang gagal/rate-limited akan masuk cooldown sehingga percobaan berikutnya
-        // dapat bergerak ke provider sehat berikutnya.
+        // Susun AI per pekan harus selesai jauh sebelum batas Vercel Function.
+        // Satu request hanya mencoba satu provider. Bila provider gagal, provider tersebut
+        // masuk cooldown dan klik berikutnya bergerak ke provider sehat berikutnya.
+        // Timeout HTTP per provider juga diperkecil khusus request pekanan.
+        $this->applyWeeklyTimeoutBudget(14);
+
         return $this->generateAcrossProviders(
             fn ($service) => $service->generateWeeklyBatch(
                 $context,
                 [$week],
                 $instruction
             ),
-            2
+            1
         );
+    }
+
+    private function applyWeeklyTimeoutBudget(int $seconds): void
+    {
+        foreach (['groq', 'mistral', 'sambanova', 'openrouter', 'huggingface', 'cohere'] as $provider) {
+            $key = 'simatrps-ai.'.$provider.'.timeout';
+            $current = (int) config($key, 22);
+            config([$key => max(5, min($current, $seconds))]);
+        }
     }
 
     private function generateWeeklyPlan(array $context, ?string $instruction): array
