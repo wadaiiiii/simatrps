@@ -1,0 +1,34 @@
+name: Apply effective assessment view
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch_effective_assessment_view.py'
+      - '.github/workflows/apply-effective-assessment-view.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python .github/scripts/patch_effective_assessment_view.py
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Services/Rps/ObeWorkspaceService.php
+          php -l app/Services/Rps/RpsAssessmentSyncService.php
+      - name: Commit implementation and cleanup
+        run: |
+          rm .github/scripts/patch_effective_assessment_view.py
+          rm .github/workflows/apply-effective-assessment-view.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Use effective assessment snapshot across RPS views'
+          git push
