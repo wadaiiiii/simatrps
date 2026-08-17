@@ -1,9 +1,9 @@
-name: Patch Weekly Hard Gate
+name: Patch Document Information Gate
 
 on:
   push:
     paths:
-      - '.github/scripts/patch-weekly-hard-gate.py'
+      - '.github/scripts/patch-document-info-gate.py'
       - '.github/workflows/patch-weekly-hard-gate.yml'
   workflow_dispatch:
 
@@ -17,30 +17,33 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Apply patch
-        run: python .github/scripts/patch-weekly-hard-gate.py
+        run: python .github/scripts/patch-document-info-gate.py
+
       - name: Verify PHP and markers
         run: |
-          php -l app/Http/Controllers/RpsAutomationController.php
-          grep -q "meetingPlanReady" resources/js/pages/rps/show.tsx
-          grep -q "Isi Data Teknis" resources/js/pages/rps/show.tsx
-          grep -q "Kosongkan Isi" resources/js/pages/rps/show.tsx
-          ! grep -q "Kosongkan Isi Pekanan" resources/js/pages/rps/show.tsx
-          ! grep -q "Lengkapi Data Teknis" resources/js/pages/rps/show.tsx
-          ! grep -q "Isi Bagian Kosong" resources/js/pages/rps/show.tsx
-          grep -q "face_to_face_sessions: form.data.face_to_face_sessions" resources/js/pages/rps/show.tsx
-          grep -q "independent_study_sessions: form.data.independent_study_sessions" resources/js/pages/rps/show.tsx
-          grep -q "student_assignment: form.data.student_assignment" resources/js/pages/rps/show.tsx
-          grep -q "structured_task_sessions: form.data.structured_task_sessions" resources/js/pages/rps/show.tsx
-          grep -q "time_estimate: form.data.time_estimate" resources/js/pages/rps/show.tsx
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Http/Controllers/RpsDocumentController.php
+          php -l app/Http/Controllers/ObeWorkspaceController.php
+          php -l app/Http/Controllers/RpsCplScopeController.php
+          php -l app/Http/Controllers/RpsAiController.php
+          grep -q "documentInfoReady" app/Http/Controllers/RpsController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/ObeWorkspaceController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsCplScopeController.php
+          grep -q "assertDocumentInfoReady" app/Http/Controllers/RpsAiController.php
+          grep -q "documentInfoReady" resources/js/pages/rps/show.tsx
+          grep -q "Hapus isi seluruh 14 pekan" resources/js/pages/rps/show.tsx
+          grep -q "<Trash2 className=\"size-3.5\" />" resources/js/pages/rps/show.tsx
+
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/Http/Controllers/RpsAutomationController.php resources/js/pages/rps/show.tsx
+          git add app/Http/Controllers/RpsController.php app/Http/Controllers/RpsDocumentController.php app/Http/Controllers/ObeWorkspaceController.php app/Http/Controllers/RpsCplScopeController.php app/Http/Controllers/RpsAiController.php resources/js/pages/rps/show.tsx
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Preserve weekly technical workload when clearing content"
-            git push
+            git commit -m "Require RPS information before CPL and CPMK authoring"
+            git push origin HEAD:main
           fi
