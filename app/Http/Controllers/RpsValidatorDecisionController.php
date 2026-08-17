@@ -28,37 +28,66 @@ class RpsValidatorDecisionController extends Controller
 
         $validated = $request->validate([
             'check_key' => ['required', Rule::in(['assessment_semantics', 'rtm_semantics'])],
-            'subject_key' => ['required', 'string', 'max:500'],
+            'subject_key' => ['nullable', 'string', 'max:500', 'required_without:subject_keys'],
+            'subject_keys' => ['nullable', 'array', 'max:100', 'required_without:subject_key'],
+            'subject_keys.*' => ['required', 'string', 'max:500'],
         ]);
 
-        $key = [
-            'rps_version_id' => $version->id,
-            'check_key' => $validated['check_key'],
-            'subject_key' => $validated['subject_key'],
-        ];
+        $subjectKeys = collect($validated['subject_keys'] ?? [])
+            ->push($validated['subject_key'] ?? null)
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values();
 
-        $existing = DB::table('rps_validator_decisions')->where($key)->first();
-
-        if ($existing) {
-            DB::table('rps_validator_decisions')
-                ->where('id', $existing->id)
-                ->update([
-                    'decision' => 'keep',
-                    'decided_by' => $request->user()->id,
-                    'updated_at' => now(),
-                ]);
-        } else {
-            DB::table('rps_validator_decisions')->insert([
-                'id' => (string) Str::uuid(),
-                ...$key,
-                'decision' => 'keep',
-                'decided_by' => $request->user()->id,
-                'created_at' => now(),
-                'updated_at' => now(),
+        if ($subjectKeys->isEmpty()) {
+            return back()->withErrors([
+                'subject_key' => 'Tidak ada rekomendasi validator yang dipilih untuk dipertahankan.',
             ]);
         }
 
-        return back()->with('success', 'Keputusan dosen disimpan. Rekomendasi ini tidak lagi dianggap sebagai masalah.');
+        DB::transaction(function () use ($subjectKeys, $validated, $version, $request): void {
+            foreach ($subjectKeys as $subjectKey) {
+                $key = [
+                    'rps_version_id' => $version->id,
+                    'check_key' => $validated['check_key'],
+                    'subject_key' => $subjectKey,
+                ];
+
+                $existing = DB::table('rps_validator_decisions')->where($key)->first();
+
+                if ($existing) {
+                    DB::table('rps_validator_decisions')
+                        ->where('id', $existing->id)
+                        ->update([
+                            'decision' => 'keep',
+                            'decided_by' => $request->user()->id,
+                            'updated_at' => now(),
+                        ]);
+
+                    continue;
+                }
+
+                DB::table('rps_validator_decisions')->insert([
+                    'id' => (string) Str::uuid(),
+                    ...$key,
+                    'decision' => 'keep',
+                    'decided_by' => $request->user()->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $count = $subjectKeys->count();
+
+        return back()->with(
+            'success',
+            $count === 1
+                ? 'Keputusan dosen disimpan. Rekomendasi ini tidak lagi dianggap sebagai masalah.'
+                : $count.' keputusan dosen disimpan sekaligus. Rekomendasi tersebut tidak lagi dianggap sebagai masalah.'
+        );
     }
 
     private function ensureDecisionTable(): void
