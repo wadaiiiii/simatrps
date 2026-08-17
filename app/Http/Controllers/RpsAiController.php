@@ -342,6 +342,16 @@ JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian
 Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
 Pastikan `assessment_criteria` menilai kualitas bukti tersebut dan `assessment_method` konsisten dengan asesmen yang tersedia.
 Materi pekan WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
+
+FORMAT SCANNABLE METODE DAN AKTIVITAS PEMBELAJARAN:
+- `learning_method` hanya berisi nama metode/model pembelajaran yang ringkas, misalnya "Problem-Based Learning", "Case Method", "Project-Based Learning", "Small Group Discussion", atau kombinasi singkat yang benar-benar relevan. Jangan menulis uraian aktivitas di field ini.
+- `learning_activity` WAJIB berupa 3-5 fase aktivitas kelas dalam daftar bernomor, SATU aktivitas per baris. Gunakan frasa ringkas sekitar 4-12 kata per poin, bukan paragraf atau kalimat naratif panjang.
+- Gunakan pola: kata/frasa aktivitas + objek belajar yang konkret. Hindari pembuka berulang "Dosen..." atau "Mahasiswa..." dan hindari penjelasan prosedural panjang.
+- Contoh format yang diutamakan:
+  1. Penjelasan konsep quicksort dan mergesort.
+  2. Diskusi kelompok komparasi algoritma.
+  3. Latihan implementasi kode di IDE.
+- Setiap fase harus selaras dengan `target_sub_cpmk`, materi pekan, level Bloom, dan `learning_method`. Jangan mengarang perangkat lunak tertentu bila tidak tersedia pada konteks.
 PROMPT;
 
         $effectiveInstruction = filled($data['instruction'] ?? null)
@@ -410,7 +420,7 @@ PROMPT;
             'online_activity' => $item['online_activity'] ?? null,
             // learning_activity adalah rincian aktivitas dalam Metode Pembelajaran.
             // Belajar Mandiri hanya disimpan sebagai frekuensi/waktu.
-            'learning_activity' => $item['learning_activity'] ?? null,
+            'learning_activity' => $this->formatScannableLearningActivity((string) ($item['learning_activity'] ?? '')),
             'independent_study_sessions' => max(1, (int) ($weekly->independent_study_sessions ?? 1)),
             'assessment_indicator' => $item['assessment_indicator'] ?? null,
             'assessment_criteria' => $item['assessment_criteria'] ?? null,
@@ -500,6 +510,64 @@ PROMPT;
                 .' pekan '.$week.' menggunakan '
                 .strtoupper((string) ($result['provider'] ?? 'AI')).'.'
         );
+    }
+
+
+    private function formatScannableLearningActivity(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace(
+            '/^\s*(?:fase[-\s]*fase\s+aktivitas\s+pembelajaran|aktivitas\s+kelas)\s*:?\s*/iu',
+            '',
+            $value
+        ) ?? $value;
+        $value = str_replace(["\r\n", "\r"], "\n", $value);
+        $value = preg_replace('/\s+(?=\d{1,2}[.)]\s+)/u', "\n", $value) ?? $value;
+
+        $parts = preg_split(
+            '/(?:^|\n)\s*(?:\d{1,2}[.)]|[-•])\s*/u',
+            "\n".$value,
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        ) ?: [];
+
+        if (count($parts) < 2) {
+            $parts = preg_split('/(?<=[.!?])\s+(?=[\p{Lu}\d])/u', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [$value];
+        }
+
+        $items = collect($parts)
+            ->map(function ($part) {
+                $item = trim(strip_tags((string) $part));
+                $item = preg_replace('/\s+/u', ' ', $item) ?? $item;
+                $item = preg_replace('/^(?:dosen|mahasiswa)\s+/iu', '', $item) ?? $item;
+                $item = trim($item, " \t\n\r\0\x0B-•;.");
+
+                // Bila provider masih membuat kalimat sangat panjang, pertahankan
+                // inti aktivitas agar tabel RPS tetap mudah dipindai.
+                $clauses = preg_split('/\s*;\s*/u', $item, 2);
+                $item = trim((string) ($clauses[0] ?? $item));
+                if (str_word_count($item, 0, 'À-ÿ') > 16) {
+                    $item = Str::words($item, 16, '');
+                }
+
+                return trim($item);
+            })
+            ->filter()
+            ->unique(fn ($item) => mb_strtolower($item))
+            ->take(5)
+            ->values();
+
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        return $items
+            ->map(fn ($item, $index) => ($index + 1).'. '.rtrim($item, '.').'.')
+            ->implode("\n");
     }
 
     public function apply(Request $request, string $rps, string $suggestion): RedirectResponse

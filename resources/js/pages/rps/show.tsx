@@ -4144,10 +4144,12 @@ function DocumentWeekRow({
             <td className="border border-slate-300 px-2 py-1.5">
                 <div className="font-bold">{week.learning_form || 'Tatap Muka'}</div>
                 <div>{formatFaceToFaceTime(week, c)}</div>
-                <div className="mt-2"><strong>Metode Pembelajaran</strong></div>
-                <div>{normalizeAcademicTerm(week.learning_method) || '-'}</div>
+                <div className="mt-2"><strong>Metode:</strong> {normalizeAcademicTerm(week.learning_method) || '-'}</div>
                 {week.learning_activity && (
-                    <div className="mt-1">{normalizeAcademicTerm(week.learning_activity)}</div>
+                    <>
+                        <div className="mt-2 font-bold">Aktivitas Kelas:</div>
+                        <div className="mt-1 whitespace-pre-line">{normalizeAcademicTerm(week.learning_activity)}</div>
+                    </>
                 )}
                 <div className="mt-2 font-bold">Belajar Mandiri</div>
                 <div>{formatIndependentTime(week, c)}</div>
@@ -5021,7 +5023,13 @@ function InlineWeekRow({
                     <div className="font-bold text-slate-800">{week.learning_form || 'Tatap Muka'}</div>
                     <div className="mt-1">{formatFaceToFaceTime(week, c)}</div>
                     <div className="mt-2"><strong>Metode:</strong> {week.learning_method || '-'}</div>
-                    <div className="mt-2"><strong>Belajar Mandiri:</strong> {week.learning_activity || '-'}</div>
+                    {week.learning_activity && (
+                        <>
+                            <div className="mt-2"><strong>Aktivitas Kelas:</strong></div>
+                            <div className="mt-1 whitespace-pre-line">{week.learning_activity}</div>
+                        </>
+                    )}
+                    <div className="mt-2"><strong>Belajar Mandiri:</strong></div>
                     <div className="mt-1 text-sky-700">{formatIndependentTime(week, c)}</div>
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
