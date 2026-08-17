@@ -1,0 +1,49 @@
+name: Apply validator decision UX
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-validator-decision-ux.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python .github/scripts/patch_validator_decisions.py
+
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsValidatorDecisionController.php
+          php -l app/Services/Rps/ObeWorkspaceService.php
+          php -l routes/web.php
+          php -l database/migrations/2026_08_17_130500_create_rps_validator_decisions.php
+
+      - name: Validate frontend markers
+        run: |
+          grep -q "Pertahankan Tag" resources/js/pages/rps/show.tsx
+          grep -q "Pertahankan Hubungan" resources/js/pages/rps/show.tsx
+          grep -q "Belum dapat diperiksa:" app/Services/Rps/ObeWorkspaceService.php
+          grep -q "RTM tidak dihapus" resources/js/pages/rps/show.tsx
+
+      - name: Frontend build
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Commit implementation and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add routes/web.php app/Http/Controllers/RpsValidatorDecisionController.php app/Services/Rps/ObeWorkspaceService.php resources/js/pages/rps/show.tsx database/migrations/2026_08_17_130500_create_rps_validator_decisions.php
+          git rm .github/scripts/patch_validator_decisions.py
+          git rm .github/workflows/apply-validator-decision-ux.yml
+          git commit -m "Make OBE semantic validation lecturer-decision friendly"
+          git push
