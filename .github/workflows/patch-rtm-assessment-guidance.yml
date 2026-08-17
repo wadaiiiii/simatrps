@@ -1,0 +1,36 @@
+name: Patch RTM assessment guidance
+
+on:
+  push:
+    paths:
+      - '.github/scripts/patch_rtm_assessment_guidance.py'
+      - '.github/workflows/patch-rtm-assessment-guidance.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply patch
+        run: python .github/scripts/patch_rtm_assessment_guidance.py
+      - name: Validate PHP syntax
+        run: php -l app/Http/Controllers/RpsTaskController.php
+      - name: Validate frontend markers
+        run: |
+          grep -q "Pekan Pengumpulan RTM" resources/js/pages/rps/show.tsx
+          grep -q "RTM_ASSESSMENT_TYPES" resources/js/pages/rps/show.tsx
+          grep -q "Pekan {assessment.week_number" resources/js/pages/rps/show.tsx
+      - name: Commit implementation and cleanup
+        run: |
+          rm .github/scripts/patch_rtm_assessment_guidance.py
+          rm .github/workflows/patch-rtm-assessment-guidance.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Guide RTM assessment week and mappings"
+          git push
