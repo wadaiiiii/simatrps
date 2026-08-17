@@ -962,7 +962,7 @@ export default function RpsShow(props: any) {
                     </div>
 
                     {/* Weekly table, exact print columns */}
-                    <div className="overflow-x-auto">
+                    <div className="rps-print-weekly-wrap overflow-x-auto">
                         <table className="rps-print-weekly min-w-[1180px] w-full border-separate border-spacing-0 text-[11px] leading-[1.45]">
                             <thead className="sticky top-0 z-10 bg-gradient-to-r from-sky-100 via-cyan-50 to-teal-50 text-center font-bold text-slate-800 shadow-sm">
                                 <tr>
@@ -2044,7 +2044,7 @@ function AssessmentEvaluationSection({
     }, 0);
 
     return (
-        <div className="border-x border-b border-slate-300 bg-white">
+        <div className="rps-print-evaluation-break border-x border-b border-slate-300 bg-white">
             <div className="border-t-2 border-slate-300 px-3 py-4">
                 <div className="mb-3">
                     <div className="text-center">
