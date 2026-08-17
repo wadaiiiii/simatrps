@@ -1,4 +1,5 @@
 # rerun: patch script is now present on main
+# trigger: 2
 name: Repair Legacy RTM and RPS Print
 
 on:
