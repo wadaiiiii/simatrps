@@ -967,23 +967,23 @@ export default function RpsShow(props: any) {
                                     ? 'Mengisi bentuk pembelajaran dasar dan estimasi waktu sesuai SKS. Tidak membuat indikator, materi, aktivitas, kriteria, atau tugas.'
                                     : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
-                                Lengkapi Data Teknis
+                                Isi Data Teknis
                             </button>
                             <button
                                 type="button"
                                 disabled={!meetingPlanReady}
                                 onClick={() => {
-                                    if (!confirm('Kosongkan seluruh isi akademik 14 pekan pembelajaran? Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
+                                    if (!confirm('Kosongkan isi akademik 14 pekan pembelajaran? Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.')) return;
                                     router.post(
                                         `/rps/${rps.id}/weeks/clear-content`,
                                         {},
-                                        actionOptions('Isi pekanan dikosongkan. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
+                                        actionOptions('Isi pekanan dikosongkan. Tatap muka, belajar mandiri, tugas mandiri/terstruktur, alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan.'),
                                     );
                                 }}
                                 className="rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-35"
-                                title={meetingPlanReady ? 'Reset isi akademik pekanan tanpa menghapus struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
+                                title={meetingPlanReady ? 'Kosongkan isi akademik tanpa mereset tatap muka, belajar mandiri, tugas mandiri/terstruktur, atau struktur penilaian' : 'Selesaikan Atur Pertemuan terlebih dahulu.'}
                             >
-                                Kosongkan Isi Pekanan
+                                Kosongkan Isi
                             </button>
                         </div>
                     </div>
@@ -3669,7 +3669,7 @@ function SubCpmkMeetingPlanner({ rpsId, subCpmks, weeks, onClose }: any) {
 
                 <div className="p-5">
                     <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
-                        Jumlah yang ditetapkan dosen menjadi acuan utama. <strong>Isi Bagian Kosong</strong> dan <strong>Susun AI</strong> akan mengikuti alokasi ini, bukan membagi ulang Sub-CPMK.
+                        Jumlah yang ditetapkan dosen menjadi acuan utama. <strong>Isi Data Teknis</strong> dan <strong>Susun AI</strong> akan mengikuti alokasi ini, bukan membagi ulang Sub-CPMK.
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -3831,7 +3831,7 @@ function DocumentWeekRow({
     };
 
     const clearWeekFields = () => {
-        if (!confirm(`Kosongkan isi Pekan ${week.week_number}? Sub-CPMK dan bobot penilaian tetap dipertahankan.`)) {
+        if (!confirm(`Kosongkan isi Pekan ${week.week_number}? Tatap muka, belajar mandiri, tugas mandiri/terstruktur, Sub-CPMK, dan bobot penilaian tetap dipertahankan.`)) {
             return;
         }
 
@@ -3840,22 +3840,22 @@ function DocumentWeekRow({
             assessment_indicator: '',
             assessment_criteria: '',
             assessment_method: '',
-            learning_form: '',
+            learning_form: form.data.learning_form,
             learning_method: '',
-            face_to_face_sessions: '0',
+            face_to_face_sessions: form.data.face_to_face_sessions,
             learning_activity: '',
-            independent_study_sessions: '0',
-            student_assignment: '',
-            structured_task_sessions: '0',
+            independent_study_sessions: form.data.independent_study_sessions,
+            student_assignment: form.data.student_assignment,
+            structured_task_sessions: form.data.structured_task_sessions,
             online_activity: '',
             material_text: '',
             reference_text: '',
-            time_estimate: '',
+            time_estimate: form.data.time_estimate,
         });
 
         notify(
             'info',
-            `Isian Pekan ${week.week_number} dikosongkan di editor. Klik Simpan untuk menyimpan perubahan.`,
+            `Isi akademik Pekan ${week.week_number} dikosongkan di editor. Data tatap muka, belajar mandiri, dan tugas mandiri/terstruktur tetap. Klik Simpan untuk menyimpan perubahan.`,
         );
     };
 
