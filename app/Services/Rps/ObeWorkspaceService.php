@@ -227,6 +227,19 @@ class ObeWorkspaceService
         $weeklyEvidenceAligned = $weightedTeachingWeeks->count() === 14
             && $coveredEvidenceWeeks->count() === 14
             && $ambiguousWeightedWeeks->isEmpty();
+        $ambiguousWeekNumbers = $ambiguousWeightedWeeks
+            ->pluck('week')
+            ->map(fn ($week) => (int) $week)
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+        $missingWeekNumbers = $missingEvidenceWeeks
+            ->map(fn ($week) => (int) $week)
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
 
         $positiveNonExamAssessments = $nonExamAssessments->filter(
             fn ($assessment) => (float) ($assessment->weight ?? 0) > 0
@@ -325,11 +338,17 @@ class ObeWorkspaceService
             ],
             [
                 'key' => 'assessment_chain_sync',
-                'label' => 'Sinkronisasi Rantai Asesmen',
+                'label' => 'Konsistensi Penilaian',
                 'done' => $assessmentChainAligned,
                 'message' => $assessmentChainAligned
-                    ? 'Asesmen, RTM, bukti pekan, dan bobot sinkron.'
-                    : "Belum sinkron · {$ambiguousWeightedWeeks->count()} pekan ambigu · {$missingEvidenceWeeks->count()} tanpa bukti · {$taskAlignment['missing_required_assessment_count']} RTM belum ada.",
+                    ? 'Semua penilaian sudah konsisten.'
+                    : ($ambiguousWeekNumbers->isNotEmpty()
+                        ? 'Pekan '.$ambiguousWeekNumbers->implode(', ').' memiliki lebih dari satu bukti penilaian.'
+                        : ($missingWeekNumbers->isNotEmpty()
+                            ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
+                            : ($taskAlignment['missing_required_assessment_count'] > 0
+                                ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
+                                : 'Masih ada data penilaian yang belum konsisten.'))),
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
@@ -348,7 +367,11 @@ class ObeWorkspaceService
                 'key' => 'weekly_assessment_evidence',
                 'label' => 'Bukti Penilaian per Pekan',
                 'done' => $weeklyEvidenceAligned,
-                'message' => "{$coveredEvidenceWeeks->count()}/14 pekan punya bukti · {$ambiguousWeightedWeeks->count()} ambigu · {$missingEvidenceWeeks->count()} tanpa bukti.",
+                'message' => $weeklyEvidenceAligned
+                    ? '14/14 pekan memiliki satu bukti penilaian.'
+                    : ($ambiguousWeekNumbers->isNotEmpty()
+                        ? 'Pekan '.$ambiguousWeekNumbers->implode(', ').' memiliki lebih dari satu bukti.'
+                        : 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'),
                 'details' => [
                     'covered_weeks' => $coveredEvidenceWeeks->all(),
                     'missing_weeks' => $missingEvidenceWeeks->all(),
