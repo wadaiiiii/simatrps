@@ -88,44 +88,53 @@ export default function RpsIndex({ rpsRows }: { rpsRows: RpsRow[] }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {rpsRows.map((row) => (
-                                        <tr key={row.id} className="hover:bg-teal-50/30">
-                                            <td className="px-5 py-4">
-                                                <div className="font-semibold text-slate-900">{row.course_name}</div>
-                                                <div className="mt-1 text-xs text-slate-500">
-                                                    {row.official_code || row.system_code} | {row.credits} SKS
-                                                </div>
-                                            </td>
-                                            <td className="px-5 py-4 text-slate-600">
-                                                {row.academic_year} | {row.academic_semester}
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                                                    {row.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-4">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <Link
-                                                        href={`/rps/${row.id}`}
-                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-teal-800 hover:shadow-md"
-                                                    >
-                                                        Buka RPS
-                                                        <ArrowRight className="size-3.5" />
-                                                    </Link>
-                                                    <button
-                                                        type="button"
-                                                        disabled={deletingId === row.id}
-                                                        onClick={() => destroyRps(row)}
-                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                        {deletingId === row.id ? 'Menghapus...' : 'Hapus'}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {rpsRows.map((row) => {
+                                        const status = String(row.status ?? 'draft').toLowerCase();
+                                        const statusClass = status === 'final'
+                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : status === 'draft'
+                                                ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                                : 'border-slate-200 bg-slate-50 text-slate-600';
+
+                                        return (
+                                            <tr key={row.id} className="hover:bg-teal-50/30">
+                                                <td className="px-5 py-4">
+                                                    <div className="font-semibold text-slate-900">{row.course_name}</div>
+                                                    <div className="mt-1 text-xs text-slate-500">
+                                                        {row.official_code || row.system_code} | {row.credits} SKS
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-4 text-slate-600">
+                                                    {row.academic_year} | {row.academic_semester}
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClass}`}>
+                                                        {row.status.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link
+                                                            href={`/rps/${row.id}`}
+                                                            className="inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-teal-800 hover:shadow-md"
+                                                        >
+                                                            Buka RPS
+                                                            <ArrowRight className="size-3.5" />
+                                                        </Link>
+                                                        <button
+                                                            type="button"
+                                                            disabled={deletingId === row.id}
+                                                            onClick={() => destroyRps(row)}
+                                                            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                            {deletingId === row.id ? 'Menghapus...' : 'Hapus'}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
