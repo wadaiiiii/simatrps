@@ -32,10 +32,9 @@ old_rank = '''            if (! $match) {
 
 new_rank = '''            if (! $match && ! in_array($type, ['uts', 'uas'], true) && $wantedSubs->isNotEmpty()) {
                 // Constructive alignment is the primary identity of a non-exam
-                // assessment. A lecturer may rename or even change the form of
-                // an assessment while it still measures the same Sub-CPMK.
-                // Therefore rank ALL non-exam existing assessments by Sub-CPMK
-                // coverage first; type/name/week are only tie-breakers.
+                // assessment. A lecturer may rename or change the form while it
+                // still measures the same Sub-CPMK. Rank all non-exam items by
+                // Sub-CPMK coverage first; type/name/week are tie-breakers.
                 $ranked = $available
                     ->reject(fn ($row) => in_array(strtolower((string) $row->type), ['uts', 'uas'], true))
                     ->map(function ($row) use ($assessmentLinks, $wantedSubs, $week, $name, $type): array {
@@ -93,7 +92,7 @@ old_apply = '''    ): array {
 new_apply = '''    ): array {
         // Re-evaluate merge actions at APPLY time against the latest RPS state.
         // This also repairs older pending suggestions that were previously
-        // classified as ADD because their name/type differed from manual data.
+        // classified as ADD because name/type differed from manual data.
         $payload = $this->annotateAssessmentMergeActions($payload, $version);
         $recommendations = $payload['assessments'] ?? [];
         $tasks = $payload['tasks'] ?? [];
@@ -102,11 +101,5 @@ new_apply = '''    ): array {
 if old_apply not in text:
     raise SystemExit('apply merge refresh marker not found')
 text = text.replace(old_apply, new_apply, 1)
-
-text = text.replace(
-    "'rtm-integrative-v4-safe-merge'",
-    "'rtm-integrative-v5-subcpmk-merge'",
-    1,
-)
 
 path.write_text(text)
