@@ -1,0 +1,47 @@
+name: Patch Assessment AI Safe Merge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-assessment-ai-safe-merge.py'
+      - '.github/workflows/patch-assessment-ai-safe-merge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python3 .github/scripts/patch-assessment-ai-safe-merge.py
+
+      - name: Verify patch
+        run: |
+          php -l app/Http/Controllers/RpsAiController.php
+          php -l app/Services/Rps/RpsAiContextService.php
+          php -l app/Services/Rps/GroqRpsService.php
+          grep -q "annotateAssessmentMergeActions" app/Http/Controllers/RpsAiController.php
+          grep -q "current_tasks" app/Services/Rps/RpsAiContextService.php
+          grep -q "rtm-integrative-v4-safe-merge" app/Http/Controllers/RpsAiController.php
+          grep -q "Pertahankan" resources/js/pages/rps/show.tsx
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsAiController.php app/Services/Rps/RpsAiContextService.php app/Services/Rps/*RpsService.php resources/js/pages/rps/show.tsx
+          git commit -m "Make assessment and RTM AI review non-destructive"
+          git push origin main
