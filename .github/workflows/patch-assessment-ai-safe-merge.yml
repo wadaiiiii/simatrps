@@ -1,5 +1,6 @@
 name: Patch Assessment AI Safe Merge
 
+# Trigger source-of-truth synchronization patch.
 on:
   push:
     branches: [main]
