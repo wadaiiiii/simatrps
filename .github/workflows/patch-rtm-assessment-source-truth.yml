@@ -1,0 +1,173 @@
+name: Patch RTM assessment source truth
+
+on:
+  push:
+    branches:
+      - fix/rtm-assessment-source-truth
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[rtm-source-truth-patched]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/rtm-assessment-source-truth
+          fetch-depth: 0
+
+      - name: Patch RTM consistency
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          task = Path('app/Http/Controllers/RpsTaskController.php')
+          text = task.read_text()
+
+          text = text.replace(
+              "return back()->with('success', 'RTM berhasil ditambahkan. Satu RTM dapat mengukur satu atau lebih Sub-CPMK dalam cakupan asesmen induk; pekan hanya menjadi jadwal pengumpulan.');",
+              "return back()->with('success', 'RTM berhasil ditambahkan. Cakupan Sub-CPMK RTM mengikuti Detail Asesmen terkait secara otomatis; pekan hanya menjadi jadwal pengumpulan.');"
+          )
+          text = text.replace(
+              "return back()->with('success', 'RTM berhasil diperbarui. Cakupan Sub-CPMK RTM dipertahankan independen dari pekan pengumpulan dan tetap berada dalam asesmen induk.');",
+              "return back()->with('success', 'RTM berhasil diperbarui. Cakupan Sub-CPMK RTM disamakan dengan Detail Asesmen terkait; pekan pengumpulan tidak mengubah cakupan asesmen.');"
+          )
+
+          pattern = re.compile(
+              r"\n        \$requestedSubIds = collect\(\$validated\['sub_cpmk_ids'\] \?\? \[\]\).*?\n        }\n\n        if \(empty\(\$validated\['due_week'\]\)\) {",
+              re.S,
+          )
+          replacement = """
+        if ($assessmentSubIds->isEmpty()) {
+            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                'assessment_id' => 'Detail Asesmen belum memiliki Sub-CPMK yang diukur. Lengkapi Detail Asesmen terlebih dahulu.',
+            ]);
+        }
+
+        // Detail Asesmen adalah sumber kebenaran. RTM yang terhubung ke suatu
+        // asesmen harus mewarisi seluruh cakupan Sub-CPMK asesmen tersebut.
+        // Pekan pengumpulan hanya jadwal dan tidak boleh mempersempit cakupan.
+        $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
+
+        if (empty($validated['due_week'])) {"""
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Failed to patch RpsTaskController assessment scope block')
+          task.write_text(text)
+
+          sync = Path('app/Services/Rps/RpsAssessmentSyncService.php')
+          text = sync.read_text()
+
+          old_manual = """                // RTM manual adalah keputusan dosen. Sinkronisasi tidak
+                // memindahkan asesmen atau mengubah cakupan Sub-CPMK-nya.
+                if (! $isGenerated) {
+                    if ($currentAssessment) $linkedCount++;
+                    continue;
+                }
+"""
+          new_manual = """                // Detail Asesmen adalah sumber kebenaran struktural RTM.
+                // Isi/narasi RTM manual tetap milik dosen, tetapi cakupan
+                // Sub-CPMK harus selalu sama persis dengan asesmen induknya.
+                if (! $isGenerated) {
+                    if (! $currentAssessment
+                        || ! in_array(strtolower((string) $currentAssessment->type), $allowedAssessmentTypes, true)) {
+                        continue;
+                    }
+
+                    $manualAssessmentSubIds = collect($assessmentLinks->get($currentAssessment->id, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map(fn ($id) => (string) $id)
+                        ->unique()
+                        ->sort()
+                        ->values();
+                    $manualTaskSubIds = collect($taskLinks->get($task->id, []))
+                        ->pluck('rps_sub_cpmk_id')
+                        ->map(fn ($id) => (string) $id)
+                        ->unique()
+                        ->sort()
+                        ->values();
+
+                    if ($manualAssessmentSubIds->isNotEmpty()
+                        && $manualTaskSubIds->all() !== $manualAssessmentSubIds->all()) {
+                        DB::table('rps_task_subcpmks')->where('rps_task_id', $task->id)->delete();
+                        foreach ($manualAssessmentSubIds as $subId) {
+                            DB::table('rps_task_subcpmks')->insert([
+                                'id' => (string) Str::uuid(),
+                                'rps_task_id' => $task->id,
+                                'rps_sub_cpmk_id' => $subId,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                        DB::table('rps_tasks')->where('id', $task->id)->update(['updated_at' => now()]);
+                    }
+
+                    $linkedCount++;
+                    continue;
+                }
+"""
+          if old_manual not in text:
+              raise SystemExit('Manual RTM sync block not found')
+          text = text.replace(old_manual, new_manual, 1)
+
+          pattern = re.compile(
+              r"                // RTM dapat mengukur sebagian atau seluruh Sub-CPMK asesmen\.\n"
+              r"                // Bila relasi RTM kosong/legacy-invalid, fallback ke seluruh\n"
+              r"                // cakupan asesmen\. Tidak pernah dipersempit oleh due_week\.\n"
+              r"                \$normalizedSubIds = \$currentTaskSubIds\n"
+              r"                    ->filter\(fn \(\$id\) => \$assessmentSubIds->contains\(\$id\)\)\n"
+              r"                    ->values\(\);\n\n"
+              r"                if \(\$normalizedSubIds->isEmpty\(\)\) {\n"
+              r"                    \$normalizedSubIds = \$assessmentSubIds;\n"
+              r"                }"
+          )
+          replacement = """                // Detail Asesmen adalah sumber kebenaran. RTM hasil sinkronisasi
+                // selalu memakai seluruh cakupan Sub-CPMK asesmen induk.
+                $normalizedSubIds = $assessmentSubIds
+                    ->sort()
+                    ->values();"""
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Generated RTM normalization block not found')
+
+          old_alignment = """            // RTM valid bila memiliki minimal satu Sub-CPMK dan seluruhnya
+            // berada di dalam cakupan asesmen induk. Tidak harus sama dengan
+            // Sub-CPMK pada pekan pengumpulan dan tidak harus mencakup seluruh
+            // asesmen induk.
+            $outside = $actual->reject(fn ($id) => $assessmentSubIds->contains($id));
+            if ($actual->isEmpty() || $assessmentSubIds->isEmpty() || $outside->isNotEmpty()) {
+"""
+          new_alignment = """            // Detail Asesmen adalah patokan struktural. Cakupan Sub-CPMK RTM
+            // harus sama persis dengan asesmen induk; due_week hanya jadwal.
+            $actualSorted = $actual->sort()->values();
+            $assessmentSorted = $assessmentSubIds->sort()->values();
+            if ($actualSorted->isEmpty()
+                || $assessmentSorted->isEmpty()
+                || $actualSorted->all() !== $assessmentSorted->all()) {
+"""
+          if old_alignment not in text:
+              raise SystemExit('RTM alignment validation block not found')
+          text = text.replace(old_alignment, new_alignment, 1)
+          text = text.replace(
+              "'Cakupan Sub-CPMK RTM berada di luar cakupan asesmen induk.'",
+              "'Cakupan Sub-CPMK RTM tidak sama dengan Detail Asesmen induk.'",
+              1,
+          )
+          sync.write_text(text)
+
+      - name: Validate PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsTaskController.php
+          php -l app/Services/Rps/RpsAssessmentSyncService.php
+          git diff --check
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsTaskController.php app/Services/Rps/RpsAssessmentSyncService.php
+          git commit -m "Make Detail Asesmen the RTM source of truth [rtm-source-truth-patched]"
+          git push origin HEAD:fix/rtm-assessment-source-truth
