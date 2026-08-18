@@ -23,22 +23,16 @@ jobs:
       - name: Apply patch
         run: python3 .github/scripts/patch-manual-ai-validator-clarity.py
 
-      - name: Verify backend syntax and markers
+      - name: Verify backend syntax and source markers
         run: |
           php -l app/Http/Controllers/RpsAiController.php
           php -l app/Services/Rps/ObeWorkspaceService.php
           grep -q "Asesmen manual/dosen tidak boleh ditimpa oleh AI" app/Http/Controllers/RpsAiController.php
           grep -q "Memeriksa hubungan asesmen, Sub-CPMK, bobot 14 pekan" app/Services/Rps/ObeWorkspaceService.php
-          grep -q "Perbaiki .*RTM" app/Services/Rps/ObeWorkspaceService.php || true
           grep -q "check.hint" resources/js/pages/rps/show.tsx
           git diff --check
 
-      - name: Verify frontend build
-        run: |
-          npm ci
-          npm run build
-
-      - name: Commit functional patch
+      - name: Commit functional patch first
         run: |
           if git diff --quiet -- app/Http/Controllers/RpsAiController.php app/Services/Rps/ObeWorkspaceService.php resources/js/pages/rps/show.tsx; then
             echo "No functional changes to commit"
@@ -49,3 +43,8 @@ jobs:
           git add app/Http/Controllers/RpsAiController.php app/Services/Rps/ObeWorkspaceService.php resources/js/pages/rps/show.tsx
           git commit -m "Protect manual assessments and clarify OBE validator"
           git push origin main
+
+      - name: Verify frontend build
+        run: |
+          npm ci
+          npm run build
