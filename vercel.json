@@ -5,6 +5,7 @@
   "regions": [
     "hnd1"
   ],
+  "ignoreCommand": "bash -lc 'BASE=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git diff --quiet \"$BASE\" HEAD -- . \":(exclude).github/**\" \":(exclude)docs/**\" \":(exclude)*.md\" \":(exclude)**/*.md\"'",
   "functions": {
     "api/*.php": {
       "runtime": "vercel-php@0.8.0",
