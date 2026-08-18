@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/patch-assessment-ai-safe-merge.py'
+      - '.github/scripts/patch-assessment-source-tail.py'
       - '.github/workflows/patch-assessment-ai-safe-merge.yml'
   workflow_dispatch:
 
@@ -20,38 +21,15 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Normalize current-source marker
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/scripts/patch-assessment-ai-safe-merge.py')
-          s = p.read_text()
-          old = '''        // Store as accepted audit history
-'''
-          new = '''        // Store as accepted audit history, but do not keep it in the active
-        // recommendation panel because the lecturer explicitly requested it
-        // from the week row.
-'''
-          if old not in s:
-              raise SystemExit('runtime audit marker not found in patch script')
-          p.write_text(s.replace(old, new, 1))
-          PY
-
-      - name: Apply patch with diagnostics
+      - name: Apply service and validator patch
         run: |
           set +e
-          python3 .github/scripts/patch-assessment-ai-safe-merge.py > /tmp/patch.log 2>&1
-          status=$?
-          cat /tmp/patch.log
-          if [ $status -ne 0 ]; then
-            cp /tmp/patch.log .github/assessment-source-patch-error.txt
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/assessment-source-patch-error.txt
-            git commit -m "Record assessment source patch diagnostic"
-            git push origin main
-            exit $status
-          fi
+          python3 .github/scripts/patch-assessment-ai-safe-merge.py
+          echo "Primary patch may stop at the legacy weekly-AI marker; continuing with the source-tail patch."
+          exit 0
+
+      - name: Apply AI, manual guardrail and UI patch
+        run: python3 .github/scripts/patch-assessment-source-tail.py
 
       - name: Verify patch
         run: |
@@ -66,14 +44,11 @@ jobs:
           grep -q "uncovered_non_exam_sub_codes" app/Services/Rps/RpsAssessmentSyncService.php
           grep -q "problem_tasks" app/Services/Rps/ObeWorkspaceService.php
           grep -q "Detail Asesmen adalah sumber utama" resources/js/pages/rps/show.tsx
+          grep -q "assessmentGuidance" app/Http/Controllers/RpsAssessmentController.php
           git diff --check
 
       - name: Commit patch
         run: |
-          if git diff --quiet -- app/Http/Controllers/RpsAiController.php app/Http/Controllers/RpsAssessmentController.php app/Http/Controllers/RpsController.php app/Http/Controllers/RpsAutomationController.php app/Services/Rps/RpsAssessmentSyncService.php app/Services/Rps/ObeWorkspaceService.php resources/js/pages/rps/show.tsx; then
-            echo "No source changes to commit"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
@@ -84,5 +59,9 @@ jobs:
             app/Services/Rps/RpsAssessmentSyncService.php \
             app/Services/Rps/ObeWorkspaceService.php \
             resources/js/pages/rps/show.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+            exit 0
+          fi
           git commit -m "Make Detail Asesmen the assessment source of truth"
           git push origin main
