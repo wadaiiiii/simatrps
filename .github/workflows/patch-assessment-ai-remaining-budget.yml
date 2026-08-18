@@ -1,0 +1,46 @@
+name: Patch Assessment AI Remaining Budget
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/patch-assessment-ai-remaining-budget.py'
+      - '.github/workflows/patch-assessment-ai-remaining-budget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply patch
+        run: python3 .github/scripts/patch-assessment-ai-remaining-budget.py
+
+      - name: Verify patch
+        run: |
+          php -l app/Http/Controllers/RpsAiController.php
+          php -l app/Services/Rps/RpsAiContextService.php
+          grep -q "rtm-integrative-v6-remaining-budget" app/Http/Controllers/RpsAiController.php
+          grep -q "constrainAssessmentPlanToRemainingBudget" app/Http/Controllers/RpsAiController.php
+          grep -q "existingCoveredCodes" app/Http/Controllers/RpsAiController.php
+          grep -q "assessment_budget" app/Services/Rps/RpsAiContextService.php
+          git diff --check
+
+      - name: Commit functional patch
+        run: |
+          if git diff --quiet -- app/Http/Controllers/RpsAiController.php app/Services/Rps/RpsAiContextService.php; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsAiController.php app/Services/Rps/RpsAiContextService.php
+          git commit -m "Make assessment AI use only remaining weight"
+          git push origin main
