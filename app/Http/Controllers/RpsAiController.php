@@ -755,7 +755,7 @@ PROMPT;
             return 'materi pekan';
         }
 
-        return rtrim(Str::words($value, 10, ''), ' .;,');
+        return rtrim(Str::words($value, 6, ''), ' .;,');
     }
 
     private function formatScannableLearningActivity(string $value): ?string
@@ -775,6 +775,11 @@ PROMPT;
         ) ?? $value;
         $value = str_replace(["\r\n", "\r"], "\n", $value);
         $value = preg_replace('/\s+(?=\d{1,2}[.)]\s+)/u', "\n", $value) ?? $value;
+        $value = preg_replace(
+            '/\s+(?=(?:menganalisis|mendiskusikan|mengidentifikasi|membandingkan|menghitung|menyusun|mempresentasikan|menjelaskan|menerapkan|mengimplementasikan|merancang|mengevaluasi|mempraktikkan|menguji|merefleksikan|menginterpretasikan|mengamati|menelusuri|memecahkan|menentukan|mengembangkan)\b)/iu',
+            "\n",
+            $value
+        ) ?? $value;
 
         $parts = preg_split(
             '/(?:^|\n)\s*(?:\d{1,2}[.)]|[-•])\s*/u',
@@ -798,9 +803,15 @@ PROMPT;
                 // inti aktivitas agar tabel RPS tetap mudah dipindai.
                 $clauses = preg_split('/\s*;\s*/u', $item, 2);
                 $item = trim((string) ($clauses[0] ?? $item));
-                if (str_word_count($item, 0, 'À-ÿ') > 16) {
-                    $item = Str::words($item, 16, '');
+                if (str_word_count($item, 0, 'À-ÿ') > 10) {
+                    $item = Str::words($item, 10, '');
                 }
+
+                $item = preg_replace(
+                    '/\s+(?:dan|atau|dengan|untuk|pada|ke|dari|dalam|yang|serta|sebagai|melalui)$/iu',
+                    '',
+                    $item
+                ) ?? $item;
 
                 return trim($item);
             })
