@@ -646,6 +646,15 @@ Pendukung:
                     ->take(20)
                     ->values()
                     ->all(),
+                'assessment_budget' => [
+                    'existing_weight_total' => round((float) collect($full['assessments'])
+                        ->sum(fn (array $assessment) => (float) ($assessment['weight'] ?? 0)), 2),
+                    'remaining_weight' => round(max(0, 100 - (float) collect($full['assessments'])
+                        ->sum(fn (array $assessment) => (float) ($assessment['weight'] ?? 0))), 2),
+                    'weighted_assessment_codes' => collect($full['assessments'])
+                        ->filter(fn (array $assessment) => (float) ($assessment['weight'] ?? 0) > 0)
+                        ->pluck('code')->filter()->values()->all(),
+                ],
                 'current_tasks' => collect($full['tasks'] ?? [])
                     ->map(fn (array $task): array => [
                         'code' => $task['code'] ?? null,
