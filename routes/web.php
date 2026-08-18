@@ -11,11 +11,13 @@ use App\Http\Controllers\RpsAutomationController;
 use App\Http\Controllers\RpsController;
 use App\Http\Controllers\RpsDeleteController;
 use App\Http\Controllers\RpsDocumentController;
+use App\Http\Controllers\RpsFinalizationController;
 use App\Http\Controllers\RpsTaskController;
 use App\Http\Controllers\RpsValidatorDecisionController;
 use App\Http\Middleware\EnsureAssessmentPlanWeightLimit;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\ReopenFinalRpsOnEdit;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -23,7 +25,10 @@ Route::inertia('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
-    Route::prefix('rps')->name('rps.')->group(function (): void {
+    Route::prefix('rps')
+        ->name('rps.')
+        ->middleware(ReopenFinalRpsOnEdit::class)
+        ->group(function (): void {
         Route::get('/', [RpsController::class, 'index'])->name('index');
         Route::get('baru', [RpsController::class, 'create'])->name('create');
         Route::post('/', [RpsController::class, 'store'])->name('store');
@@ -74,6 +79,8 @@ Route::middleware(['auth', 'verified', EnsureUserIsActive::class])->group(functi
         Route::post('{rps}/weeks/apply-time-standard', [ObeWorkspaceController::class, 'applyTimeStandard'])->name('weeks.apply-time-standard');
         Route::post('{rps}/weeks/normalize-references', [ObeWorkspaceController::class, 'normalizeReferences'])->name('weeks.normalize-references');
         Route::post('{rps}/validate-obe', [RpsAutomationController::class, 'validateObe'])->name('validate-obe');
+        Route::post('{rps}/finalize', [RpsFinalizationController::class, 'finalize'])->name('finalize');
+        Route::post('{rps}/reopen', [RpsFinalizationController::class, 'reopen'])->name('reopen');
         Route::post('{rps}/validator-decisions', RpsValidatorDecisionController::class)->name('validator-decisions.store');
 
         Route::post('{rps}/assessments', [RpsAssessmentController::class, 'store'])->name('assessments.store');
@@ -92,7 +99,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->name('admin.')
     ->group(function (): void {
         Route::get('kurikulum', CurriculumController::class)->name('curriculum');
-        Route::inertia('template-rps', 'admin/templates')->name('templates');
+        Route::inertia('admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
         Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
     });
