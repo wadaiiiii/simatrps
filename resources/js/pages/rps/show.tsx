@@ -666,6 +666,40 @@ export default function RpsShow(props: any) {
         (sum: number, week: any) => sum + Number(week.assessment_weight || 0),
         0,
     );
+    const obeIsValid = progress?.is_valid === true;
+    const rpsStatus = String(rps?.status ?? 'draft').toLowerCase();
+    const rpsIsFinal = rpsStatus === 'final' && obeIsValid;
+    const finalizationReady = obeIsValid && !rpsIsFinal;
+
+    const validateObe = () => router.post(
+        `/rps/${rps.id}/validate-obe`,
+        {},
+        actionOptions('Validasi OBE selesai.'),
+    );
+
+    const finalizeRps = () => {
+        if (!confirm('Finalisasi RPS? Setelah difinalisasi, status dokumen menjadi Final. Jika ingin mengubah isi kembali, gunakan Buka Kembali.')) {
+            return;
+        }
+
+        router.post(
+            `/rps/${rps.id}/finalize`,
+            {},
+            actionOptions('RPS berhasil difinalisasi dan siap digunakan.'),
+        );
+    };
+
+    const reopenRps = () => {
+        if (!confirm('Buka kembali RPS untuk diedit? Status Final akan dikembalikan menjadi Draft dan perlu difinalisasi ulang setelah perubahan selesai.')) {
+            return;
+        }
+
+        router.post(
+            `/rps/${rps.id}/reopen`,
+            {},
+            actionOptions('RPS dibuka kembali untuk diedit.'),
+        );
+    };
 
     return (
         <>
@@ -706,21 +740,51 @@ export default function RpsShow(props: any) {
                             Bobot tersimpan {totalWeeklyWeight}% / 100%
                         </div>
 
-                        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
-                            OBE {progress.percent}%
+                        <div className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                            obeIsValid
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : 'border-slate-200 bg-white text-slate-600'
+                        }`}>
+                            {obeIsValid ? 'OBE Valid ✓' : `OBE ${progress.percent}%`}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => router.post(
-                                `/rps/${rps.id}/validate-obe`,
-                                {},
-                                actionOptions('Validasi OBE selesai.'),
-                            )}
-                            className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white"
-                        >
-                            Validasi OBE
-                        </button>
+                        <div className={`rounded-full border px-3 py-1.5 text-xs font-bold ${
+                            rpsIsFinal
+                                ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
+                                : finalizationReady
+                                    ? 'border-cyan-200 bg-cyan-50 text-cyan-800'
+                                    : 'border-slate-200 bg-slate-50 text-slate-500'
+                        }`}>
+                            {rpsIsFinal ? 'RPS Final ✓' : finalizationReady ? 'Siap Finalisasi' : 'Draft'}
+                        </div>
+
+                        {rpsIsFinal ? (
+                            <button
+                                type="button"
+                                onClick={reopenRps}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                            >
+                                <FilePenLine className="size-3.5" />
+                                Buka Kembali
+                            </button>
+                        ) : finalizationReady ? (
+                            <button
+                                type="button"
+                                onClick={finalizeRps}
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white shadow-sm hover:bg-teal-800"
+                            >
+                                <CheckCircle2 className="size-3.5" />
+                                Finalisasi RPS
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={validateObe}
+                                className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white hover:bg-teal-800"
+                            >
+                                Validasi OBE
+                            </button>
+                        )}
                     </div>
                 </div>
 
