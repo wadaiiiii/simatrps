@@ -1,5 +1,6 @@
 name: Patch Assessment AI Safe Merge
 
+# Staged source-of-truth patch runner.
 on:
   push:
     branches: [main]
