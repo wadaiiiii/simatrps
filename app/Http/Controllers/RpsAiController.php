@@ -1082,28 +1082,46 @@ PROMPT;
                 $match = $available->first(fn ($row) => $this->comparableText((string) $row->name) === $needle);
             }
 
-            if (! $match) {
+            if (! $match && ! in_array($type, ['uts', 'uas'], true) && $wantedSubs->isNotEmpty()) {
+                // Constructive alignment is the primary identity of a non-exam
+                // assessment. A lecturer may rename or change the form while it
+                // still measures the same Sub-CPMK. Rank all non-exam items by
+                // Sub-CPMK coverage first; type/name/week are tie-breakers.
                 $ranked = $available
-                    ->filter(fn ($row) => strtolower((string) $row->type) === $type)
-                    ->map(function ($row) use ($assessmentLinks, $wantedSubs, $week, $name): array {
+                    ->reject(fn ($row) => in_array(strtolower((string) $row->type), ['uts', 'uas'], true))
+                    ->map(function ($row) use ($assessmentLinks, $wantedSubs, $week, $name, $type): array {
                         $currentSubs = collect($assessmentLinks->get($row->id, []))
                             ->pluck('code')
                             ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
                             ->filter()->unique()->values();
                         $overlap = $wantedSubs->intersect($currentSubs)->count();
+                        $sameCoverage = $wantedSubs->sort()->values()->all()
+                            === $currentSubs->sort()->values()->all();
+                        $sameType = strtolower((string) $row->type) === $type;
                         $sameWeek = $week > 0 && (int) ($row->week_number ?? 0) === $week;
                         $nameOverlap = count(array_intersect(
                             $this->semanticTokens($name),
                             $this->semanticTokens((string) $row->name)
                         ));
-                        $score = ($overlap * 6) + ($sameWeek ? 3 : 0) + min(3, $nameOverlap);
-                        return ['row' => $row, 'score' => $score, 'overlap' => $overlap];
+                        $score = ($overlap * 10)
+                            + ($sameCoverage ? 20 : 0)
+                            + ($sameType ? 3 : 0)
+                            + ($sameWeek ? 2 : 0)
+                            + min(3, $nameOverlap);
+                        return [
+                            'row' => $row,
+                            'score' => $score,
+                            'overlap' => $overlap,
+                            'same_coverage' => $sameCoverage,
+                        ];
                     })
                     ->sortByDesc('score')
                     ->values();
 
                 $best = $ranked->first();
-                if ($best && (($best['overlap'] ?? 0) > 0 || ($best['score'] ?? 0) >= 5)) {
+                // Never adapt solely because type/week/name happen to match.
+                // At least one shared Sub-CPMK is required for non-exam items.
+                if ($best && ($best['overlap'] ?? 0) > 0) {
                     $match = $best['row'];
                 }
             }
@@ -1127,7 +1145,7 @@ PROMPT;
                 $assessmentItems[$index]['target_source_type'] = (string) ($match->source_type ?? 'manual');
                 $assessmentItems[$index]['rationale'] = $same
                     ? 'Asesmen yang sudah ada telah selaras dengan target-state AI; pertahankan tanpa perubahan.'
-                    : 'Asesmen yang sudah ada dikenali sebagai target perbaikan berdasarkan tipe, jadwal, dan cakupan Sub-CPMK.';
+                    : 'Asesmen yang sudah ada dikenali sebagai target perbaikan terutama dari kesamaan cakupan Sub-CPMK; tipe, jadwal, dan nama menjadi penguat.';
             } else {
                 $assessmentItems[$index]['action'] = 'add';
                 $assessmentItems[$index]['target_code'] = null;
@@ -2601,6 +2619,10 @@ PROMPT;
         object $version,
         int $userId
     ): array {
+        // Re-evaluate merge actions at APPLY time against the latest RPS state.
+        // This also repairs older pending suggestions that were previously
+        // classified as ADD because name/type differed from manual data.
+        $payload = $this->annotateAssessmentMergeActions($payload, $version);
         $recommendations = $payload['assessments'] ?? [];
         $tasks = $payload['tasks'] ?? [];
         $changedAssessments = 0;
