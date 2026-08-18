@@ -30,6 +30,9 @@ jobs:
           php-version: '8.4'
           coverage: none
 
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: PHP syntax check
         shell: bash
         run: |
