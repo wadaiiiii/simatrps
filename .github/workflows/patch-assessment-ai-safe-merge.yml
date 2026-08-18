@@ -1,6 +1,5 @@
 name: Patch Assessment AI Safe Merge
 
-# Trigger source-of-truth synchronization patch.
 on:
   push:
     branches: [main]
@@ -20,6 +19,19 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Normalize current-source marker
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/patch-assessment-ai-safe-merge.py')
+          s = p.read_text()
+          s = s.replace(
+              "        // Store as accepted audit history\\n",
+              "        // Store as accepted audit history, but do not keep it in the active\\n        // recommendation panel because the lecturer explicitly requested it\\n        // from the week row.\\n",
+          )
+          p.write_text(s)
+          PY
 
       - name: Apply patch
         run: python3 .github/scripts/patch-assessment-ai-safe-merge.py
@@ -41,8 +53,8 @@ jobs:
 
       - name: Commit patch
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
+          if git diff --quiet -- app/Http/Controllers/RpsAiController.php app/Http/Controllers/RpsAssessmentController.php app/Http/Controllers/RpsController.php app/Http/Controllers/RpsAutomationController.php app/Services/Rps/RpsAssessmentSyncService.php app/Services/Rps/ObeWorkspaceService.php resources/js/pages/rps/show.tsx; then
+            echo "No source changes to commit"
             exit 0
           fi
           git config user.name "github-actions[bot]"
