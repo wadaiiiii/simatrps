@@ -5,7 +5,12 @@
   "regions": [
     "hnd1"
   ],
-  "ignoreCommand": "printf '%s' \"$VERCEL_GIT_COMMIT_MESSAGE\" | grep -Fq '[skip-vercel]'",
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "main": true
+    }
+  },
   "functions": {
     "api/*.php": {
       "runtime": "vercel-php@0.8.0",
