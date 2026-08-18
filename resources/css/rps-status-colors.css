@@ -1,0 +1,23 @@
+/*
+ * Semantic status colors for the RPS workspace header.
+ * Blue = weight completeness, teal = OBE validity, emerald = final document.
+ * These selectors intentionally target the compact status group in the RPS toolbar.
+ */
+
+.flex.flex-wrap.items-center.gap-2 > .rounded-full.bg-emerald-50.text-emerald-700:first-child {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border: 1px solid #bfdbfe !important;
+}
+
+.flex.flex-wrap.items-center.gap-2 > .rounded-full.border.border-emerald-200.bg-emerald-50.text-emerald-700:nth-child(2) {
+    background-color: #f0fdfa !important;
+    color: #0f766e !important;
+    border-color: #99f6e4 !important;
+}
+
+.flex.flex-wrap.items-center.gap-2 > .rounded-full.border.border-emerald-200.bg-emerald-100.text-emerald-800:nth-child(3) {
+    background-color: #ecfdf5 !important;
+    color: #047857 !important;
+    border-color: #a7f3d0 !important;
+}
