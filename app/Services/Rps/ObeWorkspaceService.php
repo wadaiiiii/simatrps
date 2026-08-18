@@ -789,6 +789,7 @@ class ObeWorkspaceService
                 'key' => 'assessment_chain_sync',
                 'label' => 'Konsistensi Penilaian',
                 'done' => $assessmentChainAligned,
+                'hint' => 'Memeriksa hubungan asesmen, Sub-CPMK, bobot 14 pekan, bukti penilaian, dan RTM.',
                 'message' => $assessmentChainAligned
                     ? 'Semua penilaian sudah konsisten.'
                     : (! $assessmentBudgetAligned
@@ -804,7 +805,7 @@ class ObeWorkspaceService
                                     ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
                                     : ($taskAlignment['missing_required_assessment_count'] > 0
                                         ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
-                                        : 'Masih ada data penilaian yang belum konsisten.'))))),
+                                        : 'Rantai asesmen–Sub-CPMK–bobot pekan–RTM belum sepenuhnya selaras.'))))),
                 'details' => [
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
@@ -864,6 +865,7 @@ class ObeWorkspaceService
                 'key' => 'rtm',
                 'label' => 'RTM',
                 'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
+                'hint' => 'Memeriksa asesmen induk, cakupan Sub-CPMK, dan pekan pengumpulan setiap RTM.',
                 'message' => $taskAssessments->isEmpty()
                     ? 'RTM tidak diperlukan.'
                     : ((bool) $taskAlignment['is_aligned']
@@ -871,9 +873,9 @@ class ObeWorkspaceService
                         : "{$tasks} RTM tersedia"
                             .($missingRtmAssessments->isNotEmpty()
                                 ? ' · asesmen belum memiliki RTM: '.$missingRtmAssessments->implode(', ')
-                                : ' · semua asesmen wajib sudah memiliki RTM')
+                                : ' · seluruh asesmen yang memerlukan RTM sudah memiliki RTM')
                             .($rtmProblemLabels->isNotEmpty()
-                                ? ' · perlu sinkronisasi: '.$rtmProblemLabels->implode(', ').'.'
+                                ? ' · periksa hubungan asesmen/Sub-CPMK/jadwal: '.$rtmProblemLabels->implode(', ').'.'
                                 : '.')),
                 'details' => [
                     ...$taskAlignment,

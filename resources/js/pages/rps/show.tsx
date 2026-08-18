@@ -1280,7 +1280,10 @@ export default function RpsShow(props: any) {
                                                 <span className="rounded-full border border-amber-200 bg-white px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-700">Rekomendasi</span>
                                             )}
                                         </div>
-                                        <p className="mt-2 text-xs leading-5 text-slate-600">{check.message}</p>
+                                        {!check.done && check.hint && (
+                                            <p className="mt-2 text-[10px] font-semibold leading-4 text-slate-500">{check.hint}</p>
+                                        )}
+                                        <p className={`${!check.done && check.hint ? 'mt-1' : 'mt-2'} text-xs leading-5 text-slate-600`}>{check.message}</p>
                                         {!check.done && (
                                             <div className="mt-3 flex flex-wrap gap-2">
                                                 {VALIDATOR_FIX_META[check.key] && (

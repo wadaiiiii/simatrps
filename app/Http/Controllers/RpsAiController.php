@@ -1331,7 +1331,9 @@ PROMPT;
                     && $currentSubs === $newSubs
                     && $this->comparableText((string) ($match->description ?? '')) === $this->comparableText((string) ($item['description'] ?? ''));
 
-                $assessmentItems[$index]['action'] = $same ? 'keep' : 'adapt';
+                $targetSourceType = strtolower(trim((string) ($match->source_type ?? 'manual')));
+                $lecturerOwnedTarget = ! in_array($targetSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true);
+                $assessmentItems[$index]['action'] = ($same || $lecturerOwnedTarget) ? 'keep' : 'adapt';
                 $assessmentItems[$index]['target_code'] = (string) $match->code;
                 $assessmentItems[$index]['target_source_type'] = (string) ($match->source_type ?? 'manual');
                 $assessmentItems[$index]['rationale'] = $same
@@ -1424,7 +1426,9 @@ PROMPT;
                     && $this->comparableText((string) ($parent->name ?? '')) === $this->comparableText($assessmentName)
                     && $this->comparableText((string) ($match->purpose ?? '')) === $this->comparableText((string) ($item['purpose'] ?? ''));
 
-                $taskItems[$index]['action'] = $same ? 'keep' : 'adapt';
+                $targetSourceType = strtolower(trim((string) ($match->source_type ?? 'manual')));
+                $lecturerOwnedTarget = ! in_array($targetSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true);
+                $taskItems[$index]['action'] = ($same || $lecturerOwnedTarget) ? 'keep' : 'adapt';
                 $taskItems[$index]['target_code'] = (string) $match->code;
                 $taskItems[$index]['target_source_type'] = (string) ($match->source_type ?? 'manual');
                 $taskItems[$index]['rationale'] = $same
@@ -2908,6 +2912,12 @@ PROMPT;
                         'ai' => 'Asesmen target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali agar konteks diperbarui.',
                     ]);
                 }
+                $existingSourceType = strtolower(trim((string) ($existing->source_type ?? 'manual')));
+                if (! in_array($existingSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true)) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'Asesmen manual/dosen tidak boleh ditimpa oleh AI. Item tetap dipertahankan; ubah dari Edit Detail Asesmen bila diperlukan.',
+                    ]);
+                }
             } else {
                 $name = trim((string) ($item['name'] ?? ''));
                 $duplicate = $name !== '' && DB::table('assessments')
@@ -2990,6 +3000,12 @@ PROMPT;
                 if (! $existing) {
                     throw ValidationException::withMessages([
                         'ai' => 'RTM target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali.',
+                    ]);
+                }
+                $existingSourceType = strtolower(trim((string) ($existing->source_type ?? 'manual')));
+                if (! in_array($existingSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true)) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'RTM manual/dosen tidak boleh ditimpa oleh AI. Item tetap dipertahankan; ubah dari editor RTM bila diperlukan.',
                     ]);
                 }
             } else {
