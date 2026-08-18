@@ -33,8 +33,21 @@ jobs:
           p.write_text(s)
           PY
 
-      - name: Apply patch
-        run: python3 .github/scripts/patch-assessment-ai-safe-merge.py
+      - name: Apply patch with diagnostics
+        run: |
+          set +e
+          python3 .github/scripts/patch-assessment-ai-safe-merge.py > /tmp/patch.log 2>&1
+          status=$?
+          cat /tmp/patch.log
+          if [ $status -ne 0 ]; then
+            cp /tmp/patch.log .github/assessment-source-patch-error.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/assessment-source-patch-error.txt
+            git commit -m "Record assessment source patch diagnostic"
+            git push origin main
+            exit $status
+          fi
 
       - name: Verify patch
         run: |
