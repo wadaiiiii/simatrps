@@ -5642,10 +5642,16 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
 
     const [selectedIndices, setSelectedIndices] = useState<number[]>(initialSelected);
     const [selectedAssessmentIndices, setSelectedAssessmentIndices] = useState<number[]>(
-        safeList(payload.assessments).map((_: any, index: number) => index),
+        safeList(payload.assessments)
+            .map((item: any, index: number) => ({ item, index }))
+            .filter(({ item }: any) => String(item?.action ?? 'add').toLowerCase() !== 'keep')
+            .map(({ index }: any) => index),
     );
     const [selectedTaskIndices, setSelectedTaskIndices] = useState<number[]>(
-        safeList(payload.tasks).map((_: any, index: number) => index),
+        safeList(payload.tasks)
+            .map((item: any, index: number) => ({ item, index }))
+            .filter(({ item }: any) => String(item?.action ?? 'add').toLowerCase() !== 'keep')
+            .map(({ index }: any) => index),
     );
 
     const labels: Record<string, string> = {
@@ -5730,7 +5736,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
         }
 
         const message = suggestion.suggestion_type === 'assessment_plan'
-            ? `Terapkan ${selectedAssessmentIndices.length} asesmen dan ${selectedTaskIndices.length} RTM yang dipilih? Data yang tidak dipilih tidak akan diubah.`
+            ? `Terapkan ${selectedAssessmentIndices.length} perubahan asesmen dan ${selectedTaskIndices.length} perubahan RTM yang dipilih? Item berstatus Pertahankan dan data lain yang tidak dipilih tidak akan diubah atau dihapus.`
             : standardSelectable
               ? `Terapkan ${selectedIndices.length} rekomendasi yang dipilih ke RPS?`
               : 'Terapkan rekomendasi AI ini ke RPS?';
@@ -6083,8 +6089,19 @@ function AiPayloadPreview({
                                 onChange={() => onToggleAssessment?.(index)}
                             />
                             <div className="min-w-0 flex-1">
-                                <strong>{safeText(item?.name)}</strong>
-                                {' | '}Pekan {safeText(item?.week_number)}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <strong>{safeText(item?.name)}</strong>
+                                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
+                                        String(item?.action ?? 'add').toLowerCase() === 'keep'
+                                            ? 'bg-slate-100 text-slate-600'
+                                            : String(item?.action ?? 'add').toLowerCase() === 'adapt'
+                                              ? 'bg-amber-100 text-amber-800'
+                                              : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                        {String(item?.action ?? 'add').toLowerCase() === 'keep' ? 'Pertahankan' : String(item?.action ?? 'add').toLowerCase() === 'adapt' ? 'Perbaiki' : 'Tambah'}
+                                    </span>
+                                </div>
+                                Pekan {safeText(item?.week_number)}
                                 {' | '}{safeText(item?.weight)}%
                                 <div className="mt-1 text-slate-500">
                                     Mengukur: {safeText(item?.sub_cpmk_codes)}

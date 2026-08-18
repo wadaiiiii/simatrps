@@ -81,6 +81,15 @@ class RpsAiController extends Controller
             $rtmInstruction = <<<'PROMPT'
 Untuk Telaah Asesmen + RTM, perlakukan ASESMEN sebagai rencana pengukuran agregat dan RTM sebagai lembar instruksi tugas konkret bagi mahasiswa.
 
+MODE TELAAH / MERGE AMAN:
+- `current_assessments` dan `current_tasks` adalah kondisi RPS dosen SAAT INI. Telaah dan manfaatkan data itu; jangan berasumsi RPS kosong.
+- Pertahankan asesmen/RTM lama yang sudah selaras. Jangan menduplikasi item yang secara akademik sudah mewakili fungsi yang sama.
+- Jika item lama perlu diperbaiki, rekomendasikan bentuk target-state yang masih dapat dikenali dari tipe, cakupan Sub-CPMK, jadwal, dan konteks tugasnya. Sistem akan menandainya sebagai PERBAIKI dan hanya mengubahnya bila dosen memilih rekomendasi tersebut.
+- Tambahkan item baru hanya untuk celah asesmen/RTM yang benar-benar belum tercakup.
+- Jangan menghapus asesmen/RTM lama secara implisit. Penghapusan tetap keputusan eksplisit dosen di editor.
+- Target-state asesmen setelah mempertahankan/perbaiki/menambah harus tepat 100%, bukan 100% baru yang ditumpuk di atas bobot lama.
+- Pastikan seluruh Sub-CPMK aktif memiliki bukti asesmen dan RTM yang relevan; gunakan keterkaitan Sub-CPMK sebagai dasar utama constructive alignment.
+
 ATURAN CAKUPAN RTM:
 1. Satu RTM BOLEH mengukur tepat satu Sub-CPMK ATAU beberapa Sub-CPMK sekaligus jika tugasnya integratif (proyek, praktikum, presentasi, tugas kasus, atau produk yang memang memerlukan beberapa capaian).
 2. `tasks[*].sub_cpmk_codes` tidak boleh dipaksa sama dengan Sub-CPMK pada pekan pengumpulan. `due_week` hanya menunjukkan jadwal/pengumpulan; cakupan akademik RTM ditentukan oleh kemampuan yang benar-benar diukur tugas tersebut. Untuk RTM multi-Sub-CPMK, `due_week` WAJIB berada pada atau setelah PEKAN TERAKHIR di `weekly_plan` yang memuat salah satu Sub-CPMK RTM; jangan mengumpulkan tugas sebelum seluruh capaian yang diukur selesai dipelajari.
@@ -113,7 +122,7 @@ PROMPT;
                 [
                     'type' => $data['suggestion_type'],
                     'instruction' => trim((string) ($data['instruction'] ?? '')),
-                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v3-constructive-alignment' : 'bloom-guard-v2',
+                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v4-safe-merge' : 'bloom-guard-v2',
                     'context' => $context,
                 ],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -1018,12 +1027,213 @@ PROMPT;
         }
 
         $payload['tasks'] = $tasks;
+        $payload = $this->annotateAssessmentMergeActions($payload, $version);
 
         if ($adjusted > 0) {
             $summary = trim((string) ($payload['summary'] ?? ''));
             $note = $adjusted.' deskripsi RTM diperkuat dengan kata/frasa kompetensi Sub-CPMK untuk menjaga constructive alignment.';
             $payload['summary'] = $summary !== '' ? rtrim($summary, '.').' · '.$note : $note;
         }
+
+        return $payload;
+    }
+
+    private function annotateAssessmentMergeActions(array $payload, object $version): array
+    {
+        $existingAssessments = DB::table('assessments')
+            ->where('rps_version_id', $version->id)
+            ->orderByRaw('COALESCE(week_number, 99)')
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'type', 'week_number', 'description', 'weight', 'source_type']);
+
+        $assessmentIds = $existingAssessments->pluck('id')->all();
+        $assessmentLinks = $assessmentIds === []
+            ? collect()
+            : DB::table('assessment_subcpmks')
+                ->join('rps_sub_cpmks', 'rps_sub_cpmks.id', '=', 'assessment_subcpmks.rps_sub_cpmk_id')
+                ->whereIn('assessment_subcpmks.assessment_id', $assessmentIds)
+                ->get(['assessment_subcpmks.assessment_id', 'rps_sub_cpmks.code'])
+                ->groupBy('assessment_id');
+
+        $claimedAssessmentIds = [];
+        $assessmentItems = $payload['assessments'] ?? [];
+
+        foreach ($assessmentItems as $index => $item) {
+            if (! is_array($item)) continue;
+
+            $type = strtolower(trim((string) ($item['type'] ?? 'other')));
+            $week = $type === 'uts' ? 8 : ($type === 'uas' ? 16 : (int) ($item['week_number'] ?? 0));
+            $name = trim((string) ($item['name'] ?? ''));
+            $wantedSubs = collect($item['sub_cpmk_codes'] ?? [])
+                ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                ->filter()->unique()->values();
+
+            $available = $existingAssessments
+                ->reject(fn ($row) => in_array((string) $row->id, $claimedAssessmentIds, true))
+                ->values();
+
+            $match = null;
+            if (in_array($type, ['uts', 'uas'], true)) {
+                $match = $available->first(fn ($row) => strtolower((string) $row->type) === $type);
+            }
+
+            if (! $match && $name !== '') {
+                $needle = $this->comparableText($name);
+                $match = $available->first(fn ($row) => $this->comparableText((string) $row->name) === $needle);
+            }
+
+            if (! $match) {
+                $ranked = $available
+                    ->filter(fn ($row) => strtolower((string) $row->type) === $type)
+                    ->map(function ($row) use ($assessmentLinks, $wantedSubs, $week, $name): array {
+                        $currentSubs = collect($assessmentLinks->get($row->id, []))
+                            ->pluck('code')
+                            ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                            ->filter()->unique()->values();
+                        $overlap = $wantedSubs->intersect($currentSubs)->count();
+                        $sameWeek = $week > 0 && (int) ($row->week_number ?? 0) === $week;
+                        $nameOverlap = count(array_intersect(
+                            $this->semanticTokens($name),
+                            $this->semanticTokens((string) $row->name)
+                        ));
+                        $score = ($overlap * 6) + ($sameWeek ? 3 : 0) + min(3, $nameOverlap);
+                        return ['row' => $row, 'score' => $score, 'overlap' => $overlap];
+                    })
+                    ->sortByDesc('score')
+                    ->values();
+
+                $best = $ranked->first();
+                if ($best && (($best['overlap'] ?? 0) > 0 || ($best['score'] ?? 0) >= 5)) {
+                    $match = $best['row'];
+                }
+            }
+
+            if ($match) {
+                $claimedAssessmentIds[] = (string) $match->id;
+                $currentSubs = collect($assessmentLinks->get($match->id, []))
+                    ->pluck('code')
+                    ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                    ->filter()->unique()->sort()->values()->all();
+                $newSubs = $wantedSubs->sort()->values()->all();
+                $same = $this->comparableText((string) $match->name) === $this->comparableText($name)
+                    && strtolower((string) $match->type) === $type
+                    && (int) ($match->week_number ?? 0) === $week
+                    && abs((float) $match->weight - (float) ($item['weight'] ?? 0)) < 0.01
+                    && $currentSubs === $newSubs
+                    && $this->comparableText((string) ($match->description ?? '')) === $this->comparableText((string) ($item['description'] ?? ''));
+
+                $assessmentItems[$index]['action'] = $same ? 'keep' : 'adapt';
+                $assessmentItems[$index]['target_code'] = (string) $match->code;
+                $assessmentItems[$index]['target_source_type'] = (string) ($match->source_type ?? 'manual');
+                $assessmentItems[$index]['rationale'] = $same
+                    ? 'Asesmen yang sudah ada telah selaras dengan target-state AI; pertahankan tanpa perubahan.'
+                    : 'Asesmen yang sudah ada dikenali sebagai target perbaikan berdasarkan tipe, jadwal, dan cakupan Sub-CPMK.';
+            } else {
+                $assessmentItems[$index]['action'] = 'add';
+                $assessmentItems[$index]['target_code'] = null;
+                $assessmentItems[$index]['target_source_type'] = null;
+                $assessmentItems[$index]['rationale'] = 'Belum ada asesmen aktif yang cukup setara; rekomendasi ini merupakan tambahan.';
+            }
+        }
+
+        $payload['assessments'] = $assessmentItems;
+
+        $existingTasks = DB::table('rps_tasks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('due_week')
+            ->orderBy('code')
+            ->get(['id', 'code', 'title', 'type', 'assessment_id', 'due_week', 'purpose', 'instructions', 'expected_output', 'source_type']);
+        $taskIds = $existingTasks->pluck('id')->all();
+        $taskLinks = $taskIds === [] ? collect() : DB::table('rps_task_subcpmks')
+            ->join('rps_sub_cpmks', 'rps_sub_cpmks.id', '=', 'rps_task_subcpmks.rps_sub_cpmk_id')
+            ->whereIn('rps_task_subcpmks.rps_task_id', $taskIds)
+            ->get(['rps_task_subcpmks.rps_task_id', 'rps_sub_cpmks.code'])
+            ->groupBy('rps_task_id');
+        $assessmentById = $existingAssessments->keyBy(fn ($row) => (string) $row->id);
+        $claimedTaskIds = [];
+        $taskItems = $payload['tasks'] ?? [];
+
+        foreach ($taskItems as $index => $item) {
+            if (! is_array($item)) continue;
+
+            $title = trim((string) ($item['title'] ?? ''));
+            $type = strtolower(trim((string) ($item['type'] ?? 'assignment')));
+            $dueWeek = (int) ($item['due_week'] ?? 0);
+            $assessmentName = trim((string) ($item['assessment_name'] ?? ''));
+            $wantedSubs = collect($item['sub_cpmk_codes'] ?? [])
+                ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                ->filter()->unique()->values();
+            $available = $existingTasks
+                ->reject(fn ($row) => in_array((string) $row->id, $claimedTaskIds, true))
+                ->values();
+
+            $match = null;
+            if ($title !== '') {
+                $needle = $this->comparableText($title);
+                $match = $available->first(fn ($row) => $this->comparableText((string) $row->title) === $needle);
+            }
+
+            if (! $match) {
+                $ranked = $available
+                    ->filter(fn ($row) => strtolower((string) $row->type) === $type)
+                    ->map(function ($row) use ($taskLinks, $assessmentById, $wantedSubs, $dueWeek, $assessmentName): array {
+                        $currentSubs = collect($taskLinks->get($row->id, []))
+                            ->pluck('code')
+                            ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                            ->filter()->unique()->values();
+                        $overlap = $wantedSubs->intersect($currentSubs)->count();
+                        $sameWeek = $dueWeek > 0 && (int) ($row->due_week ?? 0) === $dueWeek;
+                        $parent = filled($row->assessment_id ?? null)
+                            ? $assessmentById->get((string) $row->assessment_id)
+                            : null;
+                        $sameAssessment = $parent && $assessmentName !== ''
+                            && $this->comparableText((string) $parent->name) === $this->comparableText($assessmentName);
+                        $score = ($overlap * 6) + ($sameWeek ? 2 : 0) + ($sameAssessment ? 4 : 0);
+                        return ['row' => $row, 'score' => $score, 'overlap' => $overlap];
+                    })
+                    ->sortByDesc('score')->values();
+                $best = $ranked->first();
+                if ($best && (($best['overlap'] ?? 0) > 0 || ($best['score'] ?? 0) >= 6)) {
+                    $match = $best['row'];
+                }
+            }
+
+            if ($match) {
+                $claimedTaskIds[] = (string) $match->id;
+                $currentSubs = collect($taskLinks->get($match->id, []))
+                    ->pluck('code')
+                    ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+                    ->filter()->unique()->sort()->values()->all();
+                $newSubs = $wantedSubs->sort()->values()->all();
+                $parent = filled($match->assessment_id ?? null)
+                    ? $assessmentById->get((string) $match->assessment_id)
+                    : null;
+                $same = $this->comparableText((string) $match->title) === $this->comparableText($title)
+                    && strtolower((string) $match->type) === $type
+                    && (int) ($match->due_week ?? 0) === $dueWeek
+                    && $currentSubs === $newSubs
+                    && $this->comparableText((string) ($parent->name ?? '')) === $this->comparableText($assessmentName)
+                    && $this->comparableText((string) ($match->purpose ?? '')) === $this->comparableText((string) ($item['purpose'] ?? ''));
+
+                $taskItems[$index]['action'] = $same ? 'keep' : 'adapt';
+                $taskItems[$index]['target_code'] = (string) $match->code;
+                $taskItems[$index]['target_source_type'] = (string) ($match->source_type ?? 'manual');
+                $taskItems[$index]['rationale'] = $same
+                    ? 'RTM yang sudah ada telah selaras dengan target-state AI; pertahankan tanpa perubahan.'
+                    : 'RTM yang sudah ada dikenali sebagai target perbaikan berdasarkan asesmen induk, jadwal, dan cakupan Sub-CPMK.';
+            } else {
+                $taskItems[$index]['action'] = 'add';
+                $taskItems[$index]['target_code'] = null;
+                $taskItems[$index]['target_source_type'] = null;
+                $taskItems[$index]['rationale'] = 'Belum ada RTM aktif yang cukup setara; rekomendasi ini merupakan tambahan.';
+            }
+        }
+
+        $payload['tasks'] = $taskItems;
+        $payload['_merge_mode'] = 'safe_review';
+        $summary = trim((string) ($payload['summary'] ?? ''));
+        $note = 'Telaah bersifat non-destruktif: item lama dipertahankan, diperbaiki hanya bila dipilih, dan tidak dihapus otomatis.';
+        $payload['summary'] = $summary !== '' ? rtrim($summary, '.').' · '.$note : $note;
 
         return $payload;
     }
@@ -2397,62 +2607,103 @@ PROMPT;
         $changedTasks = 0;
         $affectedWeeks = [];
 
+        // Hitung target bobot sebagai MERGE: ADAPT mengganti bobot lama,
+        // ADD menambah, KEEP tidak mengubah. Ini mencegah kasus 10% lama +
+        // rencana AI 100% dibaca keliru sebagai 110% padahal salah satu item
+        // seharusnya merupakan perbaikan asesmen lama.
+        $projectedTotal = (float) DB::table('assessments')
+            ->where('rps_version_id', $version->id)
+            ->sum('weight');
+
         foreach ($selectedAssessmentIndices as $index) {
             $item = $recommendations[$index] ?? null;
+            if (! is_array($item)) continue;
+            $action = strtolower((string) ($item['action'] ?? 'add'));
+            if ($action === 'keep') continue;
 
-            if (! is_array($item)) {
-                throw ValidationException::withMessages([
-                    'ai' => 'Pilihan asesmen AI tidak valid.',
-                ]);
-            }
-
-            $type = (string) ($item['type'] ?? 'other');
-            $week = (int) ($item['week_number'] ?? 1);
-
-            if ($type === 'uts') {
-                $week = 8;
-            } elseif ($type === 'uas') {
-                $week = 16;
-            }
-
-            $query = DB::table('assessments')
-                ->where('rps_version_id', $version->id);
-
-            if (in_array($type, ['uts', 'uas'], true)) {
-                $existing = $query->where('type', $type)->first();
-            } else {
-                $name = mb_strtolower(trim((string) ($item['name'] ?? '')));
-
-                $existing = DB::table('assessments')
-                    ->where('rps_version_id', $version->id)
-                    ->whereRaw('LOWER(name) = ?', [$name])
-                    ->first();
-
-                if (! $existing) {
-                    $existing = DB::table('assessments')
+            $newWeight = (float) ($item['weight'] ?? 0);
+            if ($action === 'adapt') {
+                $targetCode = trim((string) ($item['target_code'] ?? ''));
+                $target = $targetCode !== ''
+                    ? DB::table('assessments')
                         ->where('rps_version_id', $version->id)
-                        ->where('type', $type)
-                        ->where('week_number', $week)
-                        ->first();
+                        ->where('code', $targetCode)
+                        ->first(['id', 'weight'])
+                    : null;
+                if (! $target) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'Target asesmen yang akan diperbaiki sudah berubah atau tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali.',
+                    ]);
+                }
+                $projectedTotal -= (float) $target->weight;
+            }
+            $projectedTotal += $newWeight;
+        }
+
+        $projectedTotal = round($projectedTotal, 2);
+        if ($projectedTotal > 100.001) {
+            throw ValidationException::withMessages([
+                'ai' => "Pilihan rekomendasi akan membuat total bobot asesmen {$projectedTotal}%. Telaah ulang atau pilih hanya rekomendasi PERBAIKI/TAMBAH yang diperlukan. Asesmen lama tidak dihapus otomatis.",
+            ]);
+        }
+
+        foreach ($selectedAssessmentIndices as $index) {
+            $item = $recommendations[$index] ?? null;
+            if (! is_array($item)) {
+                throw ValidationException::withMessages(['ai' => 'Pilihan asesmen AI tidak valid.']);
+            }
+
+            $action = strtolower((string) ($item['action'] ?? 'add'));
+            if ($action === 'keep') continue;
+            if (! in_array($action, ['adapt', 'add'], true)) {
+                throw ValidationException::withMessages(['ai' => 'Aksi asesmen AI tidak dikenali. Buat telaah baru.']);
+            }
+
+            $type = strtolower((string) ($item['type'] ?? 'other'));
+            $week = (int) ($item['week_number'] ?? 1);
+            if ($type === 'uts') $week = 8;
+            if ($type === 'uas') $week = 16;
+
+            $existing = null;
+            if ($action === 'adapt') {
+                $targetCode = trim((string) ($item['target_code'] ?? ''));
+                $existing = $targetCode !== ''
+                    ? DB::table('assessments')
+                        ->where('rps_version_id', $version->id)
+                        ->where('code', $targetCode)
+                        ->first()
+                    : null;
+                if (! $existing) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'Asesmen target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali agar konteks diperbarui.',
+                    ]);
+                }
+            } else {
+                $name = trim((string) ($item['name'] ?? ''));
+                $duplicate = $name !== '' && DB::table('assessments')
+                    ->where('rps_version_id', $version->id)
+                    ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                    ->exists();
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'Asesmen yang akan ditambahkan ternyata sudah ada. Jalankan telaah ulang agar AI menandainya sebagai PERBAIKI/PERTAHANKAN.',
+                    ]);
                 }
             }
 
             $assessmentId = $existing?->id ?: (string) Str::uuid();
-
             $values = [
                 'name' => trim((string) ($item['name'] ?? 'Asesmen AI')),
                 'type' => $type,
                 'week_number' => $week,
                 'description' => (string) ($item['description'] ?? ''),
                 'weight' => (float) ($item['weight'] ?? 0),
-                'source_type' => 'ai_accepted',
+                'source_type' => $action === 'adapt' ? 'ai_adapted' : 'ai_accepted',
                 'updated_at' => now(),
             ];
 
             if ($existing) {
-                DB::table('assessments')
-                    ->where('id', $assessmentId)
-                    ->update($values);
+                DB::table('assessments')->where('id', $assessmentId)->update($values);
             } else {
                 DB::table('assessments')->insert($values + [
                     'id' => $assessmentId,
@@ -2463,16 +2714,12 @@ PROMPT;
                 ]);
             }
 
-            DB::table('assessment_subcpmks')
-                ->where('assessment_id', $assessmentId)
-                ->delete();
-
+            DB::table('assessment_subcpmks')->where('assessment_id', $assessmentId)->delete();
             foreach (array_unique($item['sub_cpmk_codes'] ?? []) as $code) {
                 $subId = DB::table('rps_sub_cpmks')
                     ->where('rps_version_id', $version->id)
                     ->where('code', $code)
                     ->value('id');
-
                 if ($subId) {
                     DB::table('assessment_subcpmks')->insert([
                         'id' => (string) Str::uuid(),
@@ -2485,39 +2732,66 @@ PROMPT;
             }
 
             $changedAssessments++;
-            if (in_array($type, ['uts', 'uas'], true)) {
-                $affectedWeeks[] = $week;
-            }
+            if (in_array($type, ['uts', 'uas'], true)) $affectedWeeks[] = $week;
         }
 
         foreach ($selectedTaskIndices as $index) {
             $task = $tasks[$index] ?? null;
-
             if (! is_array($task)) {
-                throw ValidationException::withMessages([
-                    'ai' => 'Pilihan RTM AI tidak valid.',
-                ]);
+                throw ValidationException::withMessages(['ai' => 'Pilihan RTM AI tidak valid.']);
+            }
+
+            $action = strtolower((string) ($task['action'] ?? 'add'));
+            if ($action === 'keep') continue;
+            if (! in_array($action, ['adapt', 'add'], true)) {
+                throw ValidationException::withMessages(['ai' => 'Aksi RTM AI tidak dikenali. Buat telaah baru.']);
             }
 
             $title = trim((string) ($task['title'] ?? 'RTM AI'));
-
-            $existing = DB::table('rps_tasks')
-                ->where('rps_version_id', $version->id)
-                ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
-                ->first();
+            $existing = null;
+            if ($action === 'adapt') {
+                $targetCode = trim((string) ($task['target_code'] ?? ''));
+                $existing = $targetCode !== ''
+                    ? DB::table('rps_tasks')
+                        ->where('rps_version_id', $version->id)
+                        ->where('code', $targetCode)
+                        ->first()
+                    : null;
+                if (! $existing) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'RTM target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali.',
+                    ]);
+                }
+            } else {
+                $duplicate = DB::table('rps_tasks')
+                    ->where('rps_version_id', $version->id)
+                    ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+                    ->exists();
+                if ($duplicate) {
+                    throw ValidationException::withMessages([
+                        'ai' => 'RTM yang akan ditambahkan ternyata sudah ada. Jalankan telaah ulang agar AI menandainya sebagai PERBAIKI/PERTAHANKAN.',
+                    ]);
+                }
+            }
 
             $assessmentId = null;
             $assessmentName = trim((string) ($task['assessment_name'] ?? ''));
-
             if ($assessmentName !== '') {
                 $assessmentId = DB::table('assessments')
                     ->where('rps_version_id', $version->id)
                     ->whereRaw('LOWER(name) = ?', [mb_strtolower($assessmentName)])
                     ->value('id');
             }
+            if (! $assessmentId && $existing && filled($existing->assessment_id ?? null)) {
+                $assessmentId = $existing->assessment_id;
+            }
+            if (! $assessmentId) {
+                throw ValidationException::withMessages([
+                    'ai' => 'Asesmen induk untuk RTM belum tersedia. Pilih juga rekomendasi asesmen terkait atau jalankan telaah ulang.',
+                ]);
+            }
 
             $taskId = $existing?->id ?: (string) Str::uuid();
-
             $values = [
                 'assessment_id' => $assessmentId,
                 'title' => $title,
@@ -2526,14 +2800,12 @@ PROMPT;
                 'instructions' => (string) ($task['instructions'] ?? ''),
                 'expected_output' => (string) ($task['expected_output'] ?? ''),
                 'due_week' => (int) ($task['due_week'] ?? 1),
-                'source_type' => 'ai_accepted',
+                'source_type' => $action === 'adapt' ? 'ai_adapted' : 'ai_accepted',
                 'updated_at' => now(),
             ];
 
             if ($existing) {
-                DB::table('rps_tasks')
-                    ->where('id', $taskId)
-                    ->update($values);
+                DB::table('rps_tasks')->where('id', $taskId)->update($values);
             } else {
                 DB::table('rps_tasks')->insert($values + [
                     'id' => $taskId,
@@ -2544,16 +2816,12 @@ PROMPT;
                 ]);
             }
 
-            DB::table('rps_task_subcpmks')
-                ->where('rps_task_id', $taskId)
-                ->delete();
-
+            DB::table('rps_task_subcpmks')->where('rps_task_id', $taskId)->delete();
             foreach (array_unique($task['sub_cpmk_codes'] ?? []) as $code) {
                 $subId = DB::table('rps_sub_cpmks')
                     ->where('rps_version_id', $version->id)
                     ->where('code', $code)
                     ->value('id');
-
                 if ($subId) {
                     DB::table('rps_task_subcpmks')->insert([
                         'id' => (string) Str::uuid(),
@@ -2564,67 +2832,34 @@ PROMPT;
                     ]);
                 }
             }
-
             $changedTasks++;
         }
 
-        // RTM yang terhubung ke asesmen harus mengikuti cakupan asesmennya;
-        // jangan menambahkan Sub-CPMK lain hanya demi mengejar cakupan global.
-        $autoCoveredTaskSubs = 0;
-
         foreach (array_unique($affectedWeeks) as $affectedWeek) {
-            // Asesmen non-UTS/UAS adalah rekap/agregat. Jangan pernah menulis
-            // langsung ke satu pekan karena bobotnya harus didistribusikan
-            // melalui Sub-CPMK oleh Isi Bagian Kosong.
-            if (! in_array((int) $affectedWeek, [8, 16], true)) {
-                continue;
-            }
-
-            $weekWeight = round(
-                (float) DB::table('assessments')
-                    ->where('rps_version_id', $version->id)
-                    ->where('week_number', $affectedWeek)
-                    ->whereIn('type', ['uts', 'uas'])
-                    ->sum('weight'),
-                2
-            );
-
+            if (! in_array((int) $affectedWeek, [8, 16], true)) continue;
+            $weekWeight = round((float) DB::table('assessments')
+                ->where('rps_version_id', $version->id)
+                ->where('week_number', $affectedWeek)
+                ->whereIn('type', ['uts', 'uas'])
+                ->sum('weight'), 2);
             DB::table('rps_weekly_plans')
                 ->where('rps_version_id', $version->id)
                 ->where('week_number', $affectedWeek)
-                ->update([
-                    'assessment_weight' => $weekWeight,
-                    'updated_at' => now(),
-                ]);
+                ->update(['assessment_weight' => $weekWeight, 'updated_at' => now()]);
         }
 
         app(RpsAssessmentSyncService::class)->syncVersion($version->id);
 
-        $totalWeight = round(
-            (float) DB::table('assessments')
-                ->where('rps_version_id', $version->id)
-                ->sum('weight'),
-            2
-        );
-
-        $message = "{$changedAssessments} asesmen dan {$changedTasks} RTM terpilih diterapkan.";
-
-        if ($autoCoveredTaskSubs > 0) {
-            $message .= " {$autoCoveredTaskSubs} Sub-CPMK yang belum tercakup otomatis dialokasikan ke RTM agar seluruh Sub-CPMK terakomodir.";
-        }
-
-        if ($changedAssessments > 0 && $totalWeight > 100.0) {
-            $message .= " PERINGATAN: total bobot asesmen agregat saat ini {$totalWeight}% (>100%). Validator OBE akan menandainya sampai total tepat 100%.";
-        } elseif ($changedAssessments > 0 && abs($totalWeight - 100.0) >= 0.01) {
-            $message .= " Total bobot asesmen agregat saat ini {$totalWeight}%; sesuaikan hingga tepat 100%.";
+        $totalWeight = round((float) DB::table('assessments')
+            ->where('rps_version_id', $version->id)->sum('weight'), 2);
+        $message = "{$changedAssessments} asesmen dan {$changedTasks} RTM terpilih diterapkan dengan mode merge aman.";
+        if ($changedAssessments > 0 && abs($totalWeight - 100.0) >= 0.01) {
+            $message .= " Total bobot asesmen saat ini {$totalWeight}%; sesuaikan hingga tepat 100%.";
         } elseif ($changedAssessments > 0) {
-            $message .= ' Total bobot asesmen agregat 100%. Distribusi bobot pekan, RTM, matriks, dan simulasi langsung disinkronkan.';
+            $message .= ' Total bobot asesmen 100%. Distribusi bobot pekan, RTM, matriks, dan simulasi disinkronkan.';
         }
 
-        return [
-            'changed' => $changedAssessments + $changedTasks,
-            'message' => $message,
-        ];
+        return ['changed' => $changedAssessments + $changedTasks, 'message' => $message];
     }
 
     private function ensureAllSubCpmksCoveredByTasks(

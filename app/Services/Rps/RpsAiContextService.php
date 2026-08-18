@@ -138,10 +138,46 @@ class RpsAiContextService
                     ->all();
 
                 return [
+                    'code' => $assessment->code,
                     'name' => $assessment->name,
                     'type' => $assessment->type,
                     'week_number' => $assessment->week_number,
+                    'description' => $assessment->description,
                     'weight' => $assessment->weight,
+                    'source_type' => $assessment->source_type,
+                    'sub_cpmk_codes' => $subCodes,
+                ];
+            })
+            ->all();
+
+        $tasks = DB::table('rps_tasks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('due_week')
+            ->orderBy('code')
+            ->get()
+            ->map(function ($task): array {
+                $subCodes = DB::table('rps_task_subcpmks')
+                    ->join('rps_sub_cpmks', 'rps_sub_cpmks.id', '=', 'rps_task_subcpmks.rps_sub_cpmk_id')
+                    ->where('rps_task_subcpmks.rps_task_id', $task->id)
+                    ->orderBy('rps_sub_cpmks.sequence_no')
+                    ->pluck('rps_sub_cpmks.code')
+                    ->all();
+
+                $assessment = filled($task->assessment_id ?? null)
+                    ? DB::table('assessments')->where('id', $task->assessment_id)->first(['code', 'name'])
+                    : null;
+
+                return [
+                    'code' => $task->code,
+                    'title' => $task->title,
+                    'type' => $task->type,
+                    'assessment_code' => $assessment?->code,
+                    'assessment_name' => $assessment?->name,
+                    'due_week' => $task->due_week,
+                    'purpose' => $task->purpose,
+                    'instructions' => $task->instructions,
+                    'expected_output' => $task->expected_output,
+                    'source_type' => $task->source_type,
                     'sub_cpmk_codes' => $subCodes,
                 ];
             })
@@ -188,6 +224,7 @@ class RpsAiContextService
                 'supporting_reference_text' => $documentMeta?->supporting_reference_text,
             ],
             'assessments' => $assessments,
+            'tasks' => $tasks,
             'constraints' => [
                 'cpl_is_locked_to_current_rps_scope' => true,
                 'do_not_create_new_cpl' => true,
@@ -601,10 +638,27 @@ Pendukung:
                         'name' => $this->clip($assessment['name'] ?? null, 120),
                         'type' => $assessment['type'] ?? null,
                         'week_number' => $assessment['week_number'] ?? null,
+                        'description' => $this->clip($assessment['description'] ?? null, 260),
                         'weight' => $assessment['weight'] ?? null,
+                        'source_type' => $assessment['source_type'] ?? null,
                         'sub_cpmk_codes' => $assessment['sub_cpmk_codes'] ?? [],
                     ])
-                    ->take(16)
+                    ->take(20)
+                    ->values()
+                    ->all(),
+                'current_tasks' => collect($full['tasks'] ?? [])
+                    ->map(fn (array $task): array => [
+                        'code' => $task['code'] ?? null,
+                        'title' => $this->clip($task['title'] ?? null, 140),
+                        'type' => $task['type'] ?? null,
+                        'assessment_code' => $task['assessment_code'] ?? null,
+                        'assessment_name' => $this->clip($task['assessment_name'] ?? null, 120),
+                        'due_week' => $task['due_week'] ?? null,
+                        'purpose' => $this->clip($task['purpose'] ?? null, 360),
+                        'source_type' => $task['source_type'] ?? null,
+                        'sub_cpmk_codes' => $task['sub_cpmk_codes'] ?? [],
+                    ])
+                    ->take(24)
                     ->values()
                     ->all(),
             ],
