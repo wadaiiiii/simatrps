@@ -8,106 +8,126 @@ def replace_once(path: str, old: str, new: str) -> None:
         raise SystemExit(f"Pattern not found in {path}: {old!r}")
     p.write_text(text.replace(old, new, 1))
 
-controller = "app/Http/Controllers/RpsAiController.php"
 workspace = "app/Services/Rps/ObeWorkspaceService.php"
-show = "resources/js/pages/rps/show.tsx"
 
-# REVIEW-TIME: lecturer/manual assessment is never offered as ADAPT.
-replace_once(
-    controller,
-    "                $assessmentItems[$index]['action'] = $same ? 'keep' : 'adapt';",
-    """                $targetSourceType = strtolower(trim((string) ($match->source_type ?? 'manual')));
-                $lecturerOwnedTarget = ! in_array($targetSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true);
-                $assessmentItems[$index]['action'] = ($same || $lecturerOwnedTarget) ? 'keep' : 'adapt';""",
-)
-replace_once(
-    controller,
-    "                $taskItems[$index]['action'] = $same ? 'keep' : 'adapt';",
-    """                $targetSourceType = strtolower(trim((string) ($match->source_type ?? 'manual')));
-                $lecturerOwnedTarget = ! in_array($targetSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true);
-                $taskItems[$index]['action'] = ($same || $lecturerOwnedTarget) ? 'keep' : 'adapt';""",
-)
+# Build short, concrete validator messages from the detailed alignment payload.
+anchor = """        $missingRtmAssessments = collect($taskAlignment['missing_required_assessments'] ?? [])
+            ->map(fn ($item) => trim((string) ($item['code'] ?? '')).' '.trim((string) ($item['name'] ?? '')))
+            ->map(fn ($label) => trim($label))->filter()->values();
 
-# APPLY-TIME: protect against old/stale pending suggestions that still say ADAPT.
-assessment_missing = """                if (! $existing) {
-                    throw ValidationException::withMessages([
-                        'ai' => 'Asesmen target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali agar konteks diperbarui.',
-                    ]);
-                }
+        $checks = [
 """
-assessment_guard = assessment_missing + """                $existingSourceType = strtolower(trim((string) ($existing->source_type ?? 'manual')));
-                if (! in_array($existingSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true)) {
-                    throw ValidationException::withMessages([
-                        'ai' => 'Asesmen manual/dosen tidak boleh ditimpa oleh AI. Item tetap dipertahankan; ubah dari Edit Detail Asesmen bila diperlukan.',
-                    ]);
-                }
-"""
-replace_once(controller, assessment_missing, assessment_guard)
+replacement = """        $missingRtmAssessments = collect($taskAlignment['missing_required_assessments'] ?? [])
+            ->map(fn ($item) => trim((string) ($item['code'] ?? '')).' '.trim((string) ($item['name'] ?? '')))
+            ->map(fn ($label) => trim($label))->filter()->values();
 
-rtm_missing = """                if (! $existing) {
-                    throw ValidationException::withMessages([
-                        'ai' => 'RTM target perbaikan tidak ditemukan. Jalankan Telaah Asesmen + RTM AI kembali.',
-                    ]);
-                }
-"""
-rtm_guard = rtm_missing + """                $existingSourceType = strtolower(trim((string) ($existing->source_type ?? 'manual')));
-                if (! in_array($existingSourceType, ['ai_accepted', 'ai_adapted', 'ai_generated', 'automation', 'assessment_sync'], true)) {
-                    throw ValidationException::withMessages([
-                        'ai' => 'RTM manual/dosen tidak boleh ditimpa oleh AI. Item tetap dipertahankan; ubah dari editor RTM bila diperlukan.',
-                    ]);
-                }
-"""
-replace_once(controller, rtm_missing, rtm_guard)
+        $firstMappingIssue = collect($taskAlignment['mapping_mismatches'] ?? [])->first();
+        $firstUnlinkedIssue = collect($taskAlignment['unlinked_tasks'] ?? [])->first();
+        $firstDueWeekIssue = collect($taskAlignment['invalid_due_weeks'] ?? [])->first();
+        $rtmPrimaryIssue = $firstMappingIssue ?: ($firstUnlinkedIssue ?: $firstDueWeekIssue);
+        $rtmPrimaryCode = trim((string) ($rtmPrimaryIssue['code'] ?? 'RTM'));
+        $rtmPrimaryReason = trim((string) ($rtmPrimaryIssue['reason'] ?? 'Hubungan RTM perlu diperiksa.'));
+        $rtmAdditionalIssueCount = max(0, $rtmProblemTasks->count() - ($rtmPrimaryIssue ? 1 : 0));
 
-# Short validator explanations. Frontend only shows these while unresolved.
-replace_once(
-    workspace,
-    """                'label' => 'Konsistensi Penilaian',
-                'done' => $assessmentChainAligned,
-                'message' => $assessmentChainAligned
-""",
-    """                'label' => 'Konsistensi Penilaian',
+        $assessmentChainIssueMessage = 'Periksa hubungan asesmen, Sub-CPMK, bobot pekan, dan RTM.';
+        if (! $assessmentBudgetAligned) {
+            $assessmentChainIssueMessage = $assessmentBudgetMismatches->count().' asesmen memiliki distribusi bobot pekan yang tidak sesuai.';
+        } elseif ($positiveNonExamMappedCount < $positiveNonExamAssessments->count()) {
+            $assessmentChainIssueMessage = ($positiveNonExamAssessments->count() - $positiveNonExamMappedCount).' asesmen berbobot belum terhubung ke Sub-CPMK.';
+        } elseif ($weightedTeachingWeeks->count() < 14) {
+            $assessmentChainIssueMessage = 'Pekan '.$unweightedTeachingWeekNumbers->implode(', ').' belum menerima bobot dari Detail Asesmen.';
+            if ($uncoveredNonExamSubCodes->isNotEmpty()) {
+                $assessmentChainIssueMessage .= ' Lengkapi asesmen untuk '.$uncoveredNonExamSubCodes->implode(', ').'.';
+            }
+        } elseif (! $subBudgetAligned) {
+            $assessmentChainIssueMessage = 'Distribusi bobot per Sub-CPMK belum sesuai dengan Detail Asesmen.';
+        } elseif ($ambiguousWeekNumbers->isNotEmpty()) {
+            $assessmentChainIssueMessage = $ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.';
+        } elseif ($missingWeekNumbers->isNotEmpty()) {
+            $assessmentChainIssueMessage = 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.';
+        } elseif ($taskAlignment['missing_required_assessment_count'] > 0) {
+            $assessmentChainIssueMessage = $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.';
+        } elseif ($rtmPrimaryIssue) {
+            $assessmentChainIssueMessage = $rtmPrimaryCode.' belum sinkron: '.$rtmPrimaryReason;
+        }
+
+        $rtmMessage = 'RTM tidak diperlukan.';
+        if (! $taskAssessments->isEmpty()) {
+            if ((bool) $taskAlignment['is_aligned']) {
+                $rtmMessage = $tasks.' RTM tersedia · Semua sinkron dengan asesmen induk.';
+            } else {
+                $parts = [$tasks.' RTM tersedia'];
+                if ($missingRtmAssessments->isNotEmpty()) {
+                    $parts[] = 'asesmen belum memiliki RTM: '.$missingRtmAssessments->implode(', ');
+                }
+                if ($rtmPrimaryIssue) {
+                    $issueText = $rtmPrimaryCode.' belum sinkron: '.$rtmPrimaryReason;
+                    if ($rtmAdditionalIssueCount > 0) {
+                        $issueText .= ' (+'.$rtmAdditionalIssueCount.' RTM lain)';
+                    }
+                    $parts[] = $issueText;
+                }
+                $rtmMessage = implode(' · ', $parts).'.';
+            }
+        }
+
+        $checks = [
+"""
+replace_once(workspace, anchor, replacement)
+
+old_chain = """                'key' => 'assessment_chain_sync',
+                'label' => 'Konsistensi Penilaian',
                 'done' => $assessmentChainAligned,
                 'hint' => 'Memeriksa hubungan asesmen, Sub-CPMK, bobot 14 pekan, bukti penilaian, dan RTM.',
                 'message' => $assessmentChainAligned
-""",
-)
-replace_once(
-    workspace,
-    "                                        : 'Masih ada data penilaian yang belum konsisten.'))))),",
-    "                                        : 'Rantai asesmen–Sub-CPMK–bobot pekan–RTM belum sepenuhnya selaras.'))))),",
-)
-replace_once(
-    workspace,
-    """                'label' => 'RTM',
-                'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
-                'message' => $taskAssessments->isEmpty()
-""",
-    """                'label' => 'RTM',
+                    ? 'Semua penilaian sudah konsisten.'
+                    : (! $assessmentBudgetAligned
+                        ? $assessmentBudgetMismatches->count().' asesmen memiliki distribusi bobot pekan yang tidak sesuai.'
+                        : ($weightedTeachingWeeks->count() < 14
+                            ? 'Pekan '.$unweightedTeachingWeekNumbers->implode(', ').' belum menerima distribusi bobot dari Detail Asesmen.'
+                                .($uncoveredNonExamSubCodes->isNotEmpty()
+                                    ? ' Lengkapi asesmen non-UTS/UAS untuk '.$uncoveredNonExamSubCodes->implode(', ').'.'
+                                    : '')
+                            : ($ambiguousWeekNumbers->isNotEmpty()
+                                ? ($ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.')
+                                : ($missingWeekNumbers->isNotEmpty()
+                                    ? 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.'
+                                    : ($taskAlignment['missing_required_assessment_count'] > 0
+                                        ? $taskAlignment['missing_required_assessment_count'].' asesmen belum memiliki RTM.'
+                                        : 'Rantai asesmen–Sub-CPMK–bobot pekan–RTM belum sepenuhnya selaras.'))))),
+"""
+new_chain = """                'key' => 'assessment_chain_sync',
+                'label' => 'Konsistensi Penilaian',
+                'done' => $assessmentChainAligned,
+                'hint' => 'Mencocokkan asesmen ↔ Sub-CPMK ↔ bobot pekan ↔ RTM.',
+                'message' => $assessmentChainAligned
+                    ? 'Semua penilaian sudah konsisten.'
+                    : $assessmentChainIssueMessage,
+"""
+replace_once(workspace, old_chain, new_chain)
+
+old_rtm = """                'key' => 'rtm',
+                'label' => 'RTM',
                 'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
                 'hint' => 'Memeriksa asesmen induk, cakupan Sub-CPMK, dan pekan pengumpulan setiap RTM.',
                 'message' => $taskAssessments->isEmpty()
-""",
-)
-replace_once(
-    workspace,
-    "                                : ' · semua asesmen wajib sudah memiliki RTM')",
-    "                                : ' · seluruh asesmen yang memerlukan RTM sudah memiliki RTM')",
-)
-replace_once(
-    workspace,
-    "                                ? ' · perlu sinkronisasi: '.$rtmProblemLabels->implode(', ').'.'",
-    "                                ? ' · periksa hubungan asesmen/Sub-CPMK/jadwal: '.$rtmProblemLabels->implode(', ').'.'",
-)
+                    ? 'RTM tidak diperlukan.'
+                    : ((bool) $taskAlignment['is_aligned']
+                        ? \"{$tasks} RTM tersedia · Semua sinkron dengan asesmen induk.\"
+                        : \"{$tasks} RTM tersedia\"
+                            .($missingRtmAssessments->isNotEmpty()
+                                ? ' · asesmen belum memiliki RTM: '.$missingRtmAssessments->implode(', ')
+                                : ' · seluruh asesmen yang memerlukan RTM sudah memiliki RTM')
+                            .($rtmProblemLabels->isNotEmpty()
+                                ? ' · periksa hubungan asesmen/Sub-CPMK/jadwal: '.$rtmProblemLabels->implode(', ').'.'
+                                : '.')),
+"""
+new_rtm = """                'key' => 'rtm',
+                'label' => 'RTM',
+                'done' => $taskAssessments->isEmpty() || (bool) $taskAlignment['is_aligned'],
+                'hint' => 'RTM harus sesuai dengan asesmen induk, Sub-CPMK, dan pekan pengumpulan.',
+                'message' => $rtmMessage,
+"""
+replace_once(workspace, old_rtm, new_rtm)
 
-# Hint disappears automatically when check.done becomes true.
-replace_once(
-    show,
-    '                                        <p className="mt-2 text-xs leading-5 text-slate-600">{check.message}</p>',
-    """                                        {!check.done && check.hint && (
-                                            <p className=\"mt-2 text-[10px] font-semibold leading-4 text-slate-500\">{check.hint}</p>
-                                        )}
-                                        <p className={`${!check.done && check.hint ? 'mt-1' : 'mt-2'} text-xs leading-5 text-slate-600`}>{check.message}</p>""",
-)
-
-print('manual AI protection and validator clarity patched')
+print('validator messages now expose the exact first assessment/RTM issue')
