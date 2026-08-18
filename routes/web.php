@@ -99,7 +99,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->name('admin.')
     ->group(function (): void {
         Route::get('kurikulum', CurriculumController::class)->name('curriculum');
-        Route::inertia('admin/templates')->name('templates');
+        Route::inertia('template-rps', 'admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
         Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
     });
