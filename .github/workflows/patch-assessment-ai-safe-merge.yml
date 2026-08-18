@@ -26,11 +26,15 @@ jobs:
           from pathlib import Path
           p = Path('.github/scripts/patch-assessment-ai-safe-merge.py')
           s = p.read_text()
-          s = s.replace(
-              "        // Store as accepted audit history\\n",
-              "        // Store as accepted audit history, but do not keep it in the active\\n        // recommendation panel because the lecturer explicitly requested it\\n        // from the week row.\\n",
-          )
-          p.write_text(s)
+          old = '''        // Store as accepted audit history
+'''
+          new = '''        // Store as accepted audit history, but do not keep it in the active
+        // recommendation panel because the lecturer explicitly requested it
+        // from the week row.
+'''
+          if old not in s:
+              raise SystemExit('runtime audit marker not found in patch script')
+          p.write_text(s.replace(old, new, 1))
           PY
 
       - name: Apply patch with diagnostics
