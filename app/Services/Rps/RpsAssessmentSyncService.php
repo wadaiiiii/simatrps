@@ -386,13 +386,10 @@ class RpsAssessmentSyncService
                 continue;
             }
 
-            $fallback = trim((string) ($week->assessment_method ?? ''));
-            if ($fallback !== '') {
-                $namesByWeek[$weekNumber] = [$fallback];
-                $evidenceSourceByWeek[$weekNumber] = 'weekly_method';
-            }
-
-            if ((int) ($expectedCents[$weekNumber] ?? 0) > 0 && $fallback === '') {
+            // Tidak ada fallback dari assessment_method pekanan. Detail
+            // Asesmen adalah sumber kebenaran bentuk/bukti penilaian. Jika belum
+            // ada asesmen induk, pekan tetap ditandai belum terhubung.
+            if ((int) ($expectedCents[$weekNumber] ?? 0) > 0) {
                 $missingEvidenceWeeks[] = $weekNumber;
             }
         }
@@ -444,6 +441,23 @@ class RpsAssessmentSyncService
             }
         }
 
+        $coveredNonExamSubIds = collect($assessmentMeta)
+            ->flatMap(fn ($meta) => $meta['subs'] ?? [])
+            ->map(fn ($id) => (string) $id)
+            ->filter()->unique()->values();
+        $teachingSubIds = $teachingWeeks
+            ->pluck('rps_sub_cpmk_id')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->unique()->values();
+        $subCodeById = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $versionId)
+            ->pluck('code', 'id');
+        $uncoveredNonExamSubCodes = $teachingSubIds
+            ->diff($coveredNonExamSubIds)
+            ->map(fn ($id) => trim((string) $subCodeById->get($id, '')))
+            ->filter()->unique()->values()->all();
+
         return [
             'expected_weekly_weights' => collect($expectedCents)
                 ->map(fn ($cents) => round($cents / 100, 2))->all(),
@@ -456,6 +470,7 @@ class RpsAssessmentSyncService
             'assessment_group_week_count_by_week' => $groupWeekCountByWeek,
             'assessment_total_budget_by_week' => $assessmentTotalBudgetByWeek,
             'assessment_budget_mismatches' => $assessmentBudgetMismatches,
+            'uncovered_non_exam_sub_codes' => $uncoveredNonExamSubCodes,
             'ambiguous_evidence_weeks' => $ambiguousEvidenceWeeks,
             'missing_evidence_weeks' => array_values(array_unique($missingEvidenceWeeks)),
             'aggregate_sub_budgets' => collect($aggregateSubCents)
@@ -498,14 +513,26 @@ class RpsAssessmentSyncService
         }
 
         DB::transaction(function () use ($versionId, $snapshot): void {
+            $ownerNames = collect($snapshot['assessment_owner_name_by_week'] ?? []);
+
             foreach ($snapshot['expected_weekly_weights'] as $week => $weight) {
+                $weekNumber = (int) $week;
+                $updates = [
+                    'assessment_weight' => (float) $weight,
+                    'updated_at' => now(),
+                ];
+
+                // Bentuk penilaian pekanan tidak lagi berdiri sendiri. Ia selalu
+                // mengikuti asesmen induk pada Detail Asesmen.
+                if (in_array($weekNumber, self::TEACHING_WEEKS, true)) {
+                    $ownerName = trim((string) $ownerNames->get($weekNumber, ''));
+                    $updates['assessment_method'] = $ownerName !== '' ? $ownerName : null;
+                }
+
                 DB::table('rps_weekly_plans')
                     ->where('rps_version_id', $versionId)
-                    ->where('week_number', (int) $week)
-                    ->update([
-                        'assessment_weight' => (float) $weight,
-                        'updated_at' => now(),
-                    ]);
+                    ->where('week_number', $weekNumber)
+                    ->update($updates);
             }
         });
 
@@ -1089,7 +1116,7 @@ class RpsAssessmentSyncService
     {
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->get(['id', 'assessment_id', 'due_week', 'title', 'source_type', 'purpose', 'instructions', 'expected_output'])
+            ->get(['id', 'code', 'assessment_id', 'due_week', 'title', 'source_type', 'purpose', 'instructions', 'expected_output'])
             ->values();
 
         $linkedTasks = $tasks->filter(fn ($task) => filled($task->assessment_id ?? null));
@@ -1125,6 +1152,9 @@ class RpsAssessmentSyncService
         $mismatchCount = 0;
         $invalidDueWeekCount = 0;
         $unlinkedWeightedTaskCount = 0;
+        $mappingIssues = [];
+        $invalidDueWeekIssues = [];
+        $unlinkedIssues = [];
 
         foreach ($tasks as $task) {
             $dueWeek = (int) ($task->due_week ?? 0);
@@ -1137,6 +1167,13 @@ class RpsAssessmentSyncService
 
             if ($dueWeek < 1 || $dueWeek > 16) {
                 $invalidDueWeekCount++;
+                $invalidDueWeekIssues[] = [
+                    'id' => (string) $task->id,
+                    'code' => trim((string) ($task->code ?? 'RTM')),
+                    'title' => trim((string) $task->title),
+                    'week' => $dueWeek,
+                    'reason' => 'Pekan pengumpulan tidak valid.',
+                ];
             } else {
                 $latestCoverageWeek = $weekRows
                     ->filter(fn ($row, $number) =>
@@ -1148,12 +1185,26 @@ class RpsAssessmentSyncService
 
                 if ($latestCoverageWeek && $dueWeek < (int) $latestCoverageWeek) {
                     $invalidDueWeekCount++;
+                    $invalidDueWeekIssues[] = [
+                        'id' => (string) $task->id,
+                        'code' => trim((string) ($task->code ?? 'RTM')),
+                        'title' => trim((string) $task->title),
+                        'week' => $dueWeek,
+                        'reason' => 'Pekan pengumpulan '.$dueWeek.' lebih awal dari pekan terakhir cakupan Sub-CPMK '.(int) $latestCoverageWeek.'.',
+                    ];
                 }
             }
 
             if (! filled($task->assessment_id ?? null)) {
                 if ($week && (float) ($week->assessment_weight ?? 0) > 0) {
                     $unlinkedWeightedTaskCount++;
+                    $unlinkedIssues[] = [
+                        'id' => (string) $task->id,
+                        'code' => trim((string) ($task->code ?? 'RTM')),
+                        'title' => trim((string) $task->title),
+                        'week' => $dueWeek,
+                        'reason' => 'RTM belum terhubung ke asesmen induk.',
+                    ];
                 }
                 continue;
             }
@@ -1161,6 +1212,13 @@ class RpsAssessmentSyncService
             $assessmentId = (string) $task->assessment_id;
             if (! $validAssessmentIds->contains($assessmentId)) {
                 $mismatchCount++;
+                $mappingIssues[] = [
+                    'id' => (string) $task->id,
+                    'code' => trim((string) ($task->code ?? 'RTM')),
+                    'title' => trim((string) $task->title),
+                    'week' => $dueWeek,
+                    'reason' => 'Asesmen induk RTM tidak valid atau bukan asesmen yang memerlukan RTM.',
+                ];
                 continue;
             }
 
@@ -1177,13 +1235,26 @@ class RpsAssessmentSyncService
             $outside = $actual->reject(fn ($id) => $assessmentSubIds->contains($id));
             if ($actual->isEmpty() || $assessmentSubIds->isEmpty() || $outside->isNotEmpty()) {
                 $mismatchCount++;
+                $mappingIssues[] = [
+                    'id' => (string) $task->id,
+                    'code' => trim((string) ($task->code ?? 'RTM')),
+                    'title' => trim((string) $task->title),
+                    'week' => $dueWeek,
+                    'reason' => $actual->isEmpty()
+                        ? 'RTM belum memiliki Sub-CPMK yang diukur.'
+                        : ($assessmentSubIds->isEmpty()
+                            ? 'Asesmen induk belum memiliki cakupan Sub-CPMK.'
+                            : 'Cakupan Sub-CPMK RTM berada di luar cakupan asesmen induk.'),
+                ];
             }
         }
 
-        $requiredAssessmentIds = DB::table('assessments')
+        $requiredAssessments = DB::table('assessments')
             ->where('rps_version_id', $versionId)
             ->whereIn('type', ['assignment', 'project', 'practicum', 'presentation'])
             ->whereRaw('COALESCE(weight, 0) > 0')
+            ->get(['id', 'code', 'name']);
+        $requiredAssessmentIds = $requiredAssessments
             ->pluck('id')->map(fn ($id) => (string) $id)->unique()->values();
 
         $coveredAssessmentIds = $linkedTasks->pluck('assessment_id')
@@ -1192,19 +1263,29 @@ class RpsAssessmentSyncService
             ->filter(fn ($id) => $validAssessmentIds->contains($id))
             ->unique()
             ->values();
-        $missingRequired = $requiredAssessmentIds->diff($coveredAssessmentIds)->values();
+        $missingRequired = $requiredAssessments
+            ->reject(fn ($assessment) => $coveredAssessmentIds->contains((string) $assessment->id))
+            ->values();
+        $problemTaskIds = collect(array_merge($mappingIssues, $invalidDueWeekIssues, $unlinkedIssues))
+            ->pluck('id')->filter()->unique()->values()->all();
 
         return [
             'task_total' => $tasks->count(),
             'linked_task_total' => $linkedTasks->count(),
             'required_assessment_total' => $requiredAssessmentIds->count(),
             'missing_required_assessment_count' => $missingRequired->count(),
+            'missing_required_assessments' => $missingRequired->map(fn ($assessment) => [
+                'id' => (string) $assessment->id,
+                'code' => trim((string) $assessment->code),
+                'name' => trim((string) $assessment->name),
+            ])->all(),
             'mapping_mismatch_count' => $mismatchCount,
+            'mapping_mismatches' => $mappingIssues,
             'unlinked_weighted_task_count' => $unlinkedWeightedTaskCount,
-            // Nama key legacy dipertahankan untuk kompatibilitas UI/API. Nilai
-            // kini hanya menunjukkan jadwal pengumpulan yang tidak valid,
-            // bukan ketidaksamaan Sub-CPMK pekan dengan RTM.
+            'unlinked_tasks' => $unlinkedIssues,
             'due_week_subcpmk_mismatch_count' => $invalidDueWeekCount,
+            'invalid_due_weeks' => $invalidDueWeekIssues,
+            'problem_task_ids' => $problemTaskIds,
             'is_aligned' => $missingRequired->isEmpty()
                 && $mismatchCount === 0
                 && $unlinkedWeightedTaskCount === 0

@@ -89,6 +89,8 @@ MODE TELAAH / MERGE AMAN:
 - Jangan menghapus asesmen/RTM lama secara implisit. Penghapusan tetap keputusan eksplisit dosen di editor.
 - Target-state asesmen setelah mempertahankan/perbaiki/menambah harus tepat 100%, bukan 100% baru yang ditumpuk di atas bobot lama.
 - Pastikan seluruh Sub-CPMK aktif memiliki bukti asesmen dan RTM yang relevan; gunakan keterkaitan Sub-CPMK sebagai dasar utama constructive alignment.
+- SETIAP Sub-CPMK aktif WAJIB tercakup minimal satu asesmen NON-UTS/UAS dengan bobot positif. UTS/UAS boleh mengukur Sub-CPMK yang sama sebagai asesmen sumatif, tetapi UTS/UAS tidak boleh menjadi satu-satunya asesmen untuk suatu Sub-CPMK.
+- Detail Asesmen adalah sumber kebenaran bentuk dan bobot penilaian pekanan. Jangan membuat bentuk penilaian pekanan yang berdiri sendiri di luar asesmen agregat.
 
 ATURAN CAKUPAN RTM:
 1. Satu RTM BOLEH mengukur tepat satu Sub-CPMK ATAU beberapa Sub-CPMK sekaligus jika tugasnya integratif (proyek, praktikum, presentasi, tugas kasus, atau produk yang memang memerlukan beberapa capaian).
@@ -122,7 +124,7 @@ PROMPT;
                 [
                     'type' => $data['suggestion_type'],
                     'instruction' => trim((string) ($data['instruction'] ?? '')),
-                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v4-safe-merge' : 'bloom-guard-v2',
+                    'ai_policy_version' => $data['suggestion_type'] === 'assessment_plan' ? 'rtm-integrative-v5-assessment-source' : 'bloom-guard-v2',
                     'context' => $context,
                 ],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
@@ -283,7 +285,8 @@ PROMPT;
         string $rps,
         int $week,
         AiRpsProviderService $aiProvider,
-        RpsAiContextService $contextService
+        RpsAiContextService $contextService,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         try {
             return $this->generateWeekInternal(
@@ -291,7 +294,8 @@ PROMPT;
                 $rps,
                 $week,
                 $aiProvider,
-                $contextService
+                $contextService,
+                $assessmentSync
             );
         } catch (ValidationException $error) {
             throw $error;
@@ -316,7 +320,8 @@ PROMPT;
         string $rps,
         int $week,
         AiRpsProviderService $aiProvider,
-        RpsAiContextService $contextService
+        RpsAiContextService $contextService,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         // One week = one AI request. Keep the request below common nginx/Herd
         // gateway timeouts instead of processing 14 weeks sequentially.
@@ -375,6 +380,8 @@ PROMPT;
             $week,
             $targetSub->code
         );
+        $assessmentSnapshot = $assessmentSync->snapshot($version->id);
+        $assessmentOwnerName = trim((string) ($assessmentSnapshot['assessment_owner_name_by_week'][$week] ?? ''));
 
         $indicatorInstruction = <<<'PROMPT'
 Untuk pekan ini, jangan menyalin, memendekkan, atau sekadar memparafrase rumusan `target_sub_cpmk` pada `assessment_indicator`.
@@ -382,7 +389,7 @@ Turunkan indikator penilaian BARU sebagai bukti ketercapaian yang dapat diamati 
 Indikator ideal memuat 2-3 tindakan/bukti operasional, misalnya mengidentifikasi unsur pada contoh, menjelaskan hubungan/argumen, menerapkan prosedur pada kasus, membandingkan hasil, menganalisis kesalahan, atau menghasilkan produk yang relevan—sesuaikan dengan level Bloom dan bidang ilmu pada konteks.
 JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian", atau membuka kalimat dengan "Mahasiswa mampu/dapat". Mulai langsung dengan kata kerja operasional.
 Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
-Pastikan `assessment_criteria` menilai kualitas bukti tersebut dan `assessment_method` konsisten dengan asesmen yang tersedia.
+Pastikan `assessment_criteria` menilai kualitas bukti tersebut. `assessment_method` TIDAK boleh menciptakan bentuk penilaian baru: bentuk resmi selalu berasal dari Detail Asesmen. Jika pekan belum mempunyai asesmen induk pada `target_assessments`, kosongkan `assessment_method`; sistem akan meminta dosen melengkapi Detail Asesmen.
 Materi pekan WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
 
 FORMAT SCANNABLE METODE DAN AKTIVITAS PEMBELAJARAN:
@@ -494,7 +501,7 @@ PROMPT;
             'independent_study_sessions' => max(1, (int) ($weekly->independent_study_sessions ?? 1)),
             'assessment_indicator' => $item['assessment_indicator'] ?? null,
             'assessment_criteria' => $item['assessment_criteria'] ?? null,
-            'assessment_method' => $item['assessment_method'] ?? null,
+            'assessment_method' => $assessmentOwnerName !== '' ? $assessmentOwnerName : null,
             'reference_text' => $resolvedReferences,
         ];
 
@@ -525,6 +532,11 @@ PROMPT;
             }
         }
 
+        $currentAssessmentMethod = trim((string) ($weekly->assessment_method ?? ''));
+        if ($currentAssessmentMethod !== $assessmentOwnerName) {
+            $updates['assessment_method'] = $assessmentOwnerName !== '' ? $assessmentOwnerName : null;
+        }
+
         if ($updates === []) {
             return back()->with(
                 'success',
@@ -540,6 +552,8 @@ PROMPT;
         DB::table('rps_weekly_plans')
             ->where('id', $weekly->id)
             ->update($updates);
+
+        $assessmentSync->syncVersion($version->id);
 
         // Store as accepted audit history, but do not keep it in the active
         // recommendation panel because the lecturer explicitly requested it
@@ -574,11 +588,13 @@ PROMPT;
             'updated_at' => now(),
         ]);
 
+        $assessmentNote = $assessmentOwnerName !== ''
+            ? ' Bentuk dan bobot penilaian mengikuti Detail Asesmen “'.$assessmentOwnerName.'”.'
+            : ' Pekan ini belum memiliki asesmen induk; bentuk dan bobot penilaian tidak dibuat oleh AI pekanan. Lengkapi Detail Asesmen untuk menyinkronkannya.';
+
         return back()->with(
             'success',
-            'AI berhasil '.($overwrite ? 'menyusun ulang' : 'melengkapi')
-                .' pekan '.$week.' menggunakan '
-                .strtoupper((string) ($result['provider'] ?? 'AI')).'.'
+            'AI berhasil '.($overwrite ? 'menyusun ulang' : 'melengkapi').' pekan '.$week.'.'.$assessmentNote
         );
     }
 
@@ -1027,12 +1043,44 @@ PROMPT;
         }
 
         $payload['tasks'] = $tasks;
+        $payload = $this->assertNonExamAssessmentCoverage($payload, $version);
         $payload = $this->annotateAssessmentMergeActions($payload, $version);
 
         if ($adjusted > 0) {
             $summary = trim((string) ($payload['summary'] ?? ''));
             $note = $adjusted.' deskripsi RTM diperkuat dengan kata/frasa kompetensi Sub-CPMK untuk menjaga constructive alignment.';
             $payload['summary'] = $summary !== '' ? rtrim($summary, '.').' · '.$note : $note;
+        }
+
+        return $payload;
+    }
+
+
+    private function assertNonExamAssessmentCoverage(array $payload, object $version): array
+    {
+        $activeCodes = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $version->id)
+            ->orderBy('sequence_no')
+            ->pluck('code')
+            ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+            ->filter()->unique()->values();
+
+        if ($activeCodes->isEmpty()) return $payload;
+
+        $coveredCodes = collect($payload['assessments'] ?? [])
+            ->filter(fn ($item) => is_array($item))
+            ->reject(fn ($item) => in_array(strtolower(trim((string) ($item['type'] ?? 'other'))), ['uts', 'uas'], true))
+            ->filter(fn ($item) => (float) ($item['weight'] ?? 0) > 0)
+            ->flatMap(fn ($item) => $item['sub_cpmk_codes'] ?? [])
+            ->map(fn ($code) => $this->normalizeSubCpmkLookupCode((string) $code))
+            ->filter()->unique()->values();
+
+        $missing = $activeCodes->diff($coveredCodes)->values();
+        if ($missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'ai' => 'Telaah Asesmen + RTM AI belum memenuhi constructive alignment. Sub-CPMK berikut belum memiliki asesmen non-UTS/UAS berbobot: '
+                    .$missing->implode(', ').'. Jalankan Telaah Asesmen + RTM AI kembali; rekomendasi yang tidak menutup seluruh Sub-CPMK tidak akan diterapkan.',
+            ]);
         }
 
         return $payload;
@@ -2619,9 +2667,8 @@ PROMPT;
         object $version,
         int $userId
     ): array {
-        // Re-evaluate merge actions at APPLY time against the latest RPS state.
-        // This also repairs older pending suggestions that were previously
-        // classified as ADD because name/type differed from manual data.
+        // Re-evaluate coverage and merge actions at APPLY time against the latest RPS state.
+        $payload = $this->assertNonExamAssessmentCoverage($payload, $version);
         $payload = $this->annotateAssessmentMergeActions($payload, $version);
         $recommendations = $payload['assessments'] ?? [];
         $tasks = $payload['tasks'] ?? [];

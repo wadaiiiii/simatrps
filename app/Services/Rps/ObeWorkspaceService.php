@@ -244,8 +244,14 @@ class ObeWorkspaceService
         $teachingWeightTotal = round((float) $teachingWeeks->sum(
             fn ($week) => (float) ($week->assessment_weight ?? 0)
         ), 2);
-        $weightedWeeklySubCount = $weightedTeachingWeeks
-            ->pluck('rps_sub_cpmk_id')->filter()->unique()->count();
+        $weightedWeeklySubIds = $weightedTeachingWeeks
+            ->pluck('rps_sub_cpmk_id')->filter()->map(fn ($id) => (string) $id)->unique()->values();
+        $weightedWeeklySubCount = $weightedWeeklySubIds->count();
+        $unmeasuredSubCodes = $subCpmks
+            ->reject(fn ($sub) => $weightedWeeklySubIds->contains((string) $sub->id))
+            ->pluck('code')->map(fn ($code) => trim((string) $code))->filter()->values();
+        $uncoveredNonExamSubCodes = collect($assessmentSnapshot['uncovered_non_exam_sub_codes'] ?? [])
+            ->map(fn ($code) => trim((string) $code))->filter()->unique()->values();
         $weeklySubBudgets = $teachingWeeks
             ->filter(fn ($week) => filled($week->rps_sub_cpmk_id ?? null))
             ->groupBy(fn ($week) => (string) $week->rps_sub_cpmk_id)
@@ -593,6 +599,18 @@ class ObeWorkspaceService
             ? "{$mappedCpmkCount}/{$cpmks->count()} CPMK terpetakan · CPL belum tersedia."
             : "{$mappedCpmkCount}/{$cpmks->count()} CPMK · {$mappedScopeCplCount}/{$scopeCplCount} CPL terpetakan.";
 
+        $rtmProblemTasks = collect(array_merge(
+            $taskAlignment['mapping_mismatches'] ?? [],
+            $taskAlignment['invalid_due_weeks'] ?? [],
+            $taskAlignment['unlinked_tasks'] ?? []
+        ))->unique('id')->values();
+        $rtmProblemLabels = $rtmProblemTasks
+            ->map(fn ($item) => trim((string) ($item['code'] ?? 'RTM')))
+            ->filter()->unique()->values();
+        $missingRtmAssessments = collect($taskAlignment['missing_required_assessments'] ?? [])
+            ->map(fn ($item) => trim((string) ($item['code'] ?? '')).' '.trim((string) ($item['name'] ?? '')))
+            ->map(fn ($label) => trim($label))->filter()->values();
+
         $checks = [
             [
                 'key' => 'cpmk_cpl',
@@ -710,9 +728,18 @@ class ObeWorkspaceService
                     && $subBudgetAligned
                     && $assessmentBudgetAligned
                     && abs($weightTotal - 100.0) < 0.01,
-                'message' => "{$weightedTeachingWeeks->count()}/14 pekan berbobot · Total {$weightTotal}%.",
+                'message' => abs($assessmentWeightTotal - 100.0) < 0.01
+                    ? ($weightedTeachingWeeks->count() === 14
+                        ? 'Total bobot asesmen 100% · 14/14 pekan menerima distribusi bobot.'
+                        : 'Total bobot asesmen 100% · Pekan '.$unweightedTeachingWeekNumbers->implode(', ').' belum menerima distribusi bobot dari Detail Asesmen.'
+                            .($uncoveredNonExamSubCodes->isNotEmpty()
+                                ? ' Sub-CPMK tanpa asesmen non-UTS/UAS: '.$uncoveredNonExamSubCodes->implode(', ').'.'
+                                : ''))
+                    : 'Total bobot asesmen '.$assessmentWeightTotal.'% · target harus 100%.',
                 'details' => [
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
+                    'unweighted_weeks' => $unweightedTeachingWeekNumbers->all(),
+                    'uncovered_non_exam_sub_codes' => $uncoveredNonExamSubCodes->all(),
                     'teaching_week_total' => $teachingWeightTotal,
                     'non_exam_assessment_budget' => $nonExamAssessmentWeight,
                     'weekly_total' => $weightTotal,
@@ -730,10 +757,13 @@ class ObeWorkspaceService
                 'done' => $subCpmks->isNotEmpty()
                     && $weightedTeachingWeeks->count() === 14
                     && $weightedWeeklySubCount === $subCpmks->count(),
-                'message' => "{$weightedWeeklySubCount}/{$subCpmks->count()} Sub-CPMK terukur · {$weightedTeachingWeeks->count()}/14 pekan.",
+                'message' => $weightedWeeklySubCount === $subCpmks->count()
+                    ? "{$weightedWeeklySubCount}/{$subCpmks->count()} Sub-CPMK terukur pada pekan berbobot."
+                    : "{$weightedWeeklySubCount}/{$subCpmks->count()} Sub-CPMK terukur. Belum terukur melalui asesmen non-UTS/UAS: ".$unmeasuredSubCodes->implode(', ').'.',
                 'details' => [
                     'sub_cpmk_total' => $subCpmks->count(),
                     'sub_cpmk_measured_in_weighted_weeks' => $weightedWeeklySubCount,
+                    'unmeasured_sub_codes' => $unmeasuredSubCodes->all(),
                     'assessment_mapping_count' => $mappedAssessmentCount,
                     'assessment_total' => $assessments->count(),
                 ],
@@ -764,7 +794,10 @@ class ObeWorkspaceService
                     : (! $assessmentBudgetAligned
                         ? $assessmentBudgetMismatches->count().' asesmen memiliki distribusi bobot pekan yang tidak sesuai.'
                         : ($weightedTeachingWeeks->count() < 14
-                            ? $unweightedTeachingWeekNumbers->count().' pekan belum memiliki bobot penilaian.'
+                            ? 'Pekan '.$unweightedTeachingWeekNumbers->implode(', ').' belum menerima distribusi bobot dari Detail Asesmen.'
+                                .($uncoveredNonExamSubCodes->isNotEmpty()
+                                    ? ' Lengkapi asesmen non-UTS/UAS untuk '.$uncoveredNonExamSubCodes->implode(', ').'.'
+                                    : '')
                             : ($ambiguousWeekNumbers->isNotEmpty()
                                 ? ($ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.')
                                 : ($missingWeekNumbers->isNotEmpty()
@@ -776,6 +809,8 @@ class ObeWorkspaceService
                     'positive_non_exam_assessments' => $positiveNonExamAssessments->count(),
                     'mapped_positive_non_exam_assessments' => $positiveNonExamMappedCount,
                     'weighted_teaching_weeks' => $weightedTeachingWeeks->count(),
+                    'unweighted_weeks' => $unweightedTeachingWeekNumbers->all(),
+                    'uncovered_non_exam_sub_codes' => $uncoveredNonExamSubCodes->all(),
                     'sub_budget_aligned' => $subBudgetAligned,
                     'assessment_budget_aligned' => $assessmentBudgetAligned,
                     'assessment_budget_mismatches' => $assessmentBudgetMismatches->all(),
@@ -795,7 +830,7 @@ class ObeWorkspaceService
                 'message' => $weeklyEvidenceAligned
                     ? '14/14 pekan memiliki satu bukti penilaian.'
                     : ($weightedTeachingWeeks->count() < 14
-                        ? 'Belum dapat diperiksa: '.$unweightedTeachingWeekNumbers->count().' pekan belum memiliki bobot penilaian.'
+                        ? 'Belum dapat diperiksa: Pekan '.$unweightedTeachingWeekNumbers->implode(', ').' belum menerima bobot dari asesmen induk.'
                         : ($ambiguousWeekNumbers->isNotEmpty()
                             ? ($ambiguousEvidenceMessage ?: 'Ada pekan dengan lebih dari satu bukti penilaian.')
                             : 'Pekan '.$missingWeekNumbers->implode(', ').' belum memiliki bukti penilaian.')),
@@ -832,9 +867,18 @@ class ObeWorkspaceService
                 'message' => $taskAssessments->isEmpty()
                     ? 'RTM tidak diperlukan.'
                     : ((bool) $taskAlignment['is_aligned']
-                        ? "{$tasks} RTM · Semua sinkron."
-                        : "{$tasks} RTM · {$taskAlignment['missing_required_assessment_count']} belum ada · {$taskAlignment['mapping_mismatch_count']} tidak sinkron."),
-                'details' => $taskAlignment,
+                        ? "{$tasks} RTM tersedia · Semua sinkron dengan asesmen induk."
+                        : "{$tasks} RTM tersedia"
+                            .($missingRtmAssessments->isNotEmpty()
+                                ? ' · asesmen belum memiliki RTM: '.$missingRtmAssessments->implode(', ')
+                                : ' · semua asesmen wajib sudah memiliki RTM')
+                            .($rtmProblemLabels->isNotEmpty()
+                                ? ' · perlu sinkronisasi: '.$rtmProblemLabels->implode(', ').'.'
+                                : '.')),
+                'details' => [
+                    ...$taskAlignment,
+                    'problem_tasks' => $rtmProblemTasks->all(),
+                ],
             ],
         ];
 

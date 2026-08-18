@@ -232,7 +232,8 @@ function validatorProblemWeek(check: any): number | null {
     const details = check?.details ?? {};
     const ambiguous = safeList(details.ambiguous_weeks);
     const missing = safeList(details.missing_weeks);
-    const candidate = ambiguous[0] ?? missing[0];
+    const unweighted = safeList(details.unweighted_weeks);
+    const candidate = ambiguous[0] ?? missing[0] ?? unweighted[0];
     const raw = candidate && typeof candidate === 'object' ? candidate.week : candidate;
     const numeric = Number(raw);
 
@@ -260,6 +261,10 @@ function validatorFixLabel(check: any) {
         const issue = safeList(check?.details?.issues)[0];
         if (issue?.task_code) return `Edit ${issue.task_code}`;
     }
+    if (check?.key === 'rtm') {
+        const issue = safeList(check?.details?.problem_tasks)[0];
+        if (issue?.code) return `Edit ${issue.code}`;
+    }
 
     const week = validatorProblemWeek(check);
     if (week && meta.target === 'validator-target-rtm') {
@@ -282,7 +287,10 @@ function goToValidatorFix(check: any) {
     }
 
     const semanticIssue = safeList(check?.details?.issues)[0];
-    if (check?.key === 'rtm_semantics' && semanticIssue?.task_id) {
+    const rtmProblem = safeList(check?.details?.problem_tasks)[0];
+    if (check?.key === 'rtm' && rtmProblem?.id) {
+        targets = Array.from(document.querySelectorAll<HTMLElement>(`[data-rtm-id="${rtmProblem.id}"]`));
+    } else if (check?.key === 'rtm_semantics' && semanticIssue?.task_id) {
         targets = Array.from(document.querySelectorAll<HTMLElement>(`[data-rtm-id="${semanticIssue.task_id}"]`));
     } else if (check?.key === 'assessment_semantics' && semanticIssue?.assessment_id) {
         targets = Array.from(document.querySelectorAll<HTMLElement>(`[data-assessment-id="${semanticIssue.assessment_id}"]`));
@@ -1196,7 +1204,7 @@ export default function RpsShow(props: any) {
                             <div id="validator-target-assessment" className="scroll-mt-24">
                                 <div className="font-bold text-slate-900">Asesmen Detail & RTM</div>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Asesmen menyimpan bobot agregat/anggaran penilaian (total 100%). Bobot non-UTS/UAS kemudian didistribusikan ke 14 pekan pada tabel RPS. Bobot pekan boleh dikoreksi langsung dari tabel RPS setelah asesmen/tag Sub-CPMK tersedia; perubahan hanya mengatur distribusi pekan, tidak mengubah bobot agregat, dan RTM serta Validator OBE ikut tersinkron.
+                                    <strong>Detail Asesmen adalah sumber utama sistem penilaian RPS.</strong> Setiap asesmen wajib terkait minimal satu Sub-CPMK. Nama/bentuk asesmen dan bobot agregat (total 100%) digunakan untuk menyusun distribusi bobot pekanan, RTM, matriks evaluasi, dan simulasi. Indikator serta kriteria boleh spesifik per pekan, tetapi Bentuk Penilaian dan bobot pekan selalu mengikuti asesmen induk. Jika input manual belum dapat disinkronkan, SiMatRPS akan memberi arahan tanpa mengubah keputusan dosen secara diam-diam.
                                 </p>
                             </div>
 
@@ -4164,7 +4172,7 @@ function DocumentWeekRow({
                 </td>
                 <td className="border border-slate-400 p-2">
                     <textarea value={form.data.assessment_criteria} onChange={(e) => form.setData('assessment_criteria', e.target.value)} className={area} placeholder="Kriteria" />
-                    <input value={form.data.assessment_method} onChange={(e) => form.setData('assessment_method', e.target.value)} className={`${input} mt-1`} placeholder="Bentuk / teknik" />
+                    <input value={form.data.assessment_method} readOnly className={`${input} mt-1 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />
                 </td>
                 <td className="border border-slate-400 p-2">
                     <input value={form.data.learning_form} onChange={(e) => form.setData('learning_form', e.target.value)} className={input} placeholder="Tatap Muka / Praktikum" />
@@ -4249,7 +4257,7 @@ function DocumentWeekRow({
             <td className="border border-slate-300 px-2 py-1.5">{normalizeAcademicTerm(week.assessment_indicator) || '-'}</td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div><strong>Kriteria:</strong> {week.assessment_criteria || '-'}</div>
-                <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || '-'}</div>
+                <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}</div>
             </td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div><strong>Bentuk:</strong> {normalizeAcademicTerm(String(week.learning_form || '').replace(/_/g, ' ')) || '-'}</div>
@@ -5130,7 +5138,7 @@ function InlineWeekRow({
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">{normalizeAcademicTerm(week.assessment_indicator) || '-'}</td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div><strong>Kriteria:</strong> {week.assessment_criteria || '-'}</div>
-                    <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || '-'}</div>
+                    <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}</div>
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div className="font-bold text-slate-800">{week.learning_form || '-'}</div>
@@ -5216,7 +5224,7 @@ function InlineWeekRow({
             </td>
             <td className="border border-slate-200 p-2">
                 <textarea value={form.data.assessment_criteria} onChange={(e) => form.setData('assessment_criteria', e.target.value)} className={areaClass} placeholder="Kriteria" />
-                <input value={form.data.assessment_method} onChange={(e) => form.setData('assessment_method', e.target.value)} className={`${inputClass} mt-2`} placeholder="Bentuk / teknik" />
+                <input value={form.data.assessment_method} readOnly className={`${inputClass} mt-2 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />
             </td>
             <td className="border border-slate-200 p-2">
                 <input value={form.data.learning_form} onChange={(e) => form.setData('learning_form', e.target.value)} className={inputClass} placeholder="Tatap Muka / Praktikum" />
@@ -5406,10 +5414,12 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                         <span className="mb-1.5 block text-xs font-bold text-slate-500">Bentuk / Teknik</span>
                         <input
                             value={form.data.assessment_method}
-                            onChange={(e) => form.setData('assessment_method', e.target.value)}
-                            placeholder="Non-test (tanya jawab), tugas individu, kuis..."
-                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                            readOnly
+                            placeholder="Mengikuti Detail Asesmen"
+                            title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan."
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500"
                         />
+                        <span className="mt-1 block text-[10px] leading-4 text-slate-400">Bentuk Penilaian berasal dari Detail Asesmen. Edit asesmen induk bila perlu mengubahnya.</span>
                     </label>
                 </fieldset>
 

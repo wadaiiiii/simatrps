@@ -57,9 +57,10 @@ class RpsAssessmentController extends Controller
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
-        $sync->syncVersion($version->id);
+        $syncResult = $sync->syncVersion($version->id);
+        $guidance = $this->assessmentGuidance($version->id, $id, $syncResult);
 
-        return back()->with('success', 'Asesmen berhasil ditambahkan; tag Sub-CPMK, bobot pekan, RTM, matriks, dan simulasi tersinkron.');
+        return back()->with('success', 'Asesmen berhasil ditambahkan; tag Sub-CPMK, bobot pekan, RTM, matriks, dan simulasi tersinkron.'.$guidance);
     }
 
     public function update(
@@ -126,13 +127,14 @@ class RpsAssessmentController extends Controller
             $this->syncWeekPrintWeight($version->id, (int) $validated['week_number']);
         }
 
-        $sync->syncVersion($version->id);
+        $syncResult = $sync->syncVersion($version->id);
+        $guidance = $this->assessmentGuidance($version->id, $assessment, $syncResult);
 
         return back()->with(
             'success',
-            in_array($row->code, ['UTS', 'UAS'], true)
+            (in_array($row->code, ['UTS', 'UAS'], true)
                 ? "{$row->code} berhasil disimpan dan seluruh tabel bobot tersinkron."
-                : 'Asesmen diperbarui dan seluruh tabel bobot tersinkron.'
+                : 'Asesmen diperbarui dan seluruh tabel bobot tersinkron.').$guidance
         );
     }
 
@@ -210,11 +212,12 @@ class RpsAssessmentController extends Controller
             );
         }
 
-        $sync->syncVersion($version->id);
+        $syncResult = $sync->syncVersion($version->id);
+        $guidance = $this->assessmentGuidance($version->id, $assessment, $syncResult);
 
         return back()->with(
             'success',
-            'Asesmen diperbarui; Detail Asesmen, tabel RPS, RTM, Tabel Penilaian, dan Simulasi langsung tersinkron.'
+            'Asesmen diperbarui; Detail Asesmen, tabel RPS, RTM, Tabel Penilaian, dan Simulasi langsung tersinkron.'.$guidance
         );
     }
 
@@ -384,6 +387,47 @@ class RpsAssessmentController extends Controller
                 'updated_at' => now(),
             ]);
         }
+    }
+
+
+    private function assessmentGuidance(string $versionId, string $assessmentId, array $syncResult): string
+    {
+        $assessment = DB::table('assessments')->where('rps_version_id', $versionId)->where('id', $assessmentId)
+            ->first(['id', 'code', 'name', 'type', 'week_number', 'weight']);
+        if (! $assessment) return '';
+
+        $notes = collect();
+        $type = strtolower((string) ($assessment->type ?? 'other'));
+        $isExam = in_array($type, ['uts', 'uas'], true);
+        if (! $isExam) {
+            $linkedSubIds = DB::table('assessment_subcpmks')->where('assessment_id', $assessmentId)
+                ->pluck('rps_sub_cpmk_id')->map(fn ($id) => (string) $id)->unique()->values();
+            $coverageWeeks = $linkedSubIds->isEmpty() ? collect() : DB::table('rps_weekly_plans')
+                ->where('rps_version_id', $versionId)
+                ->whereIn('week_number', [1,2,3,4,5,6,7,9,10,11,12,13,14,15])
+                ->whereIn('rps_sub_cpmk_id', $linkedSubIds->all())->orderBy('week_number')
+                ->pluck('week_number')->map(fn ($week) => (int) $week)->unique()->values();
+            if ($linkedSubIds->isNotEmpty() && $coverageWeeks->isEmpty()) {
+                $notes->push('Sub-CPMK yang dipilih belum memiliki alokasi pertemuan sehingga bobot belum dapat didistribusikan.');
+            }
+            $latestCoverage = $coverageWeeks->isNotEmpty() ? (int) $coverageWeeks->max() : 0;
+            $assessmentWeek = (int) ($assessment->week_number ?? 0);
+            if ($assessmentWeek > 0 && $latestCoverage > 0 && $assessmentWeek < $latestCoverage) {
+                $notes->push('Pekan asesmen '.$assessmentWeek.' lebih awal daripada pekan terakhir cakupan Sub-CPMK '.$latestCoverage.'; pertimbangkan Pekan '.$latestCoverage.' atau setelahnya.');
+            }
+            $budgetMismatch = collect($syncResult['assessment_budget_mismatches'] ?? [])
+                ->first(fn ($item) => (string) ($item['assessment_id'] ?? '') === $assessmentId);
+            if ($budgetMismatch) {
+                $notes->push('Bobot “'.trim((string) $assessment->name).'” belum seluruhnya dapat didistribusikan ('.(float) ($budgetMismatch['allocated'] ?? 0).'% dari '.(float) ($budgetMismatch['budget'] ?? 0).'%).');
+            }
+        }
+        $uncovered = collect($syncResult['uncovered_non_exam_sub_codes'] ?? [])->map(fn ($code) => trim((string) $code))->filter()->unique()->values();
+        if ($uncovered->isNotEmpty()) {
+            $notes->push('Masih ada Sub-CPMK tanpa asesmen non-UTS/UAS berbobot: '.$uncovered->implode(', ').'. Tambahkan atau perluas asesmen agar seluruh pekan dapat memperoleh bukti penilaian.');
+        }
+        return $notes->isEmpty()
+            ? ' Status sinkron: asesmen dapat didistribusikan ke pekan terkait.'
+            : ' Perlu diperiksa: '.$notes->unique()->implode(' ');
     }
 
     private function context(Request $request, string $rps): array

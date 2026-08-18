@@ -202,7 +202,8 @@ class RpsAutomationController extends Controller
 
     public function clearWeeklyContent(
         Request $request,
-        string $rps
+        string $rps,
+        RpsAssessmentSyncService $assessmentSync
     ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
         $this->assertMeetingAllocationConfigured($version->id);
@@ -216,7 +217,7 @@ class RpsAutomationController extends Controller
                 ->update([
                     'assessment_indicator' => null,
                     'assessment_criteria' => null,
-                    'assessment_method' => null,
+                    // assessment_method tidak dihapus: ia mengikuti Detail Asesmen.
                     'learning_form' => null,
                     'learning_method' => null,
                     'face_to_face_sessions' => 0,
@@ -241,9 +242,11 @@ class RpsAutomationController extends Controller
             ]);
         }
 
+        $assessmentSync->syncVersion($version->id);
+
         return back()->with(
             'success',
-            "Isi {$updated} pekan pembelajaran dikosongkan, termasuk Tatap Muka/Luring, Belajar Mandiri, Tugas Mandiri/Terstruktur, dan Daring/LMS. Alokasi Sub-CPMK, bobot, UTS/UAS, Asesmen Detail, dan RTM tetap dipertahankan."
+            "Isi {$updated} pekan pembelajaran dikosongkan, termasuk Tatap Muka/Luring, Belajar Mandiri, Tugas Mandiri/Terstruktur, dan Daring/LMS. Alokasi Sub-CPMK, Detail Asesmen, bentuk/bobot penilaian, UTS/UAS, dan RTM tetap dipertahankan serta disinkronkan."
         );
     }
 

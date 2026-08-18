@@ -335,6 +335,10 @@ class RpsController extends Controller
             $assessmentTotalBudget = (float) $assessmentTotalBudgetByWeek->get($weekNumber, 0);
             $isTeachingWeek = ! in_array($weekNumber, [8, 16], true);
 
+            if ($isTeachingWeek) {
+                $week->assessment_method = $ownerName !== '' ? $ownerName : null;
+            }
+
             $week->assessment_owner_id = $ownerId ?: null;
             $week->assessment_owner_name = $ownerName;
             $week->assessment_group_budget = $groupBudget;
