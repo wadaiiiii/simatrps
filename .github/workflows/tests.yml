@@ -63,3 +63,14 @@ jobs:
 
       - name: Lecturer monitoring feature tests
         run: php artisan test tests/Feature/Admin/UserMonitoringTest.php
+
+      - name: Admin overview PHP syntax
+        run: |
+          php -l app/Http/Controllers/DashboardController.php
+          php -l tests/Feature/Admin/DashboardMonitoringTest.php
+
+      - name: Admin overview static analysis
+        run: vendor/bin/phpstan analyse app/Http/Controllers/DashboardController.php --no-progress
+
+      - name: Admin overview feature tests
+        run: php artisan test tests/Feature/Admin/DashboardMonitoringTest.php
