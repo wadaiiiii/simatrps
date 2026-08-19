@@ -51,3 +51,15 @@ jobs:
 
       - name: Authentication feature tests
         run: php artisan test tests/Feature/Auth/AuthenticationTest.php
+
+      - name: Lecturer monitoring PHP syntax
+        run: |
+          php -l app/Http/Controllers/Admin/UserController.php
+          php -l routes/web.php
+          php -l tests/Feature/Admin/UserMonitoringTest.php
+
+      - name: Lecturer monitoring static analysis
+        run: vendor/bin/phpstan analyse app/Http/Controllers/Admin/UserController.php --no-progress
+
+      - name: Lecturer monitoring feature tests
+        run: php artisan test tests/Feature/Admin/UserMonitoringTest.php
