@@ -44,7 +44,7 @@ class RpsReviewController extends Controller
                 'rps_versions.finalized_at',
             ]);
 
-        abort_unless($record, 404);
+        abort_unless($record !== null, 404);
         abort_unless(filled($record->current_version_id), 404);
 
         $this->ensureReviewTable();
@@ -204,7 +204,7 @@ class RpsReviewController extends Controller
             ->where('id', $rps)
             ->first(['id', 'status', 'current_version_id']);
 
-        abort_unless($record, 404);
+        abort_unless($record !== null, 404);
         abort_unless(filled($record->current_version_id), 404);
 
         $this->ensureReviewTable();
