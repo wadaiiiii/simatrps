@@ -31,6 +31,11 @@ type DashboardProps = {
         course_name: string;
         system_code: string;
         official_code?: string | null;
+        review_status?: string | null;
+        review_note?: string | null;
+        reviewed_at?: string | null;
+        reviewer_name?: string | null;
+        review_outdated?: boolean;
     }>;
 };
 
@@ -107,7 +112,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between border-b border-slate-100 p-5">
                         <div>
                             <h2 className="font-bold text-slate-900">RPS Terbaru</h2>
-                            <p className="mt-1 text-sm text-slate-500">Dokumen terakhir yang Anda kerjakan.</p>
+                            <p className="mt-1 text-sm text-slate-500">Dokumen terakhir yang Anda kerjakan dan tindak lanjut review Admin.</p>
                         </div>
                         <Link href="/rps" className="inline-flex items-center gap-1 text-xs font-bold text-teal-700">
                             Lihat semua <ArrowUpRight className="size-3.5" />
@@ -123,16 +128,31 @@ export default function Dashboard() {
                     ) : (
                         <div className="divide-y divide-slate-100">
                             {recentRps.map((item) => (
-                                <Link key={item.id} href={`/rps/${item.id}`} className="flex items-center justify-between gap-4 p-5 transition hover:bg-teal-50/40">
-                                    <div>
-                                        <div className="font-semibold text-slate-900">{item.course_name}</div>
-                                        <div className="mt-1 text-xs text-slate-500">
-                                            {item.official_code || item.system_code} · {item.academic_year} · {item.academic_semester}
+                                <Link key={item.id} href={`/rps/${item.id}`} className="block p-5 transition hover:bg-teal-50/40">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <div className="font-semibold text-slate-900">{item.course_name}</div>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                                {item.official_code || item.system_code} · {item.academic_year} · {item.academic_semester}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap justify-end gap-2">
+                                            <RpsStatus status={item.status} />
+                                            <ReviewStatus status={item.review_status} outdated={Boolean(item.review_outdated)} />
                                         </div>
                                     </div>
-                                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                                        {item.status.toUpperCase()}
-                                    </span>
+
+                                    {item.review_status === 'revision_required' && !item.review_outdated && item.review_note && (
+                                        <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2.5 text-sm leading-6 text-rose-800">
+                                            <span className="font-bold">Catatan Admin:</span> {item.review_note}
+                                        </div>
+                                    )}
+
+                                    {item.review_outdated && (
+                                        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-sm leading-6 text-amber-800">
+                                            RPS sudah diubah setelah review terakhir dan kini menunggu review ulang Admin.
+                                        </div>
+                                    )}
                                 </Link>
                             ))}
                         </div>
@@ -141,6 +161,34 @@ export default function Dashboard() {
             </div>
         </>
     );
+}
+
+function RpsStatus({ status }: { status: string }) {
+    const normalized = String(status || 'draft').toLowerCase();
+    const className = normalized === 'final'
+        ? 'bg-emerald-50 text-emerald-700'
+        : normalized === 'obe_valid'
+            ? 'bg-teal-50 text-teal-700'
+            : 'bg-amber-50 text-amber-700';
+
+    return (
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${className}`}>
+            {normalized === 'obe_valid' ? 'OBE VALID' : normalized.toUpperCase()}
+        </span>
+    );
+}
+
+function ReviewStatus({ status, outdated }: { status?: string | null; outdated: boolean }) {
+    if (outdated) {
+        return <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">MENUNGGU REVIEW ULANG</span>;
+    }
+    if (status === 'approved') {
+        return <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">DISETUJUI ADMIN</span>;
+    }
+    if (status === 'revision_required') {
+        return <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">PERLU REVISI</span>;
+    }
+    return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">BELUM DITINJAU</span>;
 }
 
 Dashboard.layout = {
