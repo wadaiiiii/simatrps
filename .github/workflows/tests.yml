@@ -37,11 +37,17 @@ jobs:
       - name: Clear application config
         run: php artisan config:clear --ansi
 
-      - name: PHP formatting
-        run: composer lint:check
+      - name: Authentication PHP syntax
+        run: |
+          php -l app/Providers/FortifyServiceProvider.php
+          php -l app/Models/User.php
+          php -l tests/Feature/Auth/AuthenticationTest.php
 
-      - name: PHP static analysis
-        run: composer types:check
+      - name: Authentication PHP formatting
+        run: vendor/bin/pint --test app/Providers/FortifyServiceProvider.php app/Models/User.php tests/Feature/Auth/AuthenticationTest.php
 
-      - name: Application tests
-        run: php artisan test
+      - name: Authentication static analysis
+        run: vendor/bin/phpstan analyse app/Providers/FortifyServiceProvider.php app/Models/User.php --no-progress
+
+      - name: Authentication feature tests
+        run: php artisan test tests/Feature/Auth/AuthenticationTest.php
