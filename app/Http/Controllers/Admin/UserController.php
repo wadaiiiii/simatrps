@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -201,7 +202,7 @@ class UserController extends Controller
         $user->password = $validated['password'];
         $user->role = 'dosen';
         $user->is_active = true;
-        $user->email_verified_at = now();
+        $user->email_verified_at = Carbon::now();
         $user->save();
 
         return back()->with('success', 'Akun dosen berhasil dibuat dan sudah dapat digunakan untuk login.');
