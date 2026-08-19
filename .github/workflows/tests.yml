@@ -34,5 +34,23 @@ jobs:
       - name: Setup Application
         run: composer setup
 
-      - name: Run CI Checks
-        run: composer ci:check
+      - name: Frontend lint
+        run: npm run lint:check
+
+      - name: Frontend format
+        run: npm run format:check
+
+      - name: Frontend types
+        run: npm run types:check
+
+      - name: Clear application config
+        run: php artisan config:clear --ansi
+
+      - name: PHP formatting
+        run: composer lint:check
+
+      - name: PHP static analysis
+        run: composer types:check
+
+      - name: Application tests
+        run: php artisan test
