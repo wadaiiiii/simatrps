@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('rps_reviews')) {
+            return;
+        }
+
         Schema::create('rps_reviews', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('rps_version_id');
