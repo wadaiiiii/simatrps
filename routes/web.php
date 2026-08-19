@@ -6,9 +6,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ObeWorkspaceController;
 use App\Http\Controllers\RpsAssessmentController;
 use App\Http\Controllers\RpsAiController;
-use App\Http\Controllers\RpsCplScopeController;
 use App\Http\Controllers\RpsAutomationController;
 use App\Http\Controllers\RpsController;
+use App\Http\Controllers\RpsCplScopeController;
 use App\Http\Controllers\RpsDeleteController;
 use App\Http\Controllers\RpsDocumentController;
 use App\Http\Controllers\RpsFinalizationController;
@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::get('kurikulum', CurriculumController::class)->name('curriculum');
         Route::inertia('template-rps', 'admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
+        Route::get('pengguna/{user}/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
         Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
         Route::put('pengguna/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('pengguna/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
