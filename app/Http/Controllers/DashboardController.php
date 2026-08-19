@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,6 +18,7 @@ class DashboardController extends Controller
         }
 
         $ownerId = $request->user()->id;
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $rps = DB::table('rps')->where('owner_id', $ownerId);
 
@@ -36,8 +38,8 @@ class DashboardController extends Controller
                 'courses.system_code',
                 'courses.official_code',
             ])
-            ->map(function (object $row): object {
-                $latestReview = filled($row->current_version_id ?? null)
+            ->map(function (object $row) use ($hasReviewTable): object {
+                $latestReview = $hasReviewTable && filled($row->current_version_id ?? null)
                     ? DB::table('rps_reviews')
                         ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
                         ->where('rps_reviews.rps_version_id', $row->current_version_id)
@@ -79,6 +81,7 @@ class DashboardController extends Controller
         $status = trim((string) $request->query('status', ''));
         $academicYear = trim((string) $request->query('academic_year', ''));
         $academicSemester = trim((string) $request->query('academic_semester', ''));
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $allowedStatuses = ['draft', 'obe_valid', 'final'];
         if (! in_array($status, $allowedStatuses, true)) {
@@ -131,7 +134,7 @@ class DashboardController extends Controller
 
         $rows = $query->paginate(15)->withQueryString();
 
-        $rows->through(function ($row): array {
+        $rows->through(function ($row) use ($hasReviewTable): array {
             $weeklyPlans = $row->current_version_id
                 ? DB::table('rps_weekly_plans')
                     ->where('rps_version_id', $row->current_version_id)
@@ -160,7 +163,7 @@ class DashboardController extends Controller
                     ->sum('weight'), 2)
                 : 0.0;
 
-            $latestReview = filled($row->current_version_id ?? null)
+            $latestReview = $hasReviewTable && filled($row->current_version_id ?? null)
                 ? DB::table('rps_reviews')
                     ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
                     ->where('rps_reviews.rps_version_id', $row->current_version_id)
