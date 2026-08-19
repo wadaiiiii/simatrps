@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CurriculumController;
+use App\Http\Controllers\Admin\RpsReportController;
 use App\Http\Controllers\Admin\RpsReviewController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
@@ -107,6 +108,8 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::put('pengguna/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('pengguna/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
         Route::put('pengguna/{user}/password', [UserController::class, 'resetPassword'])->name('users.password');
+        Route::get('rekap', [RpsReportController::class, 'index'])->name('reports');
+        Route::get('rekap/export.csv', [RpsReportController::class, 'exportCsv'])->name('reports.csv');
         Route::get('rps/{rps}/review', [RpsReviewController::class, 'show'])->name('rps.review');
         Route::post('rps/{rps}/review', [RpsReviewController::class, 'store'])->name('rps.review.store');
     });
