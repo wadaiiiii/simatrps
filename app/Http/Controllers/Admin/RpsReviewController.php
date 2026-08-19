@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -44,6 +46,8 @@ class RpsReviewController extends Controller
 
         abort_unless($record, 404);
         abort_unless(filled($record->current_version_id), 404);
+
+        $this->ensureReviewTable();
 
         $versionId = (string) $record->current_version_id;
 
@@ -118,9 +122,10 @@ class RpsReviewController extends Controller
         if (strtolower((string) $record->status) === 'final') {
             $obePercent = 100;
         } elseif ($blockingValidationRows->isNotEmpty()) {
-            $obePercent = (int) round(
-                ($blockingValidationRows->where('is_passed', true)->count() / $blockingValidationRows->count()) * 100
-            );
+            $passed = $blockingValidationRows
+                ->filter(fn (object $row): bool => (bool) $row->is_passed)
+                ->count();
+            $obePercent = (int) round(($passed / $blockingValidationRows->count()) * 100);
         }
 
         $reviewHistory = DB::table('rps_reviews')
@@ -202,6 +207,8 @@ class RpsReviewController extends Controller
         abort_unless($record, 404);
         abort_unless(filled($record->current_version_id), 404);
 
+        $this->ensureReviewTable();
+
         $validated = $request->validate([
             'status' => ['required', Rule::in(['revision_required', 'approved'])],
             'note' => ['nullable', 'string', 'max:5000', 'required_if:status,revision_required'],
@@ -230,5 +237,28 @@ class RpsReviewController extends Controller
                 ? 'RPS disetujui. Status tindak lanjut sudah diperbarui.'
                 : 'Catatan revisi disimpan dan dapat ditindaklanjuti oleh dosen.'
         );
+    }
+
+    private function ensureReviewTable(): void
+    {
+        if (Schema::hasTable('rps_reviews')) {
+            return;
+        }
+
+        Schema::create('rps_reviews', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->uuid('rps_version_id');
+            $table->foreignId('reviewer_id')->constrained('users')->restrictOnDelete();
+            $table->string('status', 40)->index();
+            $table->text('note')->nullable();
+            $table->timestamp('reviewed_at')->index();
+            $table->timestamps();
+
+            $table->foreign('rps_version_id')
+                ->references('id')
+                ->on('rps_versions')
+                ->cascadeOnDelete();
+            $table->index(['rps_version_id', 'reviewed_at']);
+        });
     }
 }
