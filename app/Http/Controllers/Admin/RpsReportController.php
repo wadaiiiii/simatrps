@@ -172,13 +172,13 @@ class RpsReportController extends Controller
     }
 
     /**
-     * @param  object{id: mixed, current_version_id: mixed, academic_year: mixed, academic_semester: mixed, status: mixed, updated_at: mixed, finalized_at: mixed, owner_id: mixed, owner_name: mixed, owner_academic_title: mixed, owner_nidn: mixed, owner_email: mixed, course_name: mixed, system_code: mixed, official_code: mixed, credits: mixed}  $record
      * @return array<string, mixed>
      */
     private function transformRow(object $record, bool $hasReviewTable): array
     {
-        $versionId = filled($record->current_version_id ?? null)
-            ? (string) $record->current_version_id
+        $data = get_object_vars($record);
+        $versionId = filled($data['current_version_id'] ?? null)
+            ? (string) $data['current_version_id']
             : null;
 
         $weeks = $versionId
@@ -222,36 +222,36 @@ class RpsReportController extends Controller
             : null;
 
         $reviewOutdated = $latestReview !== null
-            && filled($record->updated_at ?? null)
+            && filled($data['updated_at'] ?? null)
             && filled($latestReview->reviewed_at ?? null)
-            && Carbon::parse($record->updated_at)->greaterThan(Carbon::parse($latestReview->reviewed_at));
+            && Carbon::parse($data['updated_at'])->greaterThan(Carbon::parse($latestReview->reviewed_at));
 
         return [
-            'id' => (string) $record->id,
-            'academic_year' => (string) $record->academic_year,
-            'academic_semester' => (string) $record->academic_semester,
-            'status' => (string) $record->status,
-            'updated_at' => $record->updated_at,
-            'finalized_at' => $record->finalized_at,
+            'id' => (string) ($data['id'] ?? ''),
+            'academic_year' => (string) ($data['academic_year'] ?? ''),
+            'academic_semester' => (string) ($data['academic_semester'] ?? ''),
+            'status' => (string) ($data['status'] ?? 'draft'),
+            'updated_at' => $data['updated_at'] ?? null,
+            'finalized_at' => $data['finalized_at'] ?? null,
             'owner' => [
-                'id' => (int) $record->owner_id,
-                'name' => (string) $record->owner_name,
-                'academic_title' => $record->owner_academic_title,
-                'nidn' => $record->owner_nidn,
-                'email' => (string) $record->owner_email,
+                'id' => (int) ($data['owner_id'] ?? 0),
+                'name' => (string) ($data['owner_name'] ?? ''),
+                'academic_title' => $data['owner_academic_title'] ?? null,
+                'nidn' => $data['owner_nidn'] ?? null,
+                'email' => (string) ($data['owner_email'] ?? ''),
             ],
             'course' => [
-                'name' => (string) $record->course_name,
-                'code' => filled($record->official_code ?? null)
-                    ? (string) $record->official_code
-                    : (string) $record->system_code,
-                'credits' => (float) $record->credits,
+                'name' => (string) ($data['course_name'] ?? ''),
+                'code' => filled($data['official_code'] ?? null)
+                    ? (string) $data['official_code']
+                    : (string) ($data['system_code'] ?? ''),
+                'credits' => (float) ($data['credits'] ?? 0),
             ],
             'progress' => [
                 'filled_weeks' => $filledWeeks,
                 'week_total' => max(16, $weeks->count()),
                 'assessment_weight' => $assessmentWeight,
-                'obe_percent' => $this->obePercent($versionId, (string) $record->status),
+                'obe_percent' => $this->obePercent($versionId, (string) ($data['status'] ?? 'draft')),
             ],
             'review' => [
                 'status' => $latestReview?->status,
