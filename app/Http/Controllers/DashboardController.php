@@ -157,6 +157,7 @@ class DashboardController extends Controller
                     'filled_weeks' => $filledWeeks,
                     'week_total' => max(16, $weeklyPlans->count()),
                     'assessment_weight' => $assessmentWeight,
+                    'obe_percent' => $this->obePercent($row->current_version_id, $row->status),
                 ],
             ];
         });
@@ -179,7 +180,7 @@ class DashboardController extends Controller
                 'lecturers_not_started' => max(0, $activeLecturers - $lecturersStarted),
                 'rps_total' => (clone $rpsBase)->count(),
                 'rps_draft' => (clone $rpsBase)->where('status', 'draft')->count(),
-                'rps_obe_valid' => (clone $rpsBase)->where('status', 'obe_valid')->count(),
+                'rps_obe_valid' => (clone $rpsBase)->whereIn('status', ['obe_valid', 'final'])->count(),
                 'rps_final' => (clone $rpsBase)->where('status', 'final')->count(),
             ],
             'rpsRows' => $rows,
@@ -196,5 +197,39 @@ class DashboardController extends Controller
                 ->pluck('academic_year')
                 ->values(),
         ]);
+    }
+
+    private function obePercent(mixed $versionId, mixed $status): ?int
+    {
+        if (strtolower((string) $status) === 'final') {
+            return 100;
+        }
+
+        if (! filled($versionId)) {
+            return null;
+        }
+
+        $validationRows = DB::table('obe_validation_results')
+            ->where('rps_version_id', $versionId)
+            ->get(['is_passed', 'details']);
+
+        $blockingRows = $validationRows->filter(function ($row): bool {
+            $details = json_decode((string) ($row->details ?? ''), true);
+            $severity = is_array($details)
+                ? (string) ($details['severity'] ?? 'required')
+                : 'required';
+
+            return $severity !== 'advisory';
+        });
+
+        if ($blockingRows->isEmpty()) {
+            return null;
+        }
+
+        $passed = $blockingRows
+            ->filter(fn ($row): bool => (bool) $row->is_passed)
+            ->count();
+
+        return (int) round(($passed / $blockingRows->count()) * 100);
     }
 }
