@@ -89,8 +89,7 @@ class UserController extends Controller
                         ])
                     : collect();
 
-                $readyWeeks = $weeks->filter(fn (object $week): bool =>
-                    (bool) $week->is_exam
+                $readyWeeks = $weeks->filter(fn (object $week): bool => (bool) $week->is_exam
                     || (
                         filled($week->rps_sub_cpmk_id ?? null)
                         && filled($week->material_text ?? null)
@@ -201,9 +200,7 @@ class UserController extends Controller
                 'draft' => $rpsItems->where('status', '!=', 'final')->count(),
                 'obe_valid' => $rpsItems->where('obe_percent', 100)->count(),
                 'review_approved' => $rpsItems
-                    ->filter(fn (array $item): bool =>
-                        $item['review_status'] === 'approved' && ! $item['review_outdated']
-                    )
+                    ->filter(fn (array $item): bool => $item['review_status'] === 'approved' && ! $item['review_outdated'])
                     ->count(),
             ],
             'rpsItems' => $rpsItems,
@@ -220,7 +217,7 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $user = new User();
+        $user = new User;
         $user->name = trim($validated['name']);
         $user->academic_title = filled($validated['academic_title'] ?? null)
             ? trim($validated['academic_title'])
