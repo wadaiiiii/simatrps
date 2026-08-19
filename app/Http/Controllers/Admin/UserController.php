@@ -136,6 +136,24 @@ class UserController extends Controller
                     $obePercent = (int) round(($passed / $blockingValidationRows->count()) * 100);
                 }
 
+                $latestReview = $versionId
+                    ? DB::table('rps_reviews')
+                        ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
+                        ->where('rps_reviews.rps_version_id', $versionId)
+                        ->orderByDesc('rps_reviews.reviewed_at')
+                        ->first([
+                            'rps_reviews.status',
+                            'rps_reviews.note',
+                            'rps_reviews.reviewed_at',
+                            'reviewers.name as reviewer_name',
+                        ])
+                    : null;
+
+                $reviewOutdated = $latestReview !== null
+                    && filled($record->updated_at ?? null)
+                    && filled($latestReview->reviewed_at ?? null)
+                    && Carbon::parse($record->updated_at)->greaterThan(Carbon::parse($latestReview->reviewed_at));
+
                 return [
                     'id' => (string) $record->id,
                     'course_code' => filled($record->official_code ?? null)
@@ -157,6 +175,11 @@ class UserController extends Controller
                     'assessment_weight_total' => $assessmentWeight,
                     'obe_percent' => $obePercent,
                     'obe_validated_at' => $validationRows->max('validated_at'),
+                    'review_status' => $latestReview?->status,
+                    'review_note' => $latestReview?->note,
+                    'reviewed_at' => $latestReview?->reviewed_at,
+                    'reviewer_name' => $latestReview?->reviewer_name,
+                    'review_outdated' => $reviewOutdated,
                 ];
             })
             ->values();
@@ -175,6 +198,11 @@ class UserController extends Controller
                 'final' => $rpsItems->where('status', 'final')->count(),
                 'draft' => $rpsItems->where('status', '!=', 'final')->count(),
                 'obe_valid' => $rpsItems->where('obe_percent', 100)->count(),
+                'review_approved' => $rpsItems
+                    ->filter(fn (array $item): bool =>
+                        $item['review_status'] === 'approved' && ! $item['review_outdated']
+                    )
+                    ->count(),
             ],
             'rpsItems' => $rpsItems,
         ]);
