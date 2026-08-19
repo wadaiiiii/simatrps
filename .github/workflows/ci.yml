@@ -33,10 +33,18 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
       - name: PHP syntax check
         shell: bash
         run: |
           find app routes -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Admin user management tests
+        run: php artisan test --compact tests/Feature/AdminUserManagementTest.php
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
