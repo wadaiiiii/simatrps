@@ -11,6 +11,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request): Response
     {
+        if ($request->user()->role === 'admin') {
+            return $this->adminDashboard($request);
+        }
+
         $ownerId = $request->user()->id;
 
         $rps = DB::table('rps')->where('owner_id', $ownerId);
@@ -38,6 +42,159 @@ class DashboardController extends Controller
                 'curriculum_year' => DB::table('curriculums')->where('status', 'active')->max('year'),
             ],
             'recentRps' => $recent,
+        ]);
+    }
+
+    private function adminDashboard(Request $request): Response
+    {
+        $search = trim((string) $request->query('q', ''));
+        $status = trim((string) $request->query('status', ''));
+        $academicYear = trim((string) $request->query('academic_year', ''));
+        $academicSemester = trim((string) $request->query('academic_semester', ''));
+
+        $allowedStatuses = ['draft', 'obe_valid', 'final'];
+        if (! in_array($status, $allowedStatuses, true)) {
+            $status = '';
+        }
+
+        $allowedSemesters = ['Ganjil', 'Genap', 'Pendek'];
+        if (! in_array($academicSemester, $allowedSemesters, true)) {
+            $academicSemester = '';
+        }
+
+        $query = DB::table('rps')
+            ->join('courses', 'courses.id', '=', 'rps.course_id')
+            ->join('users', 'users.id', '=', 'rps.owner_id')
+            ->leftJoin('rps_versions', 'rps_versions.id', '=', 'rps.current_version_id')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($query) use ($search): void {
+                    $query
+                        ->where('users.name', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%")
+                        ->orWhere('users.nidn', 'like', "%{$search}%")
+                        ->orWhere('courses.name', 'like', "%{$search}%")
+                        ->orWhere('courses.official_code', 'like', "%{$search}%")
+                        ->orWhere('courses.system_code', 'like', "%{$search}%");
+                });
+            })
+            ->when($status !== '', fn ($query) => $query->where('rps.status', $status))
+            ->when($academicYear !== '', fn ($query) => $query->where('rps.academic_year', $academicYear))
+            ->when($academicSemester !== '', fn ($query) => $query->where('rps.academic_semester', $academicSemester))
+            ->orderByDesc('rps.updated_at')
+            ->select([
+                'rps.id',
+                'rps.current_version_id',
+                'rps.academic_year',
+                'rps.academic_semester',
+                'rps.status',
+                'rps.updated_at',
+                'rps_versions.finalized_at',
+                'users.id as owner_id',
+                'users.name as owner_name',
+                'users.academic_title as owner_academic_title',
+                'users.nidn as owner_nidn',
+                'users.email as owner_email',
+                'courses.name as course_name',
+                'courses.system_code',
+                'courses.official_code',
+                DB::raw('CAST(courses.credits AS INTEGER) as credits'),
+                'courses.semester_recommended',
+            ]);
+
+        $rows = $query->paginate(15)->withQueryString();
+
+        $rows->through(function ($row): array {
+            $weeklyPlans = $row->current_version_id
+                ? DB::table('rps_weekly_plans')
+                    ->where('rps_version_id', $row->current_version_id)
+                    ->get([
+                        'is_exam',
+                        'rps_sub_cpmk_id',
+                        'material_text',
+                        'learning_method',
+                        'learning_activity',
+                    ])
+                : collect();
+
+            $filledWeeks = $weeklyPlans->filter(fn ($week) =>
+                (bool) $week->is_exam
+                || (
+                    filled($week->rps_sub_cpmk_id)
+                    && filled($week->material_text)
+                    && filled($week->learning_method)
+                    && filled($week->learning_activity)
+                )
+            )->count();
+
+            $assessmentWeight = $row->current_version_id
+                ? round((float) DB::table('assessments')
+                    ->where('rps_version_id', $row->current_version_id)
+                    ->sum('weight'), 2)
+                : 0.0;
+
+            return [
+                'id' => $row->id,
+                'academic_year' => $row->academic_year,
+                'academic_semester' => $row->academic_semester,
+                'status' => $row->status,
+                'updated_at' => $row->updated_at,
+                'finalized_at' => $row->finalized_at,
+                'owner' => [
+                    'id' => $row->owner_id,
+                    'name' => $row->owner_name,
+                    'academic_title' => $row->owner_academic_title,
+                    'nidn' => $row->owner_nidn,
+                    'email' => $row->owner_email,
+                ],
+                'course' => [
+                    'name' => $row->course_name,
+                    'system_code' => $row->system_code,
+                    'official_code' => $row->official_code,
+                    'credits' => $row->credits,
+                    'semester_recommended' => $row->semester_recommended,
+                ],
+                'progress' => [
+                    'filled_weeks' => $filledWeeks,
+                    'week_total' => max(16, $weeklyPlans->count()),
+                    'assessment_weight' => $assessmentWeight,
+                ],
+            ];
+        });
+
+        $lecturerBase = DB::table('users')->where('role', 'dosen');
+        $activeLecturers = (clone $lecturerBase)->where('is_active', true)->count();
+        $lecturersStarted = DB::table('rps')
+            ->join('users', 'users.id', '=', 'rps.owner_id')
+            ->where('users.role', 'dosen')
+            ->where('users.is_active', true)
+            ->distinct()
+            ->count('rps.owner_id');
+
+        $rpsBase = DB::table('rps');
+
+        return Inertia::render('admin/dashboard', [
+            'stats' => [
+                'lecturers_active' => $activeLecturers,
+                'lecturers_started' => $lecturersStarted,
+                'lecturers_not_started' => max(0, $activeLecturers - $lecturersStarted),
+                'rps_total' => (clone $rpsBase)->count(),
+                'rps_draft' => (clone $rpsBase)->where('status', 'draft')->count(),
+                'rps_obe_valid' => (clone $rpsBase)->where('status', 'obe_valid')->count(),
+                'rps_final' => (clone $rpsBase)->where('status', 'final')->count(),
+            ],
+            'rpsRows' => $rows,
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+                'academic_year' => $academicYear,
+                'academic_semester' => $academicSemester,
+            ],
+            'academicYears' => DB::table('rps')
+                ->select('academic_year')
+                ->distinct()
+                ->orderByDesc('academic_year')
+                ->pluck('academic_year')
+                ->values(),
         ]);
     }
 }
