@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CurriculumController;
+use App\Http\Controllers\Admin\RpsReviewController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ObeWorkspaceController;
@@ -106,6 +107,8 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::put('pengguna/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('pengguna/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
         Route::put('pengguna/{user}/password', [UserController::class, 'resetPassword'])->name('users.password');
+        Route::get('rps/{rps}/review', [RpsReviewController::class, 'show'])->name('rps.review');
+        Route::post('rps/{rps}/review', [RpsReviewController::class, 'store'])->name('rps.review.store');
     });
 
 require __DIR__.'/settings.php';
