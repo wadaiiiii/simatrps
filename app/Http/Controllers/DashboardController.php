@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,6 +18,7 @@ class DashboardController extends Controller
         }
 
         $ownerId = $request->user()->id;
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $rps = DB::table('rps')->where('owner_id', $ownerId);
 
@@ -26,13 +29,40 @@ class DashboardController extends Controller
             ->limit(5)
             ->get([
                 'rps.id',
+                'rps.current_version_id',
                 'rps.academic_year',
                 'rps.academic_semester',
                 'rps.status',
+                'rps.updated_at',
                 'courses.name as course_name',
                 'courses.system_code',
                 'courses.official_code',
-            ]);
+            ])
+            ->map(function (object $row) use ($hasReviewTable): object {
+                $latestReview = $hasReviewTable && filled($row->current_version_id ?? null)
+                    ? DB::table('rps_reviews')
+                        ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
+                        ->where('rps_reviews.rps_version_id', $row->current_version_id)
+                        ->orderByDesc('rps_reviews.reviewed_at')
+                        ->first([
+                            'rps_reviews.status',
+                            'rps_reviews.note',
+                            'rps_reviews.reviewed_at',
+                            'reviewers.name as reviewer_name',
+                        ])
+                    : null;
+
+                $row->review_status = $latestReview?->status;
+                $row->review_note = $latestReview?->note;
+                $row->reviewed_at = $latestReview?->reviewed_at;
+                $row->reviewer_name = $latestReview?->reviewer_name;
+                $row->review_outdated = $latestReview !== null
+                    && filled($row->updated_at ?? null)
+                    && filled($latestReview->reviewed_at ?? null)
+                    && Carbon::parse($row->updated_at)->greaterThan(Carbon::parse($latestReview->reviewed_at));
+
+                return $row;
+            });
 
         return Inertia::render('dashboard', [
             'stats' => [
@@ -51,6 +81,7 @@ class DashboardController extends Controller
         $status = trim((string) $request->query('status', ''));
         $academicYear = trim((string) $request->query('academic_year', ''));
         $academicSemester = trim((string) $request->query('academic_semester', ''));
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $allowedStatuses = ['draft', 'obe_valid', 'final'];
         if (! in_array($status, $allowedStatuses, true)) {
@@ -103,7 +134,7 @@ class DashboardController extends Controller
 
         $rows = $query->paginate(15)->withQueryString();
 
-        $rows->through(function ($row): array {
+        $rows->through(function ($row) use ($hasReviewTable): array {
             $weeklyPlans = $row->current_version_id
                 ? DB::table('rps_weekly_plans')
                     ->where('rps_version_id', $row->current_version_id)
@@ -116,8 +147,7 @@ class DashboardController extends Controller
                     ])
                 : collect();
 
-            $filledWeeks = $weeklyPlans->filter(fn ($week) =>
-                (bool) $week->is_exam
+            $filledWeeks = $weeklyPlans->filter(fn ($week) => (bool) $week->is_exam
                 || (
                     filled($week->rps_sub_cpmk_id)
                     && filled($week->material_text)
@@ -131,6 +161,24 @@ class DashboardController extends Controller
                     ->where('rps_version_id', $row->current_version_id)
                     ->sum('weight'), 2)
                 : 0.0;
+
+            $latestReview = $hasReviewTable && filled($row->current_version_id ?? null)
+                ? DB::table('rps_reviews')
+                    ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
+                    ->where('rps_reviews.rps_version_id', $row->current_version_id)
+                    ->orderByDesc('rps_reviews.reviewed_at')
+                    ->first([
+                        'rps_reviews.status',
+                        'rps_reviews.note',
+                        'rps_reviews.reviewed_at',
+                        'reviewers.name as reviewer_name',
+                    ])
+                : null;
+
+            $reviewOutdated = $latestReview !== null
+                && filled($row->updated_at ?? null)
+                && filled($latestReview->reviewed_at ?? null)
+                && Carbon::parse($row->updated_at)->greaterThan(Carbon::parse($latestReview->reviewed_at));
 
             return [
                 'id' => $row->id,
@@ -158,6 +206,13 @@ class DashboardController extends Controller
                     'week_total' => max(16, $weeklyPlans->count()),
                     'assessment_weight' => $assessmentWeight,
                     'obe_percent' => $this->obePercent($row->current_version_id, $row->status),
+                ],
+                'review' => [
+                    'status' => $latestReview?->status,
+                    'note' => $latestReview?->note,
+                    'reviewed_at' => $latestReview?->reviewed_at,
+                    'reviewer_name' => $latestReview?->reviewer_name,
+                    'outdated' => $reviewOutdated,
                 ],
             ];
         });

@@ -24,6 +24,7 @@ type Summary = {
     final: number;
     draft: number;
     obe_valid: number;
+    review_approved: number;
 };
 
 type RpsItem = {
@@ -45,6 +46,11 @@ type RpsItem = {
     assessment_weight_total: number;
     obe_percent?: number | null;
     obe_validated_at?: string | null;
+    review_status?: string | null;
+    review_note?: string | null;
+    reviewed_at?: string | null;
+    reviewer_name?: string | null;
+    review_outdated: boolean;
 };
 
 export default function Page({
@@ -109,11 +115,12 @@ export default function Page({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                             <MiniStat label="Total RPS" value={summary.total} />
                             <MiniStat label="Final" value={summary.final} />
                             <MiniStat label="Draft" value={summary.draft} />
                             <MiniStat label="OBE 100%" value={summary.obe_valid} />
+                            <MiniStat label="Disetujui" value={summary.review_approved} />
                         </div>
                     </div>
                 </section>
@@ -127,7 +134,7 @@ export default function Page({
                             </div>
                             <h2 className="mt-2 text-xl font-black text-slate-900">RPS yang disusun dosen</h2>
                             <p className="mt-1 text-sm text-slate-500">
-                                Tampilan ini hanya membaca data. Membuka RPS melalui tombol di bawah tidak mengubah status Final.
+                                Review dibuka pada tampilan khusus read-only. Keputusan dan catatan tindak lanjut tersimpan terpisah dari isi RPS.
                             </p>
                         </div>
                         <div className="text-sm font-semibold text-slate-500">{rpsItems.length} dokumen</div>
@@ -143,7 +150,7 @@ export default function Page({
                         </div>
                     ) : (
                         <div className="mt-5 overflow-x-auto">
-                            <table className="w-full min-w-[1120px] text-sm">
+                            <table className="w-full min-w-[1280px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         <th className="px-3 py-3">Mata Kuliah</th>
@@ -151,7 +158,8 @@ export default function Page({
                                         <th className="px-3 py-3">Progres Pertemuan</th>
                                         <th className="px-3 py-3">Asesmen</th>
                                         <th className="px-3 py-3">Validator OBE</th>
-                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-3 py-3">Status RPS</th>
+                                        <th className="px-3 py-3">Tindak Lanjut</th>
                                         <th className="px-3 py-3">Diperbarui</th>
                                         <th className="px-3 py-3 text-right">Aksi</th>
                                     </tr>
@@ -207,6 +215,14 @@ export default function Page({
                                                 )}
                                             </td>
                                             <td className="px-3 py-4">
+                                                <ReviewBadge status={item.review_status} outdated={item.review_outdated} />
+                                                {item.reviewed_at && (
+                                                    <div className="mt-1 max-w-44 text-xs text-slate-400">
+                                                        {item.reviewer_name || 'Admin'} · {formatDate(item.reviewed_at)}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-4">
                                                 <div className="inline-flex items-center gap-1.5 text-slate-600">
                                                     <Clock3 className="size-3.5 text-slate-400" />
                                                     {formatDate(item.updated_at)}
@@ -214,10 +230,10 @@ export default function Page({
                                             </td>
                                             <td className="px-3 py-4 text-right">
                                                 <Link
-                                                    href={`/rps/${item.id}`}
+                                                    href={`/admin/rps/${item.id}/review`}
                                                     className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-bold text-teal-700 transition hover:bg-teal-50"
                                                 >
-                                                    Buka RPS
+                                                    Review RPS
                                                     <ExternalLink className="size-3.5" />
                                                 </Link>
                                             </td>
@@ -272,6 +288,38 @@ function StatusBadge({ status }: { status: string }) {
             }`}
         >
             {final ? 'Final' : 'Draft'}
+        </span>
+    );
+}
+
+function ReviewBadge({ status, outdated }: { status?: string | null; outdated: boolean }) {
+    if (outdated) {
+        return (
+            <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                Review ulang
+            </span>
+        );
+    }
+
+    if (status === 'approved') {
+        return (
+            <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                Disetujui
+            </span>
+        );
+    }
+
+    if (status === 'revision_required') {
+        return (
+            <span className="inline-flex rounded-full bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-700">
+                Perlu revisi
+            </span>
+        );
+    }
+
+    return (
+        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+            Belum ditinjau
         </span>
     );
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -47,6 +48,7 @@ class UserController extends Controller
     public function monitoring(User $user): Response
     {
         $this->assertLecturer($user);
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $rpsItems = DB::table('rps')
             ->join('courses', 'courses.id', '=', 'rps.course_id')
@@ -68,7 +70,7 @@ class UserController extends Controller
                 'rps_versions.version_no',
                 'rps_versions.finalized_at',
             ])
-            ->map(function (object $record): array {
+            ->map(function (object $record) use ($hasReviewTable): array {
                 $versionId = filled($record->current_version_id ?? null)
                     ? (string) $record->current_version_id
                     : null;
@@ -87,8 +89,7 @@ class UserController extends Controller
                         ])
                     : collect();
 
-                $readyWeeks = $weeks->filter(fn (object $week): bool =>
-                    (bool) $week->is_exam
+                $readyWeeks = $weeks->filter(fn (object $week): bool => (bool) $week->is_exam
                     || (
                         filled($week->rps_sub_cpmk_id ?? null)
                         && filled($week->material_text ?? null)
@@ -136,6 +137,24 @@ class UserController extends Controller
                     $obePercent = (int) round(($passed / $blockingValidationRows->count()) * 100);
                 }
 
+                $latestReview = $hasReviewTable && $versionId
+                    ? DB::table('rps_reviews')
+                        ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
+                        ->where('rps_reviews.rps_version_id', $versionId)
+                        ->orderByDesc('rps_reviews.reviewed_at')
+                        ->first([
+                            'rps_reviews.status',
+                            'rps_reviews.note',
+                            'rps_reviews.reviewed_at',
+                            'reviewers.name as reviewer_name',
+                        ])
+                    : null;
+
+                $reviewOutdated = $latestReview !== null
+                    && filled($record->updated_at ?? null)
+                    && filled($latestReview->reviewed_at ?? null)
+                    && Carbon::parse($record->updated_at)->greaterThan(Carbon::parse($latestReview->reviewed_at));
+
                 return [
                     'id' => (string) $record->id,
                     'course_code' => filled($record->official_code ?? null)
@@ -157,6 +176,11 @@ class UserController extends Controller
                     'assessment_weight_total' => $assessmentWeight,
                     'obe_percent' => $obePercent,
                     'obe_validated_at' => $validationRows->max('validated_at'),
+                    'review_status' => $latestReview?->status,
+                    'review_note' => $latestReview?->note,
+                    'reviewed_at' => $latestReview?->reviewed_at,
+                    'reviewer_name' => $latestReview?->reviewer_name,
+                    'review_outdated' => $reviewOutdated,
                 ];
             })
             ->values();
@@ -175,6 +199,9 @@ class UserController extends Controller
                 'final' => $rpsItems->where('status', 'final')->count(),
                 'draft' => $rpsItems->where('status', '!=', 'final')->count(),
                 'obe_valid' => $rpsItems->where('obe_percent', 100)->count(),
+                'review_approved' => $rpsItems
+                    ->filter(fn (array $item): bool => $item['review_status'] === 'approved' && ! $item['review_outdated'])
+                    ->count(),
             ],
             'rpsItems' => $rpsItems,
         ]);
@@ -190,7 +217,7 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $user = new User();
+        $user = new User;
         $user->name = trim($validated['name']);
         $user->academic_title = filled($validated['academic_title'] ?? null)
             ? trim($validated['academic_title'])
