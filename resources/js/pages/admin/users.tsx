@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import {
     BadgeCheck,
     Ban,
+    ChartNoAxesCombined,
     CheckCircle2,
     KeyRound,
     Pencil,
@@ -139,7 +140,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                             <div className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">Administrasi</div>
                             <h1 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">Kelola Pengguna</h1>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-cyan-50/80">
-                                Tambah akun dosen, perbarui identitas login, aktifkan atau nonaktifkan akses, dan reset password dari satu halaman.
+                                Tambah akun dosen, perbarui identitas login, aktifkan atau nonaktifkan akses, reset password, dan pantau progres RPS dari satu halaman.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
@@ -255,7 +256,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                         </div>
 
                         <div className="mt-5 overflow-x-auto">
-                            <table className="w-full min-w-[980px] text-sm">
+                            <table className="w-full min-w-[1120px] text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         <th className="px-3 py-3">Pengguna</th>
@@ -307,6 +308,12 @@ export default function Page({ users }: { users: UserRow[] }) {
                                                         <div className="text-right text-xs font-semibold text-slate-400">Akun dilindungi</div>
                                                     ) : (
                                                         <div className="flex justify-end gap-1.5">
+                                                            <ActionButton
+                                                                title="Monitoring RPS"
+                                                                onClick={() => router.visit(`/admin/pengguna/${user.id}/monitoring`)}
+                                                            >
+                                                                <ChartNoAxesCombined className="size-3.5" /> Monitoring
+                                                            </ActionButton>
                                                             <ActionButton title="Edit data" onClick={() => startEdit(user)}>
                                                                 <Pencil className="size-3.5" /> Edit
                                                             </ActionButton>
