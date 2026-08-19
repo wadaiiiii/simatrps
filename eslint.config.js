@@ -104,6 +104,7 @@ export default [
     },
     {
         ignores: [
+            '.simatrps-backup/**',
             'vendor',
             'node_modules',
             'public',
