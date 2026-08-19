@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpenCheck,
     FilePlus2,
+    FileSpreadsheet,
     Files,
     LayoutDashboard,
     LibraryBig,
@@ -40,6 +41,7 @@ const adminNavItems: NavItem[] = [
     { title: 'Kurikulum', href: '/admin/kurikulum', icon: LibraryBig },
     { title: 'Template RPS', href: '/admin/template-rps', icon: BookOpenCheck },
     { title: 'Pengguna', href: '/admin/pengguna', icon: Users },
+    { title: 'Rekap & Ekspor', href: '/admin/rekap', icon: FileSpreadsheet },
 ];
 
 export function AppSidebar() {

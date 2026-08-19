@@ -89,3 +89,17 @@ jobs:
 
       - name: RPS review feature tests
         run: php artisan test tests/Feature/Admin/RpsReviewTest.php
+
+      - name: RPS recap PHP syntax
+        run: |
+          php -l app/Http/Controllers/Admin/RpsReportController.php
+          php -l tests/Feature/Admin/RpsReportTest.php
+
+      - name: RPS recap PHP formatting
+        run: vendor/bin/pint --test app/Http/Controllers/Admin/RpsReportController.php tests/Feature/Admin/RpsReportTest.php routes/web.php
+
+      - name: RPS recap static analysis
+        run: vendor/bin/phpstan analyse app/Http/Controllers/Admin/RpsReportController.php --no-progress
+
+      - name: RPS recap feature tests
+        run: php artisan test tests/Feature/Admin/RpsReportTest.php
