@@ -172,6 +172,7 @@ class RpsReportController extends Controller
     }
 
     /**
+     * @param  object{id: mixed, current_version_id: mixed, academic_year: mixed, academic_semester: mixed, status: mixed, updated_at: mixed, finalized_at: mixed, owner_id: mixed, owner_name: mixed, owner_academic_title: mixed, owner_nidn: mixed, owner_email: mixed, course_name: mixed, system_code: mixed, official_code: mixed, credits: mixed}  $record
      * @return array<string, mixed>
      */
     private function transformRow(object $record, bool $hasReviewTable): array
