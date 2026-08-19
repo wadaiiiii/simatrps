@@ -274,12 +274,8 @@ class RpsReportController extends Controller
             'draft' => $rows->where('status', 'draft')->count(),
             'final' => $rows->where('status', 'final')->count(),
             'obe_valid' => $rows->filter(fn (array $row): bool => $row['progress']['obe_percent'] === 100)->count(),
-            'approved' => $rows->filter(fn (array $row): bool =>
-                $row['review']['status'] === 'approved' && ! $row['review']['outdated']
-            )->count(),
-            'revision_required' => $rows->filter(fn (array $row): bool =>
-                $row['review']['status'] === 'revision_required' && ! $row['review']['outdated']
-            )->count(),
+            'approved' => $rows->filter(fn (array $row): bool => $row['review']['status'] === 'approved' && ! $row['review']['outdated'])->count(),
+            'revision_required' => $rows->filter(fn (array $row): bool => $row['review']['status'] === 'revision_required' && ! $row['review']['outdated'])->count(),
             'outdated' => $rows->filter(fn (array $row): bool => (bool) $row['review']['outdated'])->count(),
             'unreviewed' => $rows->filter(fn (array $row): bool => $row['review']['status'] === null)->count(),
         ];
