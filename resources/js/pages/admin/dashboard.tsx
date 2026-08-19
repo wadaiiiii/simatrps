@@ -48,6 +48,13 @@ type RpsRow = {
         assessment_weight: number;
         obe_percent?: number | null;
     };
+    review: {
+        status?: string | null;
+        note?: string | null;
+        reviewed_at?: string | null;
+        reviewer_name?: string | null;
+        outdated: boolean;
+    };
 };
 
 type PaginatedRows = {
@@ -116,7 +123,7 @@ export default function AdminDashboard({
                         <div className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">Dashboard Admin</div>
                         <h1 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">Monitoring Penyusunan RPS</h1>
                         <p className="mt-2 text-sm leading-6 text-cyan-50/80">
-                            Pantau aktivitas dosen, progres pengisian pertemuan, bobot asesmen, hasil Validator OBE, dan status final RPS dari satu halaman.
+                            Pantau aktivitas dosen, progres pengisian, Validator OBE, status final, dan tindak lanjut review RPS dari satu halaman.
                         </p>
                     </div>
                 </section>
@@ -164,7 +171,7 @@ export default function AdminDashboard({
                         <div>
                             <h2 className="text-lg font-black text-slate-900">Daftar RPS Dosen</h2>
                             <p className="mt-1 text-sm text-slate-500">
-                                {rpsRows.total} RPS tercatat. Pantau dosen untuk melihat seluruh RPS-nya atau buka RPS untuk melihat detail dokumen.
+                                {rpsRows.total} RPS tercatat. Buka Review RPS untuk meninjau dokumen secara read-only dan menyimpan tindak lanjut.
                             </p>
                         </div>
                     </div>
@@ -231,7 +238,7 @@ export default function AdminDashboard({
                     </form>
 
                     <div className="mt-5 overflow-x-auto">
-                        <table className="w-full min-w-[1280px] text-sm">
+                        <table className="w-full min-w-[1420px] text-sm">
                             <thead>
                                 <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                                     <th className="px-3 py-3">Dosen</th>
@@ -241,6 +248,7 @@ export default function AdminDashboard({
                                     <th className="px-3 py-3">Bobot Asesmen</th>
                                     <th className="px-3 py-3">Validator OBE</th>
                                     <th className="px-3 py-3">Status</th>
+                                    <th className="px-3 py-3">Tindak Lanjut</th>
                                     <th className="px-3 py-3">Terakhir Diubah</th>
                                     <th className="px-3 py-3 text-right">Aksi</th>
                                 </tr>
@@ -297,6 +305,12 @@ export default function AdminDashboard({
                                             <td className="px-3 py-4">
                                                 <span className={statusClass(row.status)}>{statusLabel(row.status)}</span>
                                             </td>
+                                            <td className="px-3 py-4">
+                                                <ReviewBadge status={row.review?.status} outdated={Boolean(row.review?.outdated)} />
+                                                {row.review?.reviewed_at && (
+                                                    <div className="mt-1 text-xs text-slate-400">{formatDate(row.review.reviewed_at)}</div>
+                                                )}
+                                            </td>
                                             <td className="px-3 py-4 text-slate-600">
                                                 <div className="inline-flex items-center gap-1.5">
                                                     <Clock3 className="size-3.5 text-slate-400" />
@@ -313,10 +327,10 @@ export default function AdminDashboard({
                                                         Pantau Dosen
                                                     </Link>
                                                     <Link
-                                                        href={`/rps/${row.id}`}
+                                                        href={`/admin/rps/${row.id}/review`}
                                                         className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-teal-800"
                                                     >
-                                                        Buka RPS
+                                                        Review RPS
                                                         <ArrowUpRight className="size-3.5" />
                                                     </Link>
                                                 </div>
@@ -327,7 +341,7 @@ export default function AdminDashboard({
 
                                 {rpsRows.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-500">
+                                        <td colSpan={10} className="px-4 py-12 text-center text-sm text-slate-500">
                                             Tidak ada RPS yang sesuai dengan filter.
                                         </td>
                                     </tr>
@@ -428,6 +442,14 @@ function ObeBadge({ percent }: { percent?: number | null }) {
             OBE {percent}%
         </span>
     );
+}
+
+function ReviewBadge({ status, outdated }: { status?: string | null; outdated: boolean }) {
+    const base = 'inline-flex rounded-full border px-2.5 py-1 text-xs font-black';
+    if (outdated) return <span className={`${base} border-amber-200 bg-amber-50 text-amber-700`}>REVIEW ULANG</span>;
+    if (status === 'approved') return <span className={`${base} border-emerald-200 bg-emerald-50 text-emerald-700`}>DISETUJUI</span>;
+    if (status === 'revision_required') return <span className={`${base} border-rose-200 bg-rose-50 text-rose-700`}>PERLU REVISI</span>;
+    return <span className={`${base} border-slate-200 bg-slate-50 text-slate-500`}>BELUM DITINJAU</span>;
 }
 
 function statusLabel(status: string) {
