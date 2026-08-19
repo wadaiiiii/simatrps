@@ -147,8 +147,7 @@ class DashboardController extends Controller
                     ])
                 : collect();
 
-            $filledWeeks = $weeklyPlans->filter(fn ($week) =>
-                (bool) $week->is_exam
+            $filledWeeks = $weeklyPlans->filter(fn ($week) => (bool) $week->is_exam
                 || (
                     filled($week->rps_sub_cpmk_id)
                     && filled($week->material_text)
