@@ -43,6 +43,142 @@ class UserController extends Controller
         return Inertia::render('admin/users', ['users' => $users]);
     }
 
+    public function monitoring(User $user): Response
+    {
+        $this->assertLecturer($user);
+
+        $rpsItems = DB::table('rps')
+            ->join('courses', 'courses.id', '=', 'rps.course_id')
+            ->leftJoin('rps_versions', 'rps_versions.id', '=', 'rps.current_version_id')
+            ->where('rps.owner_id', $user->id)
+            ->orderByDesc('rps.updated_at')
+            ->get([
+                'rps.id',
+                'rps.status',
+                'rps.academic_year',
+                'rps.academic_semester',
+                'rps.updated_at',
+                'rps.current_version_id',
+                'courses.system_code',
+                'courses.official_code',
+                'courses.name as course_name',
+                'courses.credits',
+                'rps_versions.status as version_status',
+                'rps_versions.version_no',
+                'rps_versions.finalized_at',
+            ])
+            ->map(function (object $record): array {
+                $versionId = filled($record->current_version_id ?? null)
+                    ? (string) $record->current_version_id
+                    : null;
+
+                $weeks = $versionId
+                    ? DB::table('rps_weekly_plans')
+                        ->where('rps_version_id', $versionId)
+                        ->orderBy('week_number')
+                        ->get([
+                            'week_number',
+                            'is_exam',
+                            'rps_sub_cpmk_id',
+                            'material_text',
+                            'learning_method',
+                            'learning_activity',
+                        ])
+                    : collect();
+
+                $readyWeeks = $weeks->filter(fn (object $week): bool =>
+                    (bool) $week->is_exam
+                    || (
+                        filled($week->rps_sub_cpmk_id ?? null)
+                        && filled($week->material_text ?? null)
+                        && filled($week->learning_method ?? null)
+                        && filled($week->learning_activity ?? null)
+                    )
+                )->count();
+
+                $weekTotal = $weeks->count();
+                $completionPercent = $weekTotal > 0
+                    ? (int) round(($readyWeeks / $weekTotal) * 100)
+                    : 0;
+
+                $assessmentCount = $versionId
+                    ? DB::table('assessments')->where('rps_version_id', $versionId)->count()
+                    : 0;
+                $assessmentWeight = $versionId
+                    ? round((float) DB::table('assessments')
+                        ->where('rps_version_id', $versionId)
+                        ->sum('weight'), 2)
+                    : 0.0;
+
+                $validationRows = $versionId
+                    ? DB::table('obe_validation_results')
+                        ->where('rps_version_id', $versionId)
+                        ->get(['is_passed', 'details', 'validated_at'])
+                    : collect();
+
+                $blockingValidationRows = $validationRows->filter(function (object $row): bool {
+                    $details = json_decode((string) ($row->details ?? ''), true);
+                    $severity = is_array($details)
+                        ? (string) ($details['severity'] ?? 'required')
+                        : 'required';
+
+                    return $severity !== 'advisory';
+                });
+
+                $obePercent = null;
+                if (strtolower((string) $record->status) === 'final') {
+                    $obePercent = 100;
+                } elseif ($blockingValidationRows->isNotEmpty()) {
+                    $passed = $blockingValidationRows
+                        ->filter(fn (object $row): bool => (bool) $row->is_passed)
+                        ->count();
+                    $obePercent = (int) round(($passed / $blockingValidationRows->count()) * 100);
+                }
+
+                return [
+                    'id' => (string) $record->id,
+                    'course_code' => filled($record->official_code ?? null)
+                        ? (string) $record->official_code
+                        : (string) $record->system_code,
+                    'course_name' => (string) $record->course_name,
+                    'credits' => (float) $record->credits,
+                    'academic_year' => (string) $record->academic_year,
+                    'academic_semester' => (string) $record->academic_semester,
+                    'status' => (string) $record->status,
+                    'version_status' => (string) ($record->version_status ?? 'draft'),
+                    'version_no' => (float) ($record->version_no ?? 1),
+                    'finalized_at' => $record->finalized_at,
+                    'updated_at' => $record->updated_at,
+                    'weeks_ready' => $readyWeeks,
+                    'weeks_total' => $weekTotal,
+                    'completion_percent' => $completionPercent,
+                    'assessment_count' => $assessmentCount,
+                    'assessment_weight_total' => $assessmentWeight,
+                    'obe_percent' => $obePercent,
+                    'obe_validated_at' => $validationRows->max('validated_at'),
+                ];
+            })
+            ->values();
+
+        return Inertia::render('admin/user-monitoring', [
+            'lecturer' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'academic_title' => $user->academic_title,
+                'nidn' => $user->nidn,
+                'email' => $user->email,
+                'is_active' => (bool) $user->is_active,
+            ],
+            'summary' => [
+                'total' => $rpsItems->count(),
+                'final' => $rpsItems->where('status', 'final')->count(),
+                'draft' => $rpsItems->where('status', '!=', 'final')->count(),
+                'obe_valid' => $rpsItems->where('obe_percent', 100)->count(),
+            ],
+            'rpsItems' => $rpsItems,
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
