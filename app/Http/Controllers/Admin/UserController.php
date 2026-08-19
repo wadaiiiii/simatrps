@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -47,6 +48,7 @@ class UserController extends Controller
     public function monitoring(User $user): Response
     {
         $this->assertLecturer($user);
+        $hasReviewTable = Schema::hasTable('rps_reviews');
 
         $rpsItems = DB::table('rps')
             ->join('courses', 'courses.id', '=', 'rps.course_id')
@@ -68,7 +70,7 @@ class UserController extends Controller
                 'rps_versions.version_no',
                 'rps_versions.finalized_at',
             ])
-            ->map(function (object $record): array {
+            ->map(function (object $record) use ($hasReviewTable): array {
                 $versionId = filled($record->current_version_id ?? null)
                     ? (string) $record->current_version_id
                     : null;
@@ -136,7 +138,7 @@ class UserController extends Controller
                     $obePercent = (int) round(($passed / $blockingValidationRows->count()) * 100);
                 }
 
-                $latestReview = $versionId
+                $latestReview = $hasReviewTable && $versionId
                     ? DB::table('rps_reviews')
                         ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
                         ->where('rps_reviews.rps_version_id', $versionId)
