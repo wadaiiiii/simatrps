@@ -110,6 +110,17 @@ test('lecturer cannot access admin user management', function () {
         ->assertForbidden();
 });
 
+test('inactive lecturer cannot sign in', function () {
+    $lecturer = lecturerUser(['is_active' => false]);
+
+    $this->post(route('login.store'), [
+        'email' => $lecturer->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+});
+
 test('inactive lecturer cannot access dashboard or settings', function () {
     $lecturer = lecturerUser(['is_active' => false]);
 
