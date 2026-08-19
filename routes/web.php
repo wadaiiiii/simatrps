@@ -102,6 +102,9 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
         Route::inertia('template-rps', 'admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
         Route::post('pengguna', [UserController::class, 'store'])->name('users.store');
+        Route::put('pengguna/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('pengguna/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+        Route::put('pengguna/{user}/password', [UserController::class, 'resetPassword'])->name('users.password');
     });
 
 require __DIR__.'/settings.php';
