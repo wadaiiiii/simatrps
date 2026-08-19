@@ -82,7 +82,10 @@ jobs:
           php -l tests/Feature/Admin/RpsReviewTest.php
 
       - name: RPS review PHP formatting
-        run: vendor/bin/pint --test app/Http/Controllers/Admin/RpsReviewController.php app/Http/Controllers/Admin/UserController.php app/Http/Controllers/DashboardController.php database/migrations/2026_08_20_063000_create_rps_reviews_table.php tests/Feature/Admin/RpsReviewTest.php routes/web.php
+        run: |
+          vendor/bin/pint app/Http/Controllers/Admin/RpsReviewController.php app/Http/Controllers/Admin/UserController.php app/Http/Controllers/DashboardController.php database/migrations/2026_08_20_063000_create_rps_reviews_table.php tests/Feature/Admin/RpsReviewTest.php routes/web.php
+          git diff -- app/Http/Controllers/Admin/RpsReviewController.php app/Http/Controllers/Admin/UserController.php app/Http/Controllers/DashboardController.php database/migrations/2026_08_20_063000_create_rps_reviews_table.php tests/Feature/Admin/RpsReviewTest.php routes/web.php
+          git diff --quiet -- app/Http/Controllers/Admin/RpsReviewController.php app/Http/Controllers/Admin/UserController.php app/Http/Controllers/DashboardController.php database/migrations/2026_08_20_063000_create_rps_reviews_table.php tests/Feature/Admin/RpsReviewTest.php routes/web.php
 
       - name: RPS review static analysis
         run: vendor/bin/phpstan analyse app/Http/Controllers/Admin/RpsReviewController.php --no-progress
