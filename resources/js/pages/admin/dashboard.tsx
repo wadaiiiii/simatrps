@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowUpRight,
     BookOpenCheck,
+    ChartNoAxesCombined,
     CheckCircle2,
     Clock3,
     FileText,
@@ -45,6 +46,7 @@ type RpsRow = {
         filled_weeks: number;
         week_total: number;
         assessment_weight: number;
+        obe_percent?: number | null;
     };
 };
 
@@ -114,7 +116,7 @@ export default function AdminDashboard({
                         <div className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">Dashboard Admin</div>
                         <h1 className="mt-2 text-2xl font-black tracking-tight md:text-3xl">Monitoring Penyusunan RPS</h1>
                         <p className="mt-2 text-sm leading-6 text-cyan-50/80">
-                            Pantau aktivitas dosen, progres pengisian pertemuan, bobot asesmen, dan status final RPS dari satu halaman.
+                            Pantau aktivitas dosen, progres pengisian pertemuan, bobot asesmen, hasil Validator OBE, dan status final RPS dari satu halaman.
                         </p>
                     </div>
                 </section>
@@ -145,7 +147,7 @@ export default function AdminDashboard({
                         icon={CheckCircle2}
                         label="OBE Valid"
                         value={stats.rps_obe_valid}
-                        helper="Lolos validasi OBE"
+                        helper="Termasuk RPS Final"
                         tone="cyan"
                     />
                     <StatCard
@@ -162,7 +164,7 @@ export default function AdminDashboard({
                         <div>
                             <h2 className="text-lg font-black text-slate-900">Daftar RPS Dosen</h2>
                             <p className="mt-1 text-sm text-slate-500">
-                                {rpsRows.total} RPS tercatat. Buka RPS untuk melihat detail penyusunan dan validator OBE.
+                                {rpsRows.total} RPS tercatat. Pantau dosen untuk melihat seluruh RPS-nya atau buka RPS untuk melihat detail dokumen.
                             </p>
                         </div>
                     </div>
@@ -229,7 +231,7 @@ export default function AdminDashboard({
                     </form>
 
                     <div className="mt-5 overflow-x-auto">
-                        <table className="w-full min-w-[1120px] text-sm">
+                        <table className="w-full min-w-[1280px] text-sm">
                             <thead>
                                 <tr className="border-b border-slate-200 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                                     <th className="px-3 py-3">Dosen</th>
@@ -237,6 +239,7 @@ export default function AdminDashboard({
                                     <th className="px-3 py-3">Periode</th>
                                     <th className="px-3 py-3">Pertemuan Terisi</th>
                                     <th className="px-3 py-3">Bobot Asesmen</th>
+                                    <th className="px-3 py-3">Validator OBE</th>
                                     <th className="px-3 py-3">Status</th>
                                     <th className="px-3 py-3">Terakhir Diubah</th>
                                     <th className="px-3 py-3 text-right">Aksi</th>
@@ -248,7 +251,12 @@ export default function AdminDashboard({
                                     return (
                                         <tr key={row.id} className="align-top transition hover:bg-teal-50/30">
                                             <td className="px-3 py-4">
-                                                <div className="font-bold text-slate-900">{row.owner.name}</div>
+                                                <Link
+                                                    href={`/admin/pengguna/${row.owner.id}/monitoring`}
+                                                    className="font-bold text-slate-900 transition hover:text-teal-700"
+                                                >
+                                                    {row.owner.name}
+                                                </Link>
                                                 <div className="mt-0.5 text-xs text-slate-500">
                                                     {row.owner.academic_title || row.owner.nidn || row.owner.email}
                                                 </div>
@@ -284,6 +292,9 @@ export default function AdminDashboard({
                                                 </span>
                                             </td>
                                             <td className="px-3 py-4">
+                                                <ObeBadge percent={row.progress.obe_percent} />
+                                            </td>
+                                            <td className="px-3 py-4">
                                                 <span className={statusClass(row.status)}>{statusLabel(row.status)}</span>
                                             </td>
                                             <td className="px-3 py-4 text-slate-600">
@@ -293,13 +304,22 @@ export default function AdminDashboard({
                                                 </div>
                                             </td>
                                             <td className="px-3 py-4 text-right">
-                                                <Link
-                                                    href={`/rps/${row.id}`}
-                                                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-teal-800"
-                                                >
-                                                    Buka RPS
-                                                    <ArrowUpRight className="size-3.5" />
-                                                </Link>
+                                                <div className="flex justify-end gap-2">
+                                                    <Link
+                                                        href={`/admin/pengguna/${row.owner.id}/monitoring`}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-bold text-teal-700 transition hover:bg-teal-50"
+                                                    >
+                                                        <ChartNoAxesCombined className="size-3.5" />
+                                                        Pantau Dosen
+                                                    </Link>
+                                                    <Link
+                                                        href={`/rps/${row.id}`}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-teal-800"
+                                                    >
+                                                        Buka RPS
+                                                        <ArrowUpRight className="size-3.5" />
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -307,7 +327,7 @@ export default function AdminDashboard({
 
                                 {rpsRows.data.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500">
+                                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-500">
                                             Tidak ada RPS yang sesuai dengan filter.
                                         </td>
                                     </tr>
@@ -384,6 +404,29 @@ function StatCard({
             <div className="mt-1 text-sm font-bold text-slate-700">{label}</div>
             <div className="mt-1 text-xs text-slate-500">{helper}</div>
         </div>
+    );
+}
+
+function ObeBadge({ percent }: { percent?: number | null }) {
+    if (percent === null || percent === undefined) {
+        return (
+            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-black text-slate-500">
+                BELUM DICEK
+            </span>
+        );
+    }
+
+    const valid = percent === 100;
+    return (
+        <span
+            className={`inline-flex min-w-20 justify-center rounded-full border px-2.5 py-1 text-xs font-black ${
+                valid
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-amber-200 bg-amber-50 text-amber-700'
+            }`}
+        >
+            OBE {percent}%
+        </span>
     );
 }
 
