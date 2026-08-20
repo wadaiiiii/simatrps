@@ -376,13 +376,34 @@ class ObeWorkspaceService
 
 
         $materialCoverageIssues = collect();
+        $confirmedMaterialCoverageCount = 0;
+        $materialCoverageFingerprint = $materials
+            ->pluck('title')
+            ->map(fn ($title) => $this->semanticNormalized((string) $title))
+            ->filter()
+            ->sort()
+            ->values()
+            ->implode('|');
+
         foreach ($subCpmks as $sub) {
             $scores = $materials->map(fn ($material) =>
                 $this->semanticSimilarity((string) $material->title, (string) $sub->description)
             );
             $bestScore = $scores->isNotEmpty() ? (float) $scores->max() : 0.0;
             if ($bestScore < 0.10) {
+                $decisionKey = 'material-coverage:sub:'.(string) $sub->id
+                    .':'.sha1(
+                        $this->semanticNormalized((string) $sub->description)
+                        .'|'.$materialCoverageFingerprint
+                    );
+
+                if ($keptDecisionKeys->has($decisionKey)) {
+                    $confirmedMaterialCoverageCount++;
+                    continue;
+                }
+
                 $materialCoverageIssues->push([
+                    'decision_key' => $decisionKey,
                     'sub_cpmk_id' => (string) $sub->id,
                     'sub_cpmk_code' => (string) $sub->code,
                     'best_score' => round($bestScore, 3),
@@ -721,11 +742,16 @@ class ObeWorkspaceService
                 'severity' => 'advisory',
                 'done' => $materialCoverageAligned,
                 'message' => $materialCoverageAligned
-                    ? 'Bahan Kajian memiliki keterkaitan minimum dengan seluruh Sub-CPMK.'
+                    ? ($confirmedMaterialCoverageCount > 0
+                        ? 'Cakupan Bahan Kajian diterima · '.$confirmedMaterialCoverageCount.' keputusan dosen untuk melanjutkan tanpa mengikuti rekomendasi dipertahankan.'
+                        : 'Bahan Kajian memiliki keterkaitan minimum dengan seluruh Sub-CPMK.')
                     : (($issue = $materialCoverageIssues->first())
-                        ? $issue['sub_cpmk_code'].' belum memiliki Bahan Kajian yang cukup dekat. Telaah/tambah Bahan Kajian sebelum menyusun pekan terkait.'
+                        ? $issue['sub_cpmk_code'].' belum memiliki Bahan Kajian yang cukup dekat. Dosen boleh melengkapi Bahan Kajian atau melanjutkan tanpa mengikuti rekomendasi.'
                         : 'Ada Sub-CPMK yang belum ditopang Bahan Kajian.'),
-                'details' => ['issues' => $materialCoverageIssues->all()],
+                'details' => [
+                    'issues' => $materialCoverageIssues->all(),
+                    'confirmed_count' => $confirmedMaterialCoverageCount,
+                ],
             ],
             [
                 'key' => 'weekly_material_semantics',

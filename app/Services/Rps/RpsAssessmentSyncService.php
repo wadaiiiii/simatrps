@@ -1035,11 +1035,16 @@ class RpsAssessmentSyncService
     {
         $tasks = DB::table('rps_tasks')
             ->where('rps_version_id', $versionId)
-            ->get(['id', 'due_week', 'source_type', 'purpose', 'instructions', 'expected_output'])
+            ->get(['id', 'assessment_id', 'due_week', 'source_type', 'purpose', 'instructions', 'expected_output'])
             ->filter(fn ($task) => $this->isGeneratedTask($task))
             ->values();
 
         if ($tasks->isEmpty()) return 0;
+
+        $assessmentWeeks = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('id', $tasks->pluck('assessment_id')->filter()->all())
+            ->pluck('week_number', 'id');
 
         $taskLinks = DB::table('rps_task_subcpmks')
             ->whereIn('rps_task_id', $tasks->pluck('id')->all())
@@ -1062,13 +1067,25 @@ class RpsAssessmentSyncService
                 ->filter(fn ($week) => $subIds->contains((string) $week->rps_sub_cpmk_id))
                 ->max('week_number');
             $latest = $latest ? (int) $latest : 0;
-            if ($latest <= 0) continue;
+
+            $assessmentWeek = filled($task->assessment_id ?? null)
+                ? (int) ($assessmentWeeks->get((string) $task->assessment_id) ?? 0)
+                : 0;
+            $assessmentWeek = $assessmentWeek >= 1 && $assessmentWeek <= 16
+                ? $assessmentWeek
+                : 0;
+
+            // Detail Asesmen adalah sumber utama jadwal RTM. Namun RTM tidak
+            // boleh dikumpulkan sebelum pekan terakhir cakupan Sub-CPMK-nya.
+            // Target juga boleh bergerak mundur saat asesmen dipindah lebih awal.
+            $target = max($latest, $assessmentWeek);
+            if ($target <= 0) continue;
 
             $current = (int) ($task->due_week ?? 0);
-            if ($current >= $latest) continue;
+            if ($current === $target) continue;
 
             DB::table('rps_tasks')->where('id', $task->id)->update([
-                'due_week' => $latest,
+                'due_week' => $target,
                 'updated_at' => now(),
             ]);
             $fixed++;

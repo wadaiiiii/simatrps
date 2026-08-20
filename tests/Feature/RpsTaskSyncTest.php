@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Services\Rps\ObeWorkspaceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -198,4 +199,95 @@ test('RTM cards are returned in due week order', function () {
             ->where('tasks.0.title', 'RTM tambahan pekan 4')
             ->where('tasks.1.due_week', 15)
         );
+});
+
+
+test('generated RTM due week moves backward when Detail Asesmen is moved earlier', function () {
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsTaskSyncFixture($lecturer);
+    $assessmentId = insertAssessmentForRtm($fixture, $lecturer, 'Tugas Terstruktur 1', 6, 5, $fixture['sub1']);
+    $taskId = (string) Str::uuid();
+
+    DB::table('rps_tasks')->insert([
+        'id' => $taskId,
+        'rps_version_id' => $fixture['versionId'],
+        'assessment_id' => $assessmentId,
+        'code' => 'RTM-03',
+        'title' => 'Tugas Terstruktur 1',
+        'type' => 'assignment',
+        'purpose' => 'Mengukur ketercapaian Sub-CPMK melalui Tugas Terstruktur 1.',
+        'instructions' => 'Kerjakan Tugas Terstruktur 1 sesuai arahan dosen dan kriteria penilaian yang ditetapkan.',
+        'expected_output' => 'Luaran Tugas Terstruktur 1 sesuai ketentuan asesmen.',
+        'due_week' => 6,
+        'source_type' => 'assessment_sync',
+        'created_by' => null,
+        'created_at' => $fixture['timestamp'],
+        'updated_at' => $fixture['timestamp'],
+    ]);
+    DB::table('rps_task_subcpmks')->insert([
+        'id' => (string) Str::uuid(),
+        'rps_task_id' => $taskId,
+        'rps_sub_cpmk_id' => $fixture['sub1'],
+        'created_at' => $fixture['timestamp'],
+        'updated_at' => $fixture['timestamp'],
+    ]);
+
+    $this->actingAs($lecturer)->put(
+        route('rps.assessments.update', [
+            'rps' => $fixture['rpsId'],
+            'assessment' => $assessmentId,
+        ]),
+        [
+            'name' => 'Tugas Terstruktur 1',
+            'type' => 'assignment',
+            'week_number' => 2,
+            'weight' => 5,
+            'description' => 'Penilaian terstruktur untuk Sub-CPMK awal.',
+            'sub_cpmk_ids' => [$fixture['sub1']],
+        ]
+    )->assertSessionHasNoErrors();
+
+    expect((int) DB::table('rps_tasks')->where('id', $taskId)->value('due_week'))->toBe(2);
+});
+
+test('lecturer can keep material coverage advisory and continue', function () {
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsTaskSyncFixture($lecturer);
+
+    DB::table('rps_materials')->insert([
+        'id' => (string) Str::uuid(),
+        'rps_version_id' => $fixture['versionId'],
+        'title' => 'Etika kewarganegaraan dan komunikasi profesional',
+        'description' => null,
+        'sequence_no' => 1,
+        'source_type' => 'manual',
+        'created_by' => $lecturer->id,
+        'created_at' => $fixture['timestamp'],
+        'updated_at' => $fixture['timestamp'],
+    ]);
+
+    $before = app(ObeWorkspaceService::class)->progress($fixture['versionId']);
+    $coverage = collect($before['checks'])->firstWhere('key', 'material_coverage');
+    $decisionKeys = collect($coverage['details']['issues'] ?? [])
+        ->pluck('decision_key')
+        ->filter()
+        ->values()
+        ->all();
+
+    expect($coverage['done'])->toBeFalse()
+        ->and($decisionKeys)->not->toBeEmpty();
+
+    $this->actingAs($lecturer)->post(
+        route('rps.validator-decisions.store', ['rps' => $fixture['rpsId']]),
+        [
+            'check_key' => 'material_coverage',
+            'subject_keys' => $decisionKeys,
+        ]
+    )->assertSessionHasNoErrors();
+
+    $after = app(ObeWorkspaceService::class)->progress($fixture['versionId']);
+    $coverageAfter = collect($after['checks'])->firstWhere('key', 'material_coverage');
+
+    expect($coverageAfter['done'])->toBeTrue()
+        ->and((int) ($coverageAfter['details']['confirmed_count'] ?? 0))->toBe(count($decisionKeys));
 });
