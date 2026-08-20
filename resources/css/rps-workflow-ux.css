@@ -1,0 +1,125 @@
+/* SiMatRPS workflow UX refinements: assessment AI + admin review. */
+
+/*
+ * Assessment AI used to live in the narrow right side of the section header,
+ * leaving a large empty area while recommendations were squeezed. Keep the
+ * trigger compact, but let the recommendation workspace use the full editor.
+ */
+details:has(#validator-target-assessment) > div[class*='border-t'] > div:first-child {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 0.75rem !important;
+}
+
+#validator-target-assessment {
+    width: 100%;
+    max-width: none;
+}
+
+#validator-target-assessment + div {
+    width: 100% !important;
+    min-width: 0;
+}
+
+#validator-target-assessment + div > div:first-child {
+    justify-content: flex-end !important;
+}
+
+#validator-target-assessment + div > details {
+    width: 100% !important;
+    margin-top: 0.5rem !important;
+    padding: 0.75rem !important;
+    border-color: rgb(153 246 228) !important;
+    background: linear-gradient(180deg, rgb(240 253 250 / 0.72), rgb(255 255 255 / 0.96)) !important;
+}
+
+#validator-target-assessment + div > details > summary {
+    display: flex;
+    align-items: center;
+    min-height: 1.75rem;
+    font-size: 0.75rem !important;
+}
+
+#validator-target-assessment + div > details > div {
+    margin-top: 0.625rem !important;
+}
+
+/* Make the assessment recommendation workspace denser and easier to scan. */
+#validator-target-assessment + div > details > div > div {
+    padding: 1rem !important;
+    border-color: rgb(226 232 240) !important;
+    background: rgb(255 255 255) !important;
+    box-shadow: 0 10px 28px rgb(15 23 42 / 0.05);
+}
+
+#validator-target-assessment + div > details details {
+    margin-top: 0.75rem !important;
+    padding: 0.75rem !important;
+    background: rgb(248 250 252 / 0.82) !important;
+}
+
+/* Provider internals are diagnostics, not lecturer-facing content. */
+#validator-target-assessment + div > details div.rounded-lg.border.border-amber-100.bg-amber-50 {
+    font-size: 0 !important;
+    line-height: 0 !important;
+}
+
+#validator-target-assessment + div > details div.rounded-lg.border.border-amber-100.bg-amber-50::before {
+    content: 'AI utama belum berhasil memproses permintaan. Rekomendasi ini menggunakan layanan cadangan SiMatRPS; periksa isinya sebelum diterapkan.';
+    display: block;
+    font-size: 0.6875rem;
+    line-height: 1.125rem;
+    font-weight: 600;
+}
+
+/*
+ * Admin review: reading the RPS must have the full page width. The decision
+ * and history are intentionally placed after the document, never as a narrow
+ * sticky sidebar.
+ */
+div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > main {
+    width: 100%;
+    min-width: 0;
+}
+
+div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside {
+    position: static !important;
+    top: auto !important;
+    width: 100% !important;
+    min-width: 0;
+    align-self: stretch !important;
+}
+
+@media (min-width: 1024px) {
+    div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside > section:first-child form {
+        display: grid !important;
+        grid-template-columns: minmax(240px, 0.34fr) minmax(0, 1fr) !important;
+        align-items: start;
+        column-gap: 1rem;
+        row-gap: 0.75rem;
+    }
+
+    div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside > section:first-child form > label:first-child {
+        grid-column: 1;
+    }
+
+    div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside > section:first-child form > label:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+
+    div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside > section:first-child form > button[type='submit'] {
+        grid-column: 1;
+        width: 100% !important;
+        margin-top: 0 !important;
+    }
+
+    div[class*='xl:grid-cols-[minmax(0,1fr)_360px]'] > aside > section:first-child textarea {
+        min-height: 10rem;
+    }
+}
