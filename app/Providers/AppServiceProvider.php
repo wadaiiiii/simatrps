@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\ObeWorkspaceController;
+use App\Http\Controllers\ObeWorkspaceFlowController;
+use App\Http\Controllers\RpsAiController;
+use App\Http\Controllers\RpsCpmkAiController;
 use App\Services\Rps\RpsAssessmentSyncService;
 use App\Services\Rps\RpsTaskOrderingService;
 use Carbon\CarbonImmutable;
@@ -22,6 +26,12 @@ class AppServiceProvider extends ServiceProvider
             RpsAssessmentSyncService::class,
             StrictRpsAssessmentSyncService::class,
         );
+
+        // Keep the public route/controller contracts stable while strengthening
+        // the CPMK workflow. The wrappers only intercept CPMK-specific actions;
+        // all inherited behavior remains unchanged for the rest of SiMatRPS.
+        $this->app->bind(RpsAiController::class, RpsCpmkAiController::class);
+        $this->app->bind(ObeWorkspaceController::class, ObeWorkspaceFlowController::class);
     }
 
     /**

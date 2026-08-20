@@ -116,3 +116,19 @@ jobs:
 
       - name: RTM sync feature tests
         run: php artisan test tests/Feature/RpsTaskSyncTest.php tests/Feature/Admin/RpsReviewTest.php
+
+      - name: CPMK AI flow PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsCpmkAiController.php
+          php -l app/Http/Controllers/ObeWorkspaceFlowController.php
+          php -l app/Providers/AppServiceProvider.php
+          php -l tests/Feature/RpsCpmkAiFlowTest.php
+
+      - name: CPMK AI flow PHP formatting
+        run: vendor/bin/pint --test app/Http/Controllers/RpsCpmkAiController.php app/Http/Controllers/ObeWorkspaceFlowController.php app/Providers/AppServiceProvider.php tests/Feature/RpsCpmkAiFlowTest.php
+
+      - name: CPMK AI flow static analysis
+        run: vendor/bin/phpstan analyse app/Http/Controllers/RpsCpmkAiController.php app/Http/Controllers/ObeWorkspaceFlowController.php --no-progress
+
+      - name: CPMK AI flow feature tests
+        run: php artisan test tests/Feature/RpsCpmkAiFlowTest.php
