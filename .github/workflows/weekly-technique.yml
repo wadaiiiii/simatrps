@@ -1,0 +1,47 @@
+name: Weekly technique policy
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - 'fix/**'
+      - 'feat/**'
+      - 'work/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: PHP syntax
+        run: |
+          php -l app/Services/Rps/WeeklyAssessmentTechniquePolicy.php
+          php -l app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php
+          php -l app/Providers/WeeklyAssessmentAiServiceProvider.php
+          php -l bootstrap/providers.php
+          php -l tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
+
+      - name: PHP formatting
+        run: vendor/bin/pint --test app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php bootstrap/providers.php tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
+
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php --no-progress
+
+      - name: Unit regression tests
+        run: php artisan test tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
