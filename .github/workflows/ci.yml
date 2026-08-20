@@ -29,6 +29,11 @@ jobs:
       - name: Apply one-off RTM UX patch
         run: |
           python3 .github/scripts/patch-assessment-rtm-review-ux.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/Feature/Admin/RpsReviewTest.php')
+          p.write_text(p.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
           php -l app/Http/Controllers/RpsTaskController.php
           php -l app/Http/Controllers/RpsController.php
           php -l database/migrations/2026_08_20_080000_repair_manual_rtm_assessment_duplicates.php
