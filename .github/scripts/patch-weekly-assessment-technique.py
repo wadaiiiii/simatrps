@@ -18,7 +18,7 @@ replace(
     show,
     "<strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}",
     "<strong>Teknik:</strong> {week.assessment_method || '-'}",
-    expected=4,
+    expected=2,
 )
 replace(show, "Bentuk / Teknik", "Teknik", expected=1)
 replace(
@@ -168,4 +168,5 @@ test('weekly assessment technique remains independent from Detail Asesmen owners
 '''
     test.write_text(text)
 
+Path('.github/weekly-technique-patch-error.log').unlink(missing_ok=True)
 print("weekly assessment technique patch applied")
