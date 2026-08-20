@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RpsTaskController extends Controller
 {
@@ -29,8 +30,33 @@ class RpsTaskController extends Controller
             'sub_cpmk_ids.*' => ['uuid'],
         ]);
 
-        if ($validated['assessment_id'] ?? null) {
-            $validated = $this->applyAssessmentDefaults($validated, $version->id);
+        $validated['assessment_id'] = $this->resolveAssessmentId($validated, $version->id);
+        $validated = $this->applyAssessmentDefaults($validated, $version->id);
+
+        // Sinkronisasi asesmen dapat sudah membuat RTM canonical sebelum form manual
+        // selesai diisi. Jika RTM induk tersebut sudah ada, gunakan RTM yang sama dan
+        // timpa isinya dengan keputusan dosen, bukan membuat baris kedua.
+        $existingTask = DB::table('rps_tasks')
+            ->where('rps_version_id', $version->id)
+            ->where('assessment_id', $validated['assessment_id'])
+            ->orderByRaw("CASE WHEN source_type = 'manual' THEN 0 ELSE 1 END")
+            ->orderBy('created_at')
+            ->first();
+
+        if ($existingTask) {
+            $this->updateTaskRecord(
+                (string) $existingTask->id,
+                $version->id,
+                $validated,
+                (int) $request->user()->id,
+            );
+
+            $sync->syncVersion($version->id);
+
+            return back()->with(
+                'success',
+                'RTM untuk asesmen ini sudah tersedia dari sinkronisasi. Isian manual diterapkan pada RTM yang sama sehingga tidak terbentuk duplikat.'
+            );
         }
 
         $next = (int) DB::table('rps_tasks')
@@ -43,45 +69,27 @@ class RpsTaskController extends Controller
             DB::table('rps_tasks')->insert([
                 'id' => $id,
                 'rps_version_id' => $version->id,
-                'assessment_id' => $validated['assessment_id'] ?: null,
+                'assessment_id' => $validated['assessment_id'],
                 'code' => 'RTM-'.str_pad((string) $next, 2, '0', STR_PAD_LEFT),
                 'title' => $validated['title'],
                 'type' => $validated['type'],
-                'purpose' => $validated['purpose'] ?: null,
-                'instructions' => $validated['instructions'] ?: null,
-                'expected_output' => $validated['expected_output'] ?: null,
-                'due_week' => $validated['due_week'] ?: null,
+                'purpose' => ($validated['purpose'] ?? null) ?: null,
+                'instructions' => ($validated['instructions'] ?? null) ?: null,
+                'expected_output' => ($validated['expected_output'] ?? null) ?: null,
+                'due_week' => ($validated['due_week'] ?? null) ?: null,
                 'source_type' => 'manual',
                 'created_by' => $request->user()->id,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            $allowed = DB::table('rps_sub_cpmks')
-                ->where('rps_version_id', $version->id)
-                ->pluck('id')
-                ->all();
-
-            foreach (array_unique($validated['sub_cpmk_ids'] ?? []) as $subId) {
-                if (! in_array($subId, $allowed, true)) {
-                    continue;
-                }
-
-                DB::table('rps_task_subcpmks')->insert([
-                    'id' => (string) Str::uuid(),
-                    'rps_task_id' => $id,
-                    'rps_sub_cpmk_id' => $subId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+            $this->replaceTaskSubCpmks($id, $version->id, $validated['sub_cpmk_ids'] ?? []);
         });
 
         $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil ditambahkan. Satu RTM dapat mengukur satu atau lebih Sub-CPMK dalam cakupan asesmen induk; pekan hanya menjadi jadwal pengumpulan.');
+        return back()->with('success', 'RTM berhasil ditambahkan dan terhubung ke asesmen induk.');
     }
-
 
     public function update(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
     {
@@ -108,52 +116,35 @@ class RpsTaskController extends Controller
             'sub_cpmk_ids.*' => ['uuid'],
         ]);
 
-        if ($validated['assessment_id'] ?? null) {
-            $validated = $this->applyAssessmentDefaults($validated, $version->id);
+        $validated['assessment_id'] = $this->resolveAssessmentId(
+            $validated,
+            $version->id,
+            filled($existing->assessment_id ?? null) ? (string) $existing->assessment_id : null,
+        );
+        $validated = $this->applyAssessmentDefaults($validated, $version->id);
+
+        $duplicate = DB::table('rps_tasks')
+            ->where('rps_version_id', $version->id)
+            ->where('assessment_id', $validated['assessment_id'])
+            ->where('id', '!=', $task)
+            ->first(['id', 'code']);
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'assessment_id' => 'Asesmen ini sudah memiliki RTM '.$duplicate->code.'. Edit RTM tersebut atau pilih asesmen induk lain agar tidak terbentuk duplikat.',
+            ]);
         }
 
-        $allowedSubIds = DB::table('rps_sub_cpmks')
-            ->where('rps_version_id', $version->id)
-            ->pluck('id')
-            ->all();
-
-        DB::transaction(function () use ($task, $validated, $allowedSubIds): void {
-            DB::table('rps_tasks')
-                ->where('id', $task)
-                ->update([
-                    'assessment_id' => ($validated['assessment_id'] ?? null) ?: null,
-                    'title' => $validated['title'],
-                    'type' => $validated['type'],
-                    'purpose' => ($validated['purpose'] ?? null) ?: null,
-                    'instructions' => ($validated['instructions'] ?? null) ?: null,
-                    'expected_output' => ($validated['expected_output'] ?? null) ?: null,
-                    'due_week' => ($validated['due_week'] ?? null) ?: null,
-                    'source_type' => 'manual',
-                    'updated_at' => now(),
-                ]);
-
-            DB::table('rps_task_subcpmks')
-                ->where('rps_task_id', $task)
-                ->delete();
-
-            foreach (array_unique($validated['sub_cpmk_ids'] ?? []) as $subId) {
-                if (! in_array($subId, $allowedSubIds, true)) {
-                    continue;
-                }
-
-                DB::table('rps_task_subcpmks')->insert([
-                    'id' => (string) Str::uuid(),
-                    'rps_task_id' => $task,
-                    'rps_sub_cpmk_id' => $subId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-        });
+        $this->updateTaskRecord(
+            $task,
+            $version->id,
+            $validated,
+            (int) $request->user()->id,
+        );
 
         $sync->syncVersion($version->id);
 
-        return back()->with('success', 'RTM berhasil diperbarui. Cakupan Sub-CPMK RTM dipertahankan independen dari pekan pengumpulan dan tetap berada dalam asesmen induk.');
+        return back()->with('success', 'RTM berhasil diperbarui dan tetap terhubung ke satu asesmen induk.');
     }
 
     public function destroy(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
@@ -187,7 +178,7 @@ class RpsTaskController extends Controller
                     ->count();
 
                 if ($otherRtmCount === 0) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
+                    throw ValidationException::withMessages([
                         'task' => 'RTM ini masih menjadi satu-satunya RTM untuk asesmen '
                             .trim((string) ($assessment->code ?? 'Asesmen')).' “'
                             .trim((string) $assessment->name)
@@ -210,6 +201,41 @@ class RpsTaskController extends Controller
         return back()->with('success', 'RTM berhasil dihapus dan distribusi asesmen-pekan disinkronkan ulang.');
     }
 
+    private function resolveAssessmentId(array $validated, string $versionId, ?string $fallbackAssessmentId = null): string
+    {
+        $requestedId = filled($validated['assessment_id'] ?? null)
+            ? (string) $validated['assessment_id']
+            : $fallbackAssessmentId;
+
+        if ($requestedId) {
+            return $requestedId;
+        }
+
+        // Membantu kasus form lama/stale: bila judul RTM sama persis dengan satu
+        // asesmen aktif yang kompatibel, relasikan otomatis. Ini aman karena hanya
+        // berlaku bila hasil pencarian unik.
+        $normalizedTitle = mb_strtolower(trim((string) ($validated['title'] ?? '')));
+        $type = strtolower((string) ($validated['type'] ?? ''));
+
+        $matches = DB::table('assessments')
+            ->where('rps_version_id', $versionId)
+            ->whereIn('type', ['assignment', 'project', 'practicum', 'presentation'])
+            ->get(['id', 'name', 'type'])
+            ->filter(fn ($assessment) =>
+                mb_strtolower(trim((string) $assessment->name)) === $normalizedTitle
+                && ($type === 'other' || strtolower((string) $assessment->type) === $type)
+            )
+            ->values();
+
+        if ($matches->count() === 1) {
+            return (string) $matches->first()->id;
+        }
+
+        throw ValidationException::withMessages([
+            'assessment_id' => 'Pilih asesmen induk untuk RTM. Setiap RTM harus terhubung ke satu asesmen agar sinkronisasi tidak membuat RTM ganda.',
+        ]);
+    }
+
     private function applyAssessmentDefaults(array $validated, string $versionId): array
     {
         $assessment = DB::table('assessments')
@@ -218,7 +244,7 @@ class RpsTaskController extends Controller
             ->first(['id', 'name', 'type', 'week_number']);
 
         if (! $assessment) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'assessment_id' => 'Asesmen RTM tidak valid untuk RPS ini.',
             ]);
         }
@@ -227,7 +253,7 @@ class RpsTaskController extends Controller
         $rtmTypes = ['assignment', 'project', 'practicum', 'presentation'];
 
         if (! in_array($type, $rtmTypes, true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'assessment_id' => 'Pilih asesmen tugas, proyek, praktikum, atau presentasi untuk RTM.',
             ]);
         }
@@ -247,8 +273,6 @@ class RpsTaskController extends Controller
             ->values();
 
         if ($requestedSubIds->isEmpty()) {
-            // Default aman: satu RTM mewarisi seluruh cakupan asesmen induk.
-            // Dosen tetap dapat memilih sebagian Sub-CPMK melalui editor RTM.
             $validated['sub_cpmk_ids'] = $assessmentSubIds->all();
         } else {
             $outsideAssessment = $requestedSubIds
@@ -256,14 +280,11 @@ class RpsTaskController extends Controller
                 ->values();
 
             if ($outsideAssessment->isNotEmpty()) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'sub_cpmk_ids' => 'RTM hanya boleh mengukur Sub-CPMK yang termasuk dalam cakupan asesmen induk. Tambahkan Sub-CPMK tersebut pada asesmen terlebih dahulu atau ubah pilihan RTM.',
                 ]);
             }
 
-            // Jangan mempersempit cakupan berdasarkan pekan pengumpulan. RTM
-            // integratif dapat mengukur beberapa Sub-CPMK dan dikumpulkan pada
-            // satu pekan tertentu.
             $validated['sub_cpmk_ids'] = $requestedSubIds->all();
         }
 
@@ -281,6 +302,55 @@ class RpsTaskController extends Controller
         }
 
         return $validated;
+    }
+
+    private function updateTaskRecord(string $taskId, string $versionId, array $validated, int $userId): void
+    {
+        DB::transaction(function () use ($taskId, $versionId, $validated, $userId): void {
+            DB::table('rps_tasks')
+                ->where('id', $taskId)
+                ->where('rps_version_id', $versionId)
+                ->update([
+                    'assessment_id' => $validated['assessment_id'],
+                    'title' => $validated['title'],
+                    'type' => $validated['type'],
+                    'purpose' => ($validated['purpose'] ?? null) ?: null,
+                    'instructions' => ($validated['instructions'] ?? null) ?: null,
+                    'expected_output' => ($validated['expected_output'] ?? null) ?: null,
+                    'due_week' => ($validated['due_week'] ?? null) ?: null,
+                    'source_type' => 'manual',
+                    'created_by' => $userId,
+                    'updated_at' => now(),
+                ]);
+
+            $this->replaceTaskSubCpmks($taskId, $versionId, $validated['sub_cpmk_ids'] ?? []);
+        });
+    }
+
+    private function replaceTaskSubCpmks(string $taskId, string $versionId, array $subCpmkIds): void
+    {
+        $allowed = DB::table('rps_sub_cpmks')
+            ->where('rps_version_id', $versionId)
+            ->pluck('id')
+            ->all();
+
+        DB::table('rps_task_subcpmks')
+            ->where('rps_task_id', $taskId)
+            ->delete();
+
+        foreach (array_unique($subCpmkIds) as $subId) {
+            if (! in_array($subId, $allowed, true)) {
+                continue;
+            }
+
+            DB::table('rps_task_subcpmks')->insert([
+                'id' => (string) Str::uuid(),
+                'rps_task_id' => $taskId,
+                'rps_sub_cpmk_id' => $subId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     private function context(Request $request, string $rps): array
