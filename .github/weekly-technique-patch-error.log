@@ -1,1 +1,1 @@
-resources/js/pages/rps/show.tsx: expected 4 occurrences, found 2: "<strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}"
+python3: can't open file '/home/runner/work/simatrps/simatrps/.github/scripts/patch-weekly-assessment-technique.py': [Errno 2] No such file or directory
