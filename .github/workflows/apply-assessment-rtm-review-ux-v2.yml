@@ -1,0 +1,44 @@
+name: Apply assessment RTM review UX patch
+
+on:
+  push:
+    branches:
+      - fix/assessment-rtm-review-ux-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/assessment-rtm-review-ux-v2
+          fetch-depth: 0
+
+      - name: Download prepared patch script
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/wadaiiiii/simatrps/fix/assessment-rtm-review-ux/.github/scripts/patch-assessment-rtm-review-ux.py \
+            -o /tmp/patch-assessment-rtm-review-ux.py
+
+      - name: Apply patch
+        run: python /tmp/patch-assessment-rtm-review-ux.py
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Http/Controllers/RpsTaskController.php \
+                  app/Http/Controllers/RpsController.php \
+                  resources/js/pages/rps/show.tsx \
+                  resources/js/pages/admin/rps-review.tsx \
+                  database/migrations/2026_08_20_080000_repair_manual_rtm_assessment_duplicates.php \
+                  tests/Feature/RpsTaskSyncTest.php \
+                  tests/Feature/Admin/RpsReviewTest.php \
+                  .github/workflows/tests.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix assessment RTM sync and review UX"
+          git push origin HEAD:fix/assessment-rtm-review-ux-v2
