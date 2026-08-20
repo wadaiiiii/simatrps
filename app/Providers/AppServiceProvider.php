@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Services\Rps\RpsAssessmentSyncService;
+use App\Services\Rps\RpsTaskOrderingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -63,10 +64,15 @@ final class StrictRpsAssessmentSyncService extends RpsAssessmentSyncService
         'presentation',
     ];
 
+    public function __construct(
+        private readonly RpsTaskOrderingService $taskOrdering,
+    ) {}
+
     public function syncVersion(string $versionId): array
     {
         $result = parent::syncVersion($versionId);
         $result['rtm_scope_fixes'] = $this->enforceExactTaskScopes($versionId);
+        $result['rtm_order_fixes'] = $this->taskOrdering->renumberBySchedule($versionId);
 
         return $result;
     }
@@ -75,6 +81,7 @@ final class StrictRpsAssessmentSyncService extends RpsAssessmentSyncService
     {
         $result = parent::repairGeneratedArtifacts($versionId);
         $result['rtm_scope_fixes'] = $this->enforceExactTaskScopes($versionId);
+        $result['rtm_order_fixes'] = $this->taskOrdering->renumberBySchedule($versionId);
 
         return $result;
     }
