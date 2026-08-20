@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Services\Rps\ObeWorkspaceService;
+use App\Services\Rps\RpsAssessmentSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -288,4 +289,59 @@ test('lecturer can keep material coverage advisory and continue', function () {
 
     expect($coverageAfter['done'])->toBeTrue()
         ->and((int) ($coverageAfter['details']['confirmed_count'] ?? 0))->toBe(count($decisionKeys));
+});
+
+test('RTM codes are renumbered to match due week order after a later RTM is inserted in the middle', function () {
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsTaskSyncFixture($lecturer);
+
+    $rows = [
+        ['RTM-01', 'Tugas Terstruktur 1', 2, 0],
+        ['RTM-02', 'Praktikum Terstruktur', 15, 1],
+        ['RTM-03', 'Proyek Integratif', 15, 2],
+        ['RTM-04', 'Tugas Terstruktur 2', 6, 3],
+    ];
+
+    foreach ($rows as [$code, $title, $week, $seconds]) {
+        DB::table('rps_tasks')->insert([
+            'id' => (string) Str::uuid(),
+            'rps_version_id' => $fixture['versionId'],
+            'assessment_id' => null,
+            'code' => $code,
+            'title' => $title,
+            'type' => 'assignment',
+            'due_week' => $week,
+            'source_type' => 'manual',
+            'created_by' => $lecturer->id,
+            'created_at' => $fixture['timestamp']->addSeconds($seconds),
+            'updated_at' => $fixture['timestamp']->addSeconds($seconds),
+        ]);
+    }
+
+    $result = app(RpsAssessmentSyncService::class)->syncVersion($fixture['versionId']);
+
+    expect((int) ($result['rtm_order_fixes'] ?? 0))->toBe(3);
+
+    $ordered = DB::table('rps_tasks')
+        ->where('rps_version_id', $fixture['versionId'])
+        ->orderBy('due_week')
+        ->orderBy('created_at')
+        ->get(['code', 'title', 'due_week']);
+
+    expect($ordered->pluck('code')->all())->toBe([
+        'RTM-01',
+        'RTM-02',
+        'RTM-03',
+        'RTM-04',
+    ])->and($ordered->pluck('title')->all())->toBe([
+        'Tugas Terstruktur 1',
+        'Tugas Terstruktur 2',
+        'Praktikum Terstruktur',
+        'Proyek Integratif',
+    ])->and($ordered->pluck('due_week')->map(fn ($week) => (int) $week)->all())->toBe([
+        2,
+        6,
+        15,
+        15,
+    ]);
 });
