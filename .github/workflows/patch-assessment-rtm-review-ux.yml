@@ -6,6 +6,7 @@ on:
       - fix/assessment-rtm-review-ux
     paths:
       - '.github/scripts/patch-assessment-rtm-review-ux.py'
+      - '.github/workflows/patch-assessment-rtm-review-ux.yml'
 
 permissions:
   contents: write
