@@ -260,7 +260,6 @@ test('lecturer can keep material coverage advisory and continue', function () {
         'description' => null,
         'sequence_no' => 1,
         'source_type' => 'manual',
-        'created_by' => $lecturer->id,
         'created_at' => $fixture['timestamp'],
         'updated_at' => $fixture['timestamp'],
     ]);
