@@ -311,10 +311,10 @@ PROMPT;
         $payload['recommendations'] = $normalized;
         $payload['_review_basis'] = [
             'policy_version' => self::POLICY_VERSION,
-            'curriculum_cpl_codes' => array_values(array_map(
+            'curriculum_cpl_codes' => array_map(
                 static fn (array $cpl): string => $cpl['code'],
                 $officialCpls
-            )),
+            ),
             'curriculum_cpl_count' => count($officialCpls),
         ];
 
@@ -322,10 +322,10 @@ PROMPT;
         /** @var array<string, mixed> $context */
         $context = is_array($decodedContext) ? $decodedContext : [];
         $context['policy_version'] = self::POLICY_VERSION;
-        $context['curriculum_cpl_codes'] = array_values(array_map(
+        $context['curriculum_cpl_codes'] = array_map(
             static fn (array $cpl): string => $cpl['code'],
             $officialCpls
-        ));
+        );
 
         $updates = [
             'input_context' => json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -373,10 +373,10 @@ PROMPT;
         }
 
         $codes = array_values(array_unique($codes));
-        $officialIds = array_values(array_filter(array_map(
+        $officialIds = array_filter(array_map(
             static fn (array $cpl): string => $cpl['id'],
             $officialCpls
-        )));
+        ));
 
         if ($codes === [] && $existing !== null && $existing['id'] !== '') {
             $mapped = DB::table('rps_cpmk_cpls')
@@ -469,7 +469,7 @@ PROMPT;
             $tokens[$token] = true;
         }
 
-        return array_values(array_keys($tokens));
+        return array_keys($tokens);
     }
 
     private function normalizeCpmkCode(string $value): string
