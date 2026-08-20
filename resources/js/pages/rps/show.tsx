@@ -1258,7 +1258,7 @@ export default function RpsShow(props: any) {
                                 </tr>
                                 <tr>
                                     <th className="w-[190px] border border-slate-400 px-2 py-2">Indikator</th>
-                                    <th className="w-[180px] border border-slate-400 px-2 py-2">Kriteria & Bentuk</th>
+                                    <th className="w-[180px] border border-slate-400 px-2 py-2">Kriteria & Teknik</th>
                                     <th className="w-[225px] border border-slate-400 px-2 py-2">Tatap Muka / Luring</th>
                                     <th className="w-[225px] border border-slate-400 px-2 py-2">Daring / LMS</th>
                                 </tr>
@@ -4282,7 +4282,7 @@ function DocumentWeekRow({
                 </td>
                 <td className="border border-slate-400 p-2">
                     <textarea value={form.data.assessment_criteria} onChange={(e) => form.setData('assessment_criteria', e.target.value)} className={area} placeholder="Kriteria" />
-                    <input value={form.data.assessment_method} readOnly className={`${input} mt-1 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />
+                    <input value={form.data.assessment_method} onChange={(e) => form.setData('assessment_method', e.target.value)} className={`${input} mt-1`} placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja" />
                 </td>
                 <td className="border border-slate-400 p-2">
                     <input value={form.data.learning_form} onChange={(e) => form.setData('learning_form', e.target.value)} className={input} placeholder="Tatap Muka / Praktikum" />
@@ -4367,7 +4367,7 @@ function DocumentWeekRow({
             <td className="border border-slate-300 px-2 py-1.5">{normalizeAcademicTerm(week.assessment_indicator) || '-'}</td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div><strong>Kriteria:</strong> {week.assessment_criteria || '-'}</div>
-                <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}</div>
+                <div className="mt-2"><strong>Teknik:</strong> {week.assessment_method || '-'}</div>
             </td>
             <td className="border border-slate-300 px-2 py-1.5">
                 <div><strong>Bentuk:</strong> {normalizeAcademicTerm(String(week.learning_form || '').replace(/_/g, ' ')) || '-'}</div>
@@ -5248,7 +5248,7 @@ function InlineWeekRow({
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">{normalizeAcademicTerm(week.assessment_indicator) || '-'}</td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div><strong>Kriteria:</strong> {week.assessment_criteria || '-'}</div>
-                    <div className="mt-2"><strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}</div>
+                    <div className="mt-2"><strong>Teknik:</strong> {week.assessment_method || '-'}</div>
                 </td>
                 <td className="border border-slate-200 px-3 py-3 leading-5 text-slate-600">
                     <div className="font-bold text-slate-800">{week.learning_form || '-'}</div>
@@ -5334,7 +5334,7 @@ function InlineWeekRow({
             </td>
             <td className="border border-slate-200 p-2">
                 <textarea value={form.data.assessment_criteria} onChange={(e) => form.setData('assessment_criteria', e.target.value)} className={areaClass} placeholder="Kriteria" />
-                <input value={form.data.assessment_method} readOnly className={`${inputClass} mt-2 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />
+                <input value={form.data.assessment_method} onChange={(e) => form.setData('assessment_method', e.target.value)} className={`${inputClass} mt-2`} placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja" />
             </td>
             <td className="border border-slate-200 p-2">
                 <input value={form.data.learning_form} onChange={(e) => form.setData('learning_form', e.target.value)} className={inputClass} placeholder="Tatap Muka / Praktikum" />
@@ -5510,7 +5510,7 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                 </fieldset>
 
                 <fieldset className="rounded-xl border border-slate-200 bg-white/80 p-4">
-                    <legend className="px-2 text-xs font-extrabold text-slate-700">(4) Penilaian | Kriteria & Bentuk</legend>
+                    <legend className="px-2 text-xs font-extrabold text-slate-700">(4) Penilaian | Kriteria & Teknik</legend>
                     <label>
                         <span className="mb-1.5 block text-xs font-bold text-slate-500">Kriteria</span>
                         <textarea
@@ -5521,14 +5521,14 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                         />
                     </label>
                     <label className="mt-3 block">
-                        <span className="mb-1.5 block text-xs font-bold text-slate-500">Bentuk / Teknik</span>
+                        <span className="mb-1.5 block text-xs font-bold text-slate-500">Teknik</span>
                         <input
                             value={form.data.assessment_method}
-                            readOnly
-                            placeholder="Mengikuti Detail Asesmen"
-                            title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500"
+                            onChange={(e) => form.setData('assessment_method', e.target.value)}
+                            placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
                         />
+                        <span className="mt-1.5 block text-[11px] leading-4 text-slate-400">Teknik adalah cara menilai bukti belajar pada pekan ini. Nama, jenis, bobot, dan cakupan asesmen tetap dikelola pada Detail Asesmen.</span>
                         <span className="mt-1 block text-[10px] leading-4 text-slate-400">Bentuk Penilaian berasal dari Detail Asesmen. Edit asesmen induk bila perlu mengubahnya.</span>
                     </label>
                 </fieldset>

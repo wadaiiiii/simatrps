@@ -93,7 +93,7 @@ MODE TELAAH / MERGE AMAN:
 - Target-state asesmen setelah mempertahankan/perbaiki/menambah harus tepat 100%, bukan 100% baru yang ditumpuk di atas bobot lama.
 - Pastikan seluruh Sub-CPMK aktif memiliki bukti asesmen dan RTM yang relevan; gunakan keterkaitan Sub-CPMK sebagai dasar utama constructive alignment.
 - SETIAP Sub-CPMK aktif WAJIB tercakup minimal satu asesmen NON-UTS/UAS dengan bobot positif. UTS/UAS boleh mengukur Sub-CPMK yang sama sebagai asesmen sumatif, tetapi UTS/UAS tidak boleh menjadi satu-satunya asesmen untuk suatu Sub-CPMK.
-- Detail Asesmen adalah sumber kebenaran bentuk dan bobot penilaian pekanan. Jangan membuat bentuk penilaian pekanan yang berdiri sendiri di luar asesmen agregat.
+- Detail Asesmen adalah sumber kebenaran identitas asesmen, jenis/bentuk asesmen, bobot, pekan pengumpulan, dan cakupan Sub-CPMK. `assessment_method` pada tabel mingguan adalah TEKNIK PENILAIAN (mis. observasi, tes tertulis, rubrik analitik, penilaian kinerja/produk/presentasi) dan tidak boleh dipakai untuk mengganti nama atau jenis Detail Asesmen.
 
 ATURAN CAKUPAN RTM:
 1. Satu RTM BOLEH mengukur tepat satu Sub-CPMK ATAU beberapa Sub-CPMK sekaligus jika tugasnya integratif (proyek, praktikum, presentasi, tugas kasus, atau produk yang memang memerlukan beberapa capaian).
@@ -392,7 +392,7 @@ Turunkan indikator penilaian BARU sebagai bukti ketercapaian yang dapat diamati 
 Indikator ideal memuat 2-3 tindakan/bukti operasional, misalnya mengidentifikasi unsur pada contoh, menjelaskan hubungan/argumen, menerapkan prosedur pada kasus, membandingkan hasil, menganalisis kesalahan, atau menghasilkan produk yang relevan—sesuaikan dengan level Bloom dan bidang ilmu pada konteks.
 JANGAN menyebut kode Sub-CPMK, frasa "sesuai rumusan", "menunjukkan ketercapaian", atau membuka kalimat dengan "Mahasiswa mampu/dapat". Mulai langsung dengan kata kerja operasional.
 Boleh menggunakan pengetahuan keilmuan dan pedagogis umum untuk menurunkan contoh bukti belajar yang wajar, tetapi jangan mengubah atau mengarang CPL/CPMK/Sub-CPMK resmi, bobot, referensi, atau kebijakan kurikulum. Jangan membuat ambang angka/nilai baru jika tidak tersedia pada konteks.
-Pastikan `assessment_criteria` menilai kualitas bukti tersebut. `assessment_method` TIDAK boleh menciptakan bentuk penilaian baru: bentuk resmi selalu berasal dari Detail Asesmen. Jika pekan belum mempunyai asesmen induk pada `target_assessments`, kosongkan `assessment_method`; sistem akan meminta dosen melengkapi Detail Asesmen.
+Pastikan `assessment_criteria` menilai kualitas bukti tersebut. `assessment_method` adalah TEKNIK PENILAIAN pekanan, bukan nama/bentuk Detail Asesmen. Isi secara ringkas dengan cara penilaian yang sesuai indikator dan kriteria, misalnya "Observasi kinerja", "Tes tertulis", "Rubrik analitik", "Penilaian produk", atau "Penilaian presentasi". Jangan menyalin nama Detail Asesmen ke field ini dan jangan mengubah identitas/bobot asesmen dari sini.
 Materi pekan WAJIB selaras dengan `target_sub_cpmk`. Prioritaskan `target_materials` bila tersedia. Jangan memilih bahan kajian hanya karena urutannya berdekatan, dan jangan mengulang bahan kajian yang tidak relevan dengan Sub-CPMK target. Jika perlu pengulangan untuk penguatan, nyatakan eksplisit sebagai pendalaman/latihan.
 
 FORMAT SCANNABLE METODE DAN AKTIVITAS PEMBELAJARAN:
@@ -504,7 +504,7 @@ PROMPT;
             'independent_study_sessions' => max(1, (int) ($weekly->independent_study_sessions ?? 1)),
             'assessment_indicator' => $item['assessment_indicator'] ?? null,
             'assessment_criteria' => $item['assessment_criteria'] ?? null,
-            'assessment_method' => $assessmentOwnerName !== '' ? $assessmentOwnerName : null,
+            'assessment_method' => $item['assessment_method'] ?? null,
             'reference_text' => $resolvedReferences,
         ];
 
@@ -533,11 +533,6 @@ PROMPT;
             ) {
                 $updates[$key] = $value;
             }
-        }
-
-        $currentAssessmentMethod = trim((string) ($weekly->assessment_method ?? ''));
-        if ($currentAssessmentMethod !== $assessmentOwnerName) {
-            $updates['assessment_method'] = $assessmentOwnerName !== '' ? $assessmentOwnerName : null;
         }
 
         if ($updates === []) {

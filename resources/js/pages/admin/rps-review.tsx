@@ -65,6 +65,7 @@ type Week = {
     learning_activity?: string | null;
     assessment_indicator?: string | null;
     assessment_criteria?: string | null;
+    assessment_method?: string | null;
     assessment_weight?: number | null;
     sub_cpmk_code?: string | null;
     sub_cpmk_description?: string | null;
@@ -255,7 +256,10 @@ export default function RpsReview({
                                                 <td className="px-3 py-4 max-w-72">
                                                     <div className="text-xs leading-5 text-slate-600">{week.assessment_indicator || '-'}</div>
                                                     {week.assessment_criteria && (
-                                                        <div className="mt-1 text-xs leading-5 text-slate-400">{week.assessment_criteria}</div>
+                                                        <div className="mt-1 text-xs leading-5 text-slate-400"><strong>Kriteria:</strong> {week.assessment_criteria}</div>
+                                                    )}
+                                                    {week.assessment_method && (
+                                                        <div className="mt-1 text-xs leading-5 text-slate-400"><strong>Teknik:</strong> {week.assessment_method}</div>
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-4 text-right font-black text-slate-700">

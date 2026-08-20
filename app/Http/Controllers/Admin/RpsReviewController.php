@@ -74,6 +74,7 @@ class RpsReviewController extends Controller
                 'rps_weekly_plans.learning_activity',
                 'rps_weekly_plans.assessment_indicator',
                 'rps_weekly_plans.assessment_criteria',
+                'rps_weekly_plans.assessment_method',
                 'rps_weekly_plans.assessment_weight',
                 'rps_sub_cpmks.code as sub_cpmk_code',
                 'rps_sub_cpmks.description as sub_cpmk_description',

@@ -345,3 +345,40 @@ test('RTM codes are renumbered to match due week order after a later RTM is inse
         15,
     ]);
 });
+
+
+test('weekly assessment technique remains independent from Detail Asesmen ownership', function () {
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsTaskSyncFixture($lecturer);
+
+    DB::table('rps_weekly_plans')->insert([
+        'id' => (string) Str::uuid(),
+        'rps_version_id' => $fixture['versionId'],
+        'week_number' => 1,
+        'rps_sub_cpmk_id' => $fixture['sub1'],
+        'assessment_indicator' => 'Menerapkan konsep pada contoh yang diberikan.',
+        'assessment_criteria' => 'Ketepatan konsep dan langkah penyelesaian.',
+        'assessment_method' => 'Rubrik analitik',
+        'assessment_weight' => 5,
+        'source_type' => 'manual_allocation',
+        'created_at' => $fixture['timestamp'],
+        'updated_at' => $fixture['timestamp'],
+    ]);
+
+    insertAssessmentForRtm($fixture, $lecturer, 'Tugas Terstruktur 1', 1, 5, $fixture['sub1']);
+
+    app(RpsAssessmentSyncService::class)->syncVersion($fixture['versionId']);
+
+    expect(DB::table('rps_weekly_plans')
+        ->where('rps_version_id', $fixture['versionId'])
+        ->where('week_number', 1)
+        ->value('assessment_method'))->toBe('Rubrik analitik');
+
+    $this->actingAs($lecturer)
+        ->get(route('rps.show', $fixture['rpsId']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeks.0.assessment_method', 'Rubrik analitik')
+            ->where('weeks.0.assessment_owner_name', 'Tugas Terstruktur 1')
+        );
+});
