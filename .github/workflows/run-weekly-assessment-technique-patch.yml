@@ -1,0 +1,44 @@
+name: Run Weekly Assessment Technique Patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/patch-triggers/weekly-assessment-technique.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/weekly-assessment-technique
+          fetch-depth: 0
+
+      - name: Apply source patch
+        run: python3 .github/scripts/patch-weekly-assessment-technique.py
+
+      - name: Verify patch syntax
+        run: |
+          php -l app/Http/Controllers/RpsController.php
+          php -l app/Http/Controllers/RpsAiController.php
+          php -l app/Http/Controllers/Admin/RpsReviewController.php
+          php -l app/Services/Rps/RpsAssessmentSyncService.php
+          php -l tests/Feature/RpsTaskSyncTest.php
+          git diff --check
+
+      - name: Remove branch-only patch script
+        run: git rm .github/scripts/patch-weekly-assessment-technique.py
+
+      - name: Commit patch to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Align weekly RPS criteria and technique"
+          git push origin HEAD:fix/weekly-assessment-technique
