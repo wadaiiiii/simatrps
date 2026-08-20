@@ -1,0 +1,171 @@
+from pathlib import Path
+
+
+def replace(path: str, old: str, new: str, expected: int | None = None) -> None:
+    p = Path(path)
+    text = p.read_text()
+    count = text.count(old)
+    if expected is not None and count != expected:
+        raise SystemExit(f"{path}: expected {expected} occurrences, found {count}: {old[:100]!r}")
+    if count == 0:
+        raise SystemExit(f"{path}: pattern not found: {old[:100]!r}")
+    p.write_text(text.replace(old, new))
+
+
+show = "resources/js/pages/rps/show.tsx"
+replace(show, "Kriteria & Bentuk", "Kriteria & Teknik", expected=2)
+replace(
+    show,
+    "<strong>Bentuk:</strong> {week.assessment_method || 'Belum terhubung ke Detail Asesmen'}",
+    "<strong>Teknik:</strong> {week.assessment_method || '-'}",
+    expected=4,
+)
+replace(show, "Bentuk / Teknik", "Teknik", expected=1)
+replace(
+    show,
+    '<input value={form.data.assessment_method} readOnly className={`${input} mt-1 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />',
+    '<input value={form.data.assessment_method} onChange={(e) => form.setData(\'assessment_method\', e.target.value)} className={`${input} mt-1`} placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja" />',
+    expected=1,
+)
+replace(
+    show,
+    '<input value={form.data.assessment_method} readOnly className={`${inputClass} mt-2 bg-slate-50 text-slate-500`} placeholder="Mengikuti Detail Asesmen" title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan." />',
+    '<input value={form.data.assessment_method} onChange={(e) => form.setData(\'assessment_method\', e.target.value)} className={`${inputClass} mt-2`} placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja" />',
+    expected=1,
+)
+
+p = Path(show)
+text = p.read_text()
+old = '''                        <input
+                            value={form.data.assessment_method}
+                            readOnly
+                            placeholder="Mengikuti Detail Asesmen"
+                            title="Bentuk penilaian mengikuti Detail Asesmen dan tidak diedit dari pekan."
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500"
+                        />'''
+new = '''                        <input
+                            value={form.data.assessment_method}
+                            onChange={(e) => form.setData('assessment_method', e.target.value)}
+                            placeholder="Contoh: Observasi, tes tertulis, rubrik, unjuk kerja"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                        />
+                        <span className="mt-1.5 block text-[11px] leading-4 text-slate-400">Teknik adalah cara menilai bukti belajar pada pekan ini. Nama, jenis, bobot, dan cakupan asesmen tetap dikelola pada Detail Asesmen.</span>'''
+if text.count(old) != 1:
+    raise SystemExit(f"{show}: structured assessment_method input expected once, found {text.count(old)}")
+p.write_text(text.replace(old, new))
+
+controller = "app/Http/Controllers/RpsController.php"
+replace(
+    controller,
+    '''            $isTeachingWeek = ! in_array($weekNumber, [8, 16], true);\n\n            if ($isTeachingWeek) {\n                $week->assessment_method = $ownerName !== '' ? $ownerName : null;\n            }\n\n''',
+    "",
+    expected=1,
+)
+
+sync = "app/Services/Rps/RpsAssessmentSyncService.php"
+replace(
+    sync,
+    '''                // Bentuk penilaian pekanan tidak lagi berdiri sendiri. Ia selalu\n                // mengikuti asesmen induk pada Detail Asesmen.\n                if (in_array($weekNumber, self::TEACHING_WEEKS, true)) {\n                    $ownerName = trim((string) $ownerNames->get($weekNumber, ''));\n                    $updates['assessment_method'] = $ownerName !== '' ? $ownerName : null;\n                }\n\n''',
+    '''                // assessment_method menyimpan Teknik Penilaian pekanan dan merupakan\n                // isian akademik mandiri. Relasi Detail Asesmen disimpan terpisah melalui\n                // assessment_owner_* sehingga sinkronisasi tidak boleh menimpa teknik dosen.\n\n''',
+    expected=1,
+)
+replace(
+    sync,
+    '''            // Tidak ada fallback dari assessment_method pekanan. Detail\n            // Asesmen adalah sumber kebenaran bentuk/bukti penilaian. Jika belum\n            // ada asesmen induk, pekan tetap ditandai belum terhubung.\n''',
+    '''            // assessment_method adalah Teknik Penilaian pekanan, bukan bukti\n            // keterhubungan asesmen. Bukti asesmen tetap wajib berasal dari Detail\n            // Asesmen/RTM melalui relasi assessment_owner dan tidak memakai teknik\n            // sebagai fallback.\n''',
+    expected=1,
+)
+
+ai = "app/Http/Controllers/RpsAiController.php"
+replace(
+    ai,
+    "- Detail Asesmen adalah sumber kebenaran bentuk dan bobot penilaian pekanan. Jangan membuat bentuk penilaian pekanan yang berdiri sendiri di luar asesmen agregat.",
+    "- Detail Asesmen adalah sumber kebenaran identitas asesmen, jenis/bentuk asesmen, bobot, pekan pengumpulan, dan cakupan Sub-CPMK. `assessment_method` pada tabel mingguan adalah TEKNIK PENILAIAN (mis. observasi, tes tertulis, rubrik analitik, penilaian kinerja/produk/presentasi) dan tidak boleh dipakai untuk mengganti nama atau jenis Detail Asesmen.",
+    expected=1,
+)
+replace(
+    ai,
+    '''Pastikan `assessment_criteria` menilai kualitas bukti tersebut. `assessment_method` TIDAK boleh menciptakan bentuk penilaian baru: bentuk resmi selalu berasal dari Detail Asesmen. Jika pekan belum mempunyai asesmen induk pada `target_assessments`, kosongkan `assessment_method`; sistem akan meminta dosen melengkapi Detail Asesmen.''',
+    '''Pastikan `assessment_criteria` menilai kualitas bukti tersebut. `assessment_method` adalah TEKNIK PENILAIAN pekanan, bukan nama/bentuk Detail Asesmen. Isi secara ringkas dengan cara penilaian yang sesuai indikator dan kriteria, misalnya "Observasi kinerja", "Tes tertulis", "Rubrik analitik", "Penilaian produk", atau "Penilaian presentasi". Jangan menyalin nama Detail Asesmen ke field ini dan jangan mengubah identitas/bobot asesmen dari sini.''',
+    expected=1,
+)
+replace(
+    ai,
+    "            'assessment_method' => $assessmentOwnerName !== '' ? $assessmentOwnerName : null,",
+    "            'assessment_method' => $item['assessment_method'] ?? null,",
+    expected=1,
+)
+replace(
+    ai,
+    '''        $currentAssessmentMethod = trim((string) ($weekly->assessment_method ?? ''));\n        if ($currentAssessmentMethod !== $assessmentOwnerName) {\n            $updates['assessment_method'] = $assessmentOwnerName !== '' ? $assessmentOwnerName : null;\n        }\n\n''',
+    "",
+    expected=1,
+)
+
+review_controller = "app/Http/Controllers/Admin/RpsReviewController.php"
+replace(
+    review_controller,
+    "                'rps_weekly_plans.assessment_criteria',\n                'rps_weekly_plans.assessment_weight',",
+    "                'rps_weekly_plans.assessment_criteria',\n                'rps_weekly_plans.assessment_method',\n                'rps_weekly_plans.assessment_weight',",
+    expected=1,
+)
+
+review = "resources/js/pages/admin/rps-review.tsx"
+replace(
+    review,
+    "    assessment_criteria?: string | null;\n    assessment_weight?: number | null;",
+    "    assessment_criteria?: string | null;\n    assessment_method?: string | null;\n    assessment_weight?: number | null;",
+    expected=1,
+)
+replace(
+    review,
+    '''                                                    {week.assessment_criteria && (\n                                                        <div className="mt-1 text-xs leading-5 text-slate-400">{week.assessment_criteria}</div>\n                                                    )}''',
+    '''                                                    {week.assessment_criteria && (\n                                                        <div className="mt-1 text-xs leading-5 text-slate-400"><strong>Kriteria:</strong> {week.assessment_criteria}</div>\n                                                    )}\n                                                    {week.assessment_method && (\n                                                        <div className="mt-1 text-xs leading-5 text-slate-400"><strong>Teknik:</strong> {week.assessment_method}</div>\n                                                    )}''',
+    expected=1,
+)
+
+test = Path("tests/Feature/RpsTaskSyncTest.php")
+text = test.read_text()
+marker = "test('weekly assessment technique remains independent from Detail Asesmen ownership'"
+if marker not in text:
+    text += r'''
+
+test('weekly assessment technique remains independent from Detail Asesmen ownership', function () {
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsTaskSyncFixture($lecturer);
+
+    DB::table('rps_weekly_plans')->insert([
+        'id' => (string) Str::uuid(),
+        'rps_version_id' => $fixture['versionId'],
+        'week_number' => 1,
+        'rps_sub_cpmk_id' => $fixture['sub1'],
+        'assessment_indicator' => 'Menerapkan konsep pada contoh yang diberikan.',
+        'assessment_criteria' => 'Ketepatan konsep dan langkah penyelesaian.',
+        'assessment_method' => 'Rubrik analitik',
+        'assessment_weight' => 5,
+        'source_type' => 'manual_allocation',
+        'created_at' => $fixture['timestamp'],
+        'updated_at' => $fixture['timestamp'],
+    ]);
+
+    insertAssessmentForRtm($fixture, $lecturer, 'Tugas Terstruktur 1', 1, 5, $fixture['sub1']);
+
+    app(RpsAssessmentSyncService::class)->syncVersion($fixture['versionId']);
+
+    expect(DB::table('rps_weekly_plans')
+        ->where('rps_version_id', $fixture['versionId'])
+        ->where('week_number', 1)
+        ->value('assessment_method'))->toBe('Rubrik analitik');
+
+    $this->actingAs($lecturer)
+        ->get(route('rps.show', $fixture['rpsId']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('weeks.0.assessment_method', 'Rubrik analitik')
+            ->where('weeks.0.assessment_owner_name', 'Tugas Terstruktur 1')
+        );
+});
+'''
+    test.write_text(text)
+
+print("weekly assessment technique patch applied")
