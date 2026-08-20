@@ -15,11 +15,15 @@ KEBIJAKAN WAJIB UNTUK `assessment_method` / TEKNIK PENILAIAN:
 - `assessment_method` adalah TEKNIK memperoleh bukti/data ketercapaian mahasiswa, BUKAN instrumen atau pedoman penskoran.
 - JANGAN isi field ini dengan "Rubrik analitik", "Rubrik holistik", "rubrik", "checklist/daftar cek", "rating scale/skala penilaian", "lembar observasi", "pedoman penskoran", atau "soal tes" sebagai nama teknik. Itu adalah instrumen yang dapat digunakan di Detail Asesmen/Rubrik, bukan Teknik pada tabel RPS.
 - Jika instruksi sebelumnya memberi "Rubrik analitik" sebagai contoh teknik, ABAIKAN contoh tersebut; aturan ini menggantikannya.
-- Pilih teknik berdasarkan JENIS BUKTI yang benar-benar diminta oleh `assessment_indicator`, `assessment_criteria`, tugas/aktivitas pekan, dan Detail Asesmen yang tersedia.
+- Pilih teknik berdasarkan JENIS BUKTI yang benar-benar diminta oleh `assessment_indicator`, `assessment_criteria`, tugas/aktivitas pekan, lingkungan kerja mahasiswa, dan Detail Asesmen yang tersedia.
+- PRIORITAS PENALARAN: (1) apa yang benar-benar dilakukan mahasiswa; (2) media/lingkungan kerja yang digunakan; (3) bukti yang dihasilkan; baru (4) kata kerja operasional pada indikator. Jangan menentukan teknik hanya dari KKO seperti menganalisis, menilai, atau membuktikan.
+- Jika mahasiswa harus MENJALANKAN, MENGIMPLEMENTASIKAN, MENGUJI, MENGUKUR, MENDEBUG, MENSIMULASIKAN, atau MENGOLAH sesuatu menggunakan komputer/perangkat lunak, proses tersebut merupakan bukti kinerja. Contoh konteks: SQL/database/query, Python, R, MATLAB, ArcGIS/QGIS/GIS, spreadsheet, IDE/notebook, aplikasi komputasi, simulasi, atau perangkat lunak lain. Dalam kondisi ini utamakan "Penilaian kinerja", walaupun indikator juga memakai kata "membuktikan", "menganalisis", atau "menilai".
+- "Membuktikan/pembuktian" HANYA mengarah ke "Tes tertulis" bila bukti yang diminta memang berupa soal, lembar jawaban, esai, atau pembuktian tertulis. Pembuktian melalui eksekusi program, eksperimen, benchmark, pengukuran waktu respons, simulasi, atau penggunaan perangkat lunak adalah "Penilaian kinerja".
+- Jika fokus utama adalah HASIL/ARTEFAK akhir (program, model, laporan, peta, dokumen, produk) dan proses penggunaannya tidak menjadi bukti utama, gunakan "Penilaian produk". Jika proses praktik sekaligus hasil diamati tetapi hanya satu teknik dapat dipilih, pilih teknik yang paling langsung merepresentasikan indikator utama.
 - Gunakan pemetaan berikut sebagai panduan keputusan:
-  * jawaban tertulis, soal, perhitungan, pembuktian, esai, kuis/ujian -> "Tes tertulis";
+  * soal/jawaban/esai/perhitungan/pembuktian yang secara eksplisit tertulis -> "Tes tertulis";
   * jawaban/verifikasi verbal atau wawancara -> "Tes lisan";
-  * demonstrasi, praktik/praktikum, prosedur, coding/implementasi yang proses kerjanya diamati -> "Penilaian kinerja";
+  * demonstrasi, praktik/praktikum, prosedur, coding, penggunaan software, eksekusi/benchmark/simulasi yang proses kerjanya menjadi bukti -> "Penilaian kinerja";
   * artefak/produk akhir seperti program, model, laporan, peta, dokumen, atau produk lain -> "Penilaian produk";
   * pekerjaan integratif bertahap/milestone -> "Penilaian proyek";
   * pemaparan hasil secara lisan/visual -> "Penilaian presentasi";
@@ -71,13 +75,30 @@ PROMPT;
     public function resolveTechnique(array $week, array $context = []): string
     {
         $raw = trim((string) ($week['assessment_method'] ?? ''));
+        $evidence = mb_strtolower($this->evidenceText($week, $context));
+        $practicalTechnique = $this->inferPracticalComputerTechnique($evidence);
         $canonical = $this->canonicalTechnique($raw);
+
+        // Provider dapat memilih "Tes tertulis" hanya karena KKO seperti
+        // membuktikan/menganalisis. Bila bukti sebenarnya berupa eksekusi,
+        // benchmark, coding, GIS, SQL, simulasi, atau praktik komputer, konteks
+        // aktivitas nyata harus mengalahkan klasifikasi KKO tersebut.
+        if (
+            $canonical === 'Tes tertulis'
+            && $practicalTechnique !== null
+            && ! $this->hasExplicitWrittenEvidence($evidence)
+        ) {
+            return $practicalTechnique;
+        }
 
         if ($canonical !== null) {
             return $canonical;
         }
 
-        $evidence = mb_strtolower($this->evidenceText($week, $context));
+        if ($practicalTechnique !== null) {
+            return $practicalTechnique;
+        }
+
         $inferred = $this->inferFromEvidence($evidence);
 
         if ($inferred !== null) {
@@ -133,9 +154,9 @@ PROMPT;
             'Penilaian presentasi' => '/presentasi|mempresentasikan|pemaparan|memaparkan/u',
             'Penilaian proyek' => '/\bproyek\b|\bproject\b|milestone|lintas\s+pekan|integratif\s+bertahap/u',
             'Tes lisan' => '/\blisan\b|wawancara|tanya\s+jawab\s+oral|verbal/u',
-            'Tes tertulis' => '/\bkuis\b|\bujian\b|\bsoal\b|esai|jawaban\s+tertulis|perhitungan|menghitung|pembuktian|membuktikan/u',
-            'Penilaian kinerja' => '/praktik|praktikum|demonstrasi|mendemonstrasikan|unjuk\s+kerja|prosedur|coding|mengimplementasikan|implementasi|menjalankan|eksekusi|debug|simulasi|percobaan/u',
+            'Penilaian kinerja' => '/praktik|praktikum|demonstrasi|mendemonstrasikan|unjuk\s+kerja|prosedur|coding|pemrograman|mengimplementasikan|implementasi|menjalankan|eksekusi|debug|simulasi|percobaan/u',
             'Penilaian produk' => '/\bproduk\b|artefak|program|aplikasi|model|laporan|peta|poster|prototipe|prototype|dokumen\s+hasil/u',
+            'Tes tertulis' => '/tes\s+tertulis|ujian\s+tertulis|kuis\s+tertulis|soal\s+tertulis|jawaban\s+tertulis|lembar\s+jawaban|esai\s+tertulis|pembuktian\s+tertulis/u',
             'Observasi' => '/partisipasi|keaktifan|diskusi|kolaborasi|sikap|proses\s+kerja/u',
         ];
 
@@ -146,6 +167,42 @@ PROMPT;
         }
 
         return null;
+    }
+
+    private function inferPracticalComputerTechnique(string $evidence): ?string
+    {
+        // Konteks praktik eksplisit sudah cukup kuat walau perangkat tidak
+        // disebutkan secara spesifik.
+        if (
+            preg_match(
+                '/\b(?:praktik|praktikum|coding|pemrograman|debugging|demonstrasi|unjuk\s+kerja)\b/u',
+                $evidence
+            ) === 1
+        ) {
+            return 'Penilaian kinerja';
+        }
+
+        $hasExecutionAction = preg_match(
+            '/\b(?:menjalankan|mengeksekusi|eksekusi|mengimplementasikan|implementasi|menggunakan|penggunaan|menguji|pengujian|mengukur|pengukuran|benchmark|benchmarking|men-debug|debug|debugging|mensimulasikan|simulasi|mengolah|pengolahan|memproses|pemrosesan|mengoperasikan|konfigurasi|mengonfigurasi)\b/u',
+            $evidence
+        ) === 1;
+
+        $hasComputerEnvironment = preg_match(
+            '/\b(?:komputer|komputasi|software|perangkat\s+lunak|sql|database|basis\s+data|query|kueri|python|matlab|arcgis|qgis|gis|spreadsheet|excel|notebook|jupyter|ide|terminal|server|source\s+code|kode\s+program|program|runtime|waktu\s+respon|waktu\s+respons)\b/u',
+            $evidence
+        ) === 1;
+
+        return $hasExecutionAction && $hasComputerEnvironment
+            ? 'Penilaian kinerja'
+            : null;
+    }
+
+    private function hasExplicitWrittenEvidence(string $evidence): bool
+    {
+        return preg_match(
+            '/tes\s+tertulis|ujian\s+tertulis|kuis\s+tertulis|soal\s+tertulis|jawaban\s+tertulis|lembar\s+jawaban|esai\s+tertulis|pembuktian\s+tertulis/u',
+            $evidence
+        ) === 1;
     }
 
     private function looksLikeInstrument(string $value): bool
