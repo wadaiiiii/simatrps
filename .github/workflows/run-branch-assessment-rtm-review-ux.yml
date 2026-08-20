@@ -1,0 +1,45 @@
+name: Run Assessment RTM Review UX Branch Patch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/patch-triggers/assessment-rtm-review-ux.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/assessment-rtm-review-ux
+          fetch-depth: 0
+
+      - name: Apply source patch
+        run: python3 .github/scripts/patch-assessment-rtm-review-ux.py
+
+      - name: Verify source
+        run: |
+          php -l app/Http/Controllers/RpsTaskController.php
+          php -l app/Http/Controllers/RpsController.php
+          php -l database/migrations/2026_08_20_080000_repair_manual_rtm_assessment_duplicates.php
+          php -l tests/Feature/RpsTaskSyncTest.php
+          git diff --check
+
+      - name: Remove branch-only patch files
+        run: |
+          git rm .github/scripts/patch-assessment-rtm-review-ux.py
+          git rm .github/workflows/patch-assessment-rtm-review-ux.yml
+
+      - name: Commit patch to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix RTM sync and refine review UX"
+          git push origin HEAD:fix/assessment-rtm-review-ux
