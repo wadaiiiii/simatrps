@@ -1,0 +1,76 @@
+/*
+ * CPMK academic workflow.
+ * Visual order: 1) import curriculum CPMK, 2) review wording against master CPL,
+ * 3) map Bloom, 4) map CPMK to CPL. Manual CPMK addition stays secondary.
+ */
+@media screen {
+    #validator-target-cpmk > td > div > div.print\:hidden > div:first-child:has(> button[title^='Pulihkan CPMK resmi']) {
+        display: contents;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:first-child > button[title^='Pulihkan CPMK resmi'] {
+        order: 1;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(2) {
+        order: 2;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(3) {
+        order: 3;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(4) {
+        order: 4;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:first-child > button:not([title^='Pulihkan CPMK resmi']) {
+        order: 5;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:first-child > button[title^='Pulihkan CPMK resmi']::before,
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(2) > div > button::before,
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(3) > div > button::before,
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(4) > div > button::before {
+        display: inline-flex;
+        width: 15px;
+        height: 15px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.85);
+        font-size: 8px;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:first-child > button[title^='Pulihkan CPMK resmi']::before {
+        content: '1';
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(2) > div > button::before {
+        content: '2';
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(3) > div > button::before {
+        content: '3';
+    }
+
+    #validator-target-cpmk > td > div > div.print\:hidden > div:nth-child(4) > div > button::before {
+        content: '4';
+    }
+
+    /* A changed CPMK has bloom_level = null. Make that state explicit in the editor. */
+    table.rps-print-main-table td[class*='w-[175px]'] span[class*='bg-slate-100'][class*='text-slate-400'] {
+        background: #fffbeb !important;
+        color: #b45309 !important;
+        font-size: 0 !important;
+    }
+
+    table.rps-print-main-table td[class*='w-[175px]'] span[class*='bg-slate-100'][class*='text-slate-400']::after {
+        content: 'Perlu telaah Bloom';
+        font-size: 8px;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+}
