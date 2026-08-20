@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Rps\RpsAssessmentSyncService;
+use App\Services\Rps\RpsTaskOrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,8 +13,12 @@ use Illuminate\Validation\ValidationException;
 
 class RpsTaskController extends Controller
 {
-    public function store(Request $request, string $rps, RpsAssessmentSyncService $sync): RedirectResponse
-    {
+    public function store(
+        Request $request,
+        string $rps,
+        RpsAssessmentSyncService $sync,
+        RpsTaskOrderService $order,
+    ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
         $validated = $request->validate([
@@ -52,6 +57,7 @@ class RpsTaskController extends Controller
             );
 
             $sync->syncVersion($version->id);
+            $order->renumber($version->id);
 
             return back()->with(
                 'success',
@@ -87,12 +93,18 @@ class RpsTaskController extends Controller
         });
 
         $sync->syncVersion($version->id);
+        $order->renumber($version->id);
 
-        return back()->with('success', 'RTM berhasil ditambahkan dan terhubung ke asesmen induk.');
+        return back()->with('success', 'RTM berhasil ditambahkan, terhubung ke asesmen induk, dan diurutkan menurut pekan pengumpulan.');
     }
 
-    public function update(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
-    {
+    public function update(
+        Request $request,
+        string $rps,
+        string $task,
+        RpsAssessmentSyncService $sync,
+        RpsTaskOrderService $order,
+    ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
         $existing = DB::table('rps_tasks')
@@ -143,12 +155,18 @@ class RpsTaskController extends Controller
         );
 
         $sync->syncVersion($version->id);
+        $order->renumber($version->id);
 
-        return back()->with('success', 'RTM berhasil diperbarui dan tetap terhubung ke satu asesmen induk.');
+        return back()->with('success', 'RTM berhasil diperbarui. Posisi RTM mengikuti pekan pengumpulan dan tetap terhubung ke satu asesmen induk.');
     }
 
-    public function destroy(Request $request, string $rps, string $task, RpsAssessmentSyncService $sync): RedirectResponse
-    {
+    public function destroy(
+        Request $request,
+        string $rps,
+        string $task,
+        RpsAssessmentSyncService $sync,
+        RpsTaskOrderService $order,
+    ): RedirectResponse {
         [, $version] = $this->context($request, $rps);
 
         $existing = DB::table('rps_tasks')
@@ -197,8 +215,9 @@ class RpsTaskController extends Controller
             ->delete();
 
         $sync->syncVersion($version->id);
+        $order->renumber($version->id);
 
-        return back()->with('success', 'RTM berhasil dihapus dan distribusi asesmen-pekan disinkronkan ulang.');
+        return back()->with('success', 'RTM berhasil dihapus dan urutan RTM disinkronkan ulang berdasarkan pekan pengumpulan.');
     }
 
     private function resolveAssessmentId(array $validated, string $versionId, ?string $fallbackAssessmentId = null): string
