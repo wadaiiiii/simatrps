@@ -23,6 +23,10 @@ final class WeeklyTechniqueAwareAiRpsProviderService extends AiRpsProviderServic
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
     public function generate(string $type, array $context, ?string $instruction = null): array
     {
         if ($type !== 'weekly_plan') {
@@ -38,6 +42,10 @@ final class WeeklyTechniqueAwareAiRpsProviderService extends AiRpsProviderServic
         return $this->techniquePolicy->normalizeResult($result, $context);
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
     public function generateWeek(
         array $context,
         int $week,
