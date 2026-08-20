@@ -15,37 +15,37 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   validate:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          fetch-depth: 0
+          php-version: '8.4'
+          coverage: none
 
-      - name: Apply source patch
-        run: |
-          python3 .github/scripts/apply-assessment-rtm-review-ux-v2.py
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('tests/Feature/Admin/RpsReviewTest.php')
-          p.write_text(p.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
-          PY
-          php -l app/Http/Controllers/RpsTaskController.php
-          php -l app/Http/Controllers/RpsController.php
-          php -l database/migrations/2026_08_20_081500_repair_duplicate_assessment_rtm.php
-          php -l tests/Feature/RpsTaskSyncTest.php
-          git diff --check
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Commit application patch
+      - name: PHP syntax check
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/scripts/apply-assessment-rtm-review-ux-v2.py
-          git add app resources database tests .github/scripts
-          git commit -m "Fix duplicate RTM sync and refine review UX"
-          git push origin HEAD:fix/assessment-rtm-review-ux-v2
+          find app routes -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
