@@ -197,7 +197,7 @@ export default function RpsReview({
                     </div>
                 </section>
 
-                <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="space-y-6">
                     <main className="space-y-6">
                         <section className="sim-surface rounded-2xl p-5">
                             <SectionHeading
@@ -354,7 +354,7 @@ export default function RpsReview({
                         </section>
                     </main>
 
-                    <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+                    <aside className="space-y-5">
                         <section className="sim-surface rounded-2xl p-5">
                             <div className="flex items-center gap-3">
                                 <div className="rounded-xl bg-teal-50 p-2.5 text-teal-700">

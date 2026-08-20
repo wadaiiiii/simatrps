@@ -247,3 +247,26 @@ test('final RPS can be approved and becomes the current follow up status', funct
         ->where('summary.review_approved', 1)
     );
 });
+
+test('lecturer RPS editor exposes the latest review feedback', function () {
+    $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
+    $lecturer = User::factory()->create(['role' => 'dosen', 'is_active' => true]);
+    $fixture = createRpsForAdminReview($lecturer);
+
+    $this->actingAs($admin)
+        ->post(route('admin.rps.review.store', $fixture['rps_id']), [
+            'status' => 'revision_required',
+            'note' => 'Pastikan RTM sesuai dengan Sub-CPMK.',
+        ])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($lecturer)
+        ->get(route('rps.show', $fixture['rps_id']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('lecturerReview.status', 'revision_required')
+            ->where('lecturerReview.note', 'Pastikan RTM sesuai dengan Sub-CPMK.')
+            ->where('lecturerReview.reviewer_name', $admin->name)
+            ->where('lecturerReview.outdated', false)
+        );
+});

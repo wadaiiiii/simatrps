@@ -421,6 +421,7 @@ export default function RpsShow(props: any) {
         progress = { percent: 0, checks: [], assessment_weight_total: 0 },
         ai = { configured: false, provider: 'groq', model: 'openai/gpt-oss-20b', fallbacks: [] },
         aiSuggestions = [],
+        lecturerReview = null,
     } = props;
 
     const [aiInstruction, setAiInstruction] = useState('');
@@ -787,6 +788,46 @@ export default function RpsShow(props: any) {
                         )}
                     </div>
                 </div>
+
+                {lecturerReview?.status && (
+                    <div className={`mb-4 rounded-2xl border px-4 py-3 print:hidden ${
+                        lecturerReview.outdated
+                            ? 'border-amber-200 bg-amber-50 text-amber-950'
+                            : lecturerReview.status === 'revision_required'
+                              ? 'border-rose-200 bg-rose-50 text-rose-950'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-950'
+                    }`}>
+                        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-black uppercase tracking-[0.12em]">
+                                        {lecturerReview.outdated
+                                            ? 'Review Ulang'
+                                            : lecturerReview.status === 'revision_required'
+                                              ? 'Perlu Revisi'
+                                              : 'Disetujui'}
+                                    </span>
+                                    <span className="text-xs font-semibold opacity-70">
+                                        Hasil review oleh {safeText(lecturerReview.reviewer_name, 'Admin')}
+                                    </span>
+                                </div>
+                                {lecturerReview.note && (
+                                    <p className="mt-1.5 text-sm font-semibold leading-6">{lecturerReview.note}</p>
+                                )}
+                                {lecturerReview.outdated && (
+                                    <p className="mt-1.5 text-xs leading-5 opacity-80">
+                                        RPS telah berubah setelah review terakhir. Catatan sebelumnya tetap menjadi acuan dan status kini menunggu review ulang.
+                                    </p>
+                                )}
+                            </div>
+                            {lecturerReview.reviewed_at && (
+                                <div className="shrink-0 text-xs font-semibold opacity-60">
+                                    {new Date(lecturerReview.reviewed_at).toLocaleString('id-ID')}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* AI compact toolbar */}
                 <div className="mb-4 rounded-xl border border-sky-100 bg-white p-3 print:hidden">
@@ -1264,7 +1305,7 @@ export default function RpsShow(props: any) {
                         </span>
                     </summary>
                     <div className="border-t border-cyan-200 bg-white p-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-3">
                             <div id="validator-target-assessment" className="scroll-mt-24">
                                 <div className="font-bold text-slate-900">Asesmen Detail & RTM</div>
                                 <p className="mt-1 text-xs text-slate-500">
@@ -1899,7 +1940,7 @@ function SectionAiButton({
             </div>
 
             {suggestions.length > 0 && (
-                <details className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50/30 p-2">
+                <details className="mt-3 w-full rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3">
                     <summary className="cursor-pointer text-[10px] font-bold text-emerald-700">
                         Lihat rekomendasi AI
                     </summary>
@@ -5924,7 +5965,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
                                     ['Bobot tersimpan', storedAssessmentWeight, 'Baseline terkunci'],
                                     ['Sisa saat telaah', remainingAssessmentWeight, 'Ruang rekomendasi'],
                                     ['Rekomendasi AI', recommendedAssessmentWeight, 'Total usulan baru'],
-                                    ['Dipilih sekarang', selectedAssessmentWeight, assessmentProjectionReady ? 'Siap menjadi 100%' : 'Bisa diubah sebelum terapkan'],
+                                    ['Total setelah dipilih', projectedAssessmentWeight, assessmentProjectionReady ? 'Siap diterapkan' : projectedAssessmentWeight > 100 ? 'Kurangi pilihan' : 'Belum mencapai 100%'],
                                 ].map(([label, value, note]: any) => (
                                     <div key={label} className="bg-white/85 px-4 py-3">
                                         <div className="text-[9px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
@@ -5937,9 +5978,8 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
                     )}
 
                     {meta.fallback_used && (
-                        <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                            Provider utama gagal; SiMatRPS memakai backup AI.
-                            {meta.primary_error ? ` Penyebab: ${safeText(meta.primary_error)}` : ''}
+                        <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">
+                            AI utama belum merespons. Rekomendasi ini sudah diselesaikan menggunakan layanan cadangan SiMatRPS; periksa isinya sebelum diterapkan.
                         </div>
                     )}
 
@@ -5962,7 +6002,7 @@ function AiSuggestionCard({ suggestion, rpsId }: any) {
                                 && selectedAssessmentTotal === 0
                             )
                         }
-                        className="rounded-xl bg-teal-700 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        className="rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {standardSelectable || suggestion.suggestion_type === 'assessment_plan'
                             ? `Terapkan Terpilih (${applyCount})`

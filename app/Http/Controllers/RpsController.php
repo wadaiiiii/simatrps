@@ -154,6 +154,31 @@ class RpsController extends Controller
         // RTM while the page is merely being opened.
         $assessmentSync->repairGeneratedArtifacts($version->id);
 
+        $latestReview = Schema::hasTable('rps_reviews')
+            ? DB::table('rps_reviews')
+                ->join('users as reviewers', 'reviewers.id', '=', 'rps_reviews.reviewer_id')
+                ->where('rps_reviews.rps_version_id', $version->id)
+                ->orderByDesc('rps_reviews.reviewed_at')
+                ->first([
+                    'rps_reviews.status',
+                    'rps_reviews.note',
+                    'rps_reviews.reviewed_at',
+                    'reviewers.name as reviewer_name',
+                ])
+            : null;
+
+        $lecturerReview = [
+            'status' => $latestReview?->status,
+            'note' => $latestReview?->note,
+            'reviewed_at' => $latestReview?->reviewed_at,
+            'reviewer_name' => $latestReview?->reviewer_name,
+            'outdated' => $latestReview !== null
+                && filled($record->updated_at ?? null)
+                && filled($latestReview->reviewed_at ?? null)
+                && \Illuminate\Support\Carbon::parse($record->updated_at)
+                    ->greaterThan(\Illuminate\Support\Carbon::parse($latestReview->reviewed_at)),
+        ];
+
         $allCpls = DB::table('cpls')
             ->where('curriculum_id', $record->curriculum_id)
             ->orderBy('sequence_no')
@@ -473,6 +498,8 @@ Pendukung:
         $tasks = Schema::hasTable('rps_tasks')
             ? DB::table('rps_tasks')
                 ->where('rps_version_id', $version->id)
+                ->orderByRaw('CASE WHEN due_week IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('due_week')
                 ->orderBy('code')
                 ->get()
                 ->filter(function ($task) use ($assessmentById): bool {
@@ -559,6 +586,7 @@ Pendukung:
             'meetingPlanReady' => $meetingPlanReady,
             'assessments' => $assessments,
             'tasks' => $tasks,
+            'lecturerReview' => $lecturerReview,
             'simulationScores' => $simulationScores,
             'validationHistory' => $validationHistory,
             'ai' => [
