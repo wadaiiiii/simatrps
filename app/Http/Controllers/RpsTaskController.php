@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RpsTaskController extends Controller
 {
@@ -198,7 +199,7 @@ class RpsTaskController extends Controller
                     ->count();
 
                 if ($otherRtmCount === 0) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
+                    throw ValidationException::withMessages([
                         'task' => 'RTM ini masih menjadi satu-satunya RTM untuk asesmen '
                             .trim((string) ($assessment->code ?? 'Asesmen')).' “'
                             .trim((string) $assessment->name)
@@ -335,7 +336,7 @@ class RpsTaskController extends Controller
             ->first(['id', 'name', 'type', 'week_number']);
 
         if (! $assessment) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'assessment_id' => 'Asesmen RTM tidak valid untuk RPS ini.',
             ]);
         }
@@ -344,7 +345,7 @@ class RpsTaskController extends Controller
         $rtmTypes = ['assignment', 'project', 'practicum', 'presentation'];
 
         if (! in_array($type, $rtmTypes, true)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'assessment_id' => 'Pilih asesmen tugas, proyek, praktikum, atau presentasi untuk RTM.',
             ]);
         }
@@ -373,7 +374,7 @@ class RpsTaskController extends Controller
                 ->values();
 
             if ($outsideAssessment->isNotEmpty()) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
+                throw ValidationException::withMessages([
                     'sub_cpmk_ids' => 'RTM hanya boleh mengukur Sub-CPMK yang termasuk dalam cakupan asesmen induk. Tambahkan Sub-CPMK tersebut pada asesmen terlebih dahulu atau ubah pilihan RTM.',
                 ]);
             }
@@ -387,7 +388,7 @@ class RpsTaskController extends Controller
         if (empty($validated['due_week'])) {
             $latestCoverageWeek = DB::table('rps_weekly_plans')
                 ->where('rps_version_id', $versionId)
-                ->whereIn('week_number', [1,2,3,4,5,6,7,9,10,11,12,13,14,15])
+                ->whereIn('week_number', [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15])
                 ->whereIn('rps_sub_cpmk_id', $validated['sub_cpmk_ids'])
                 ->max('week_number');
 

@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Services\Rps\AiRpsProviderService;
 use App\Services\Rps\ObeWorkspaceService;
-use App\Services\Rps\RpsDraftService;
 use App\Services\Rps\RpsAssessmentSyncService;
+use App\Services\Rps\RpsDraftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -175,8 +176,8 @@ class RpsController extends Controller
             'outdated' => $latestReview !== null
                 && filled($record->updated_at ?? null)
                 && filled($latestReview->reviewed_at ?? null)
-                && \Illuminate\Support\Carbon::parse($record->updated_at)
-                    ->greaterThan(\Illuminate\Support\Carbon::parse($latestReview->reviewed_at)),
+                && Carbon::parse($record->updated_at)
+                    ->greaterThan(Carbon::parse($latestReview->reviewed_at)),
         ];
 
         $allCpls = DB::table('cpls')
@@ -255,10 +256,9 @@ class RpsController extends Controller
             ->orderBy('week_number')
             ->get();
 
-        $teachingWeekNumbers = [1,2,3,4,5,6,7,9,10,11,12,13,14,15];
+        $teachingWeekNumbers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
         $meetingPlanReady = $weeks
-            ->filter(fn ($week) =>
-                in_array((int) $week->week_number, $teachingWeekNumbers, true)
+            ->filter(fn ($week) => in_array((int) $week->week_number, $teachingWeekNumbers, true)
                 && filled($week->rps_sub_cpmk_id ?? null)
                 && str_starts_with((string) ($week->source_type ?? ''), 'manual_allocation')
             )
@@ -282,8 +282,7 @@ class RpsController extends Controller
 
         $subById = $subCpmks->keyBy('id');
         $assessmentWeightsByWeek = $assessments
-            ->filter(fn ($assessment) =>
-                filled($assessment->week_number)
+            ->filter(fn ($assessment) => filled($assessment->week_number)
                 && in_array(strtolower((string) $assessment->type), ['uts', 'uas'], true)
             )
             ->groupBy(fn ($assessment) => (int) $assessment->week_number)
@@ -424,12 +423,12 @@ class RpsController extends Controller
         ));
 
         $combinedReferenceText = trim(
-            "Utama:
-".$effectivePrimaryReferenceText
+            'Utama:
+'.$effectivePrimaryReferenceText
             .($effectiveSupportingReferenceText !== ''
-                ? "
+                ? '
 Pendukung:
-".$effectiveSupportingReferenceText
+'.$effectiveSupportingReferenceText
                 : '')
         );
 
@@ -440,13 +439,14 @@ Pendukung:
                 (string) ($week->reference_text ?? ''),
                 $bibliographyCount
             );
+
             return $week;
         });
 
         $documentMeta = [
             'course_cluster' => $storedMeta?->course_cluster ?: $kbkName,
             'prepared_date' => $storedMeta?->prepared_date
-                ?: optional($record->created_at ? \Illuminate\Support\Carbon::parse($record->created_at) : now())->format('Y-m-d'),
+                ?: optional($record->created_at ? Carbon::parse($record->created_at) : now())->format('Y-m-d'),
             'published_date' => $storedMeta?->published_date
                 ?: now()->toDateString(),
             'developer_name' => $storedMeta?->developer_name ?: $request->user()->name,
@@ -610,20 +610,32 @@ Pendukung:
     {
         $sourceType = strtolower(trim((string) ($task->source_type ?? '')));
 
-        if (in_array($sourceType, ['assessment_sync', 'ai_accepted', 'ai_generated', 'automation'], true)) return true;
-        if ($sourceType === 'manual') return false;
-        if ($sourceType !== '' && $sourceType !== 'legacy') return false;
+        if (in_array($sourceType, ['assessment_sync', 'ai_accepted', 'ai_generated', 'automation'], true)) {
+            return true;
+        }
+        if ($sourceType === 'manual') {
+            return false;
+        }
+        if ($sourceType !== '' && $sourceType !== 'legacy') {
+            return false;
+        }
 
         $purpose = mb_strtolower(trim((string) ($task->purpose ?? '')));
         $instructions = mb_strtolower(trim((string) ($task->instructions ?? '')));
         $output = mb_strtolower(trim((string) ($task->expected_output ?? '')));
         $signals = 0;
 
-        if (str_starts_with($purpose, 'mengukur ketercapaian sub-cpmk melalui')) $signals++;
+        if (str_starts_with($purpose, 'mengukur ketercapaian sub-cpmk melalui')) {
+            $signals++;
+        }
         if (str_starts_with($instructions, 'kerjakan ')
-            && str_contains($instructions, 'sesuai arahan dosen')) $signals++;
+            && str_contains($instructions, 'sesuai arahan dosen')) {
+            $signals++;
+        }
         if (str_starts_with($output, 'luaran ')
-            && str_contains($output, 'sesuai ketentuan asesmen')) $signals++;
+            && str_contains($output, 'sesuai ketentuan asesmen')) {
+            $signals++;
+        }
 
         return $signals >= 2;
     }
@@ -640,8 +652,12 @@ Pendukung:
             ->map(fn ($match) => $this->normalizeRtmLabel((string) $match))
             ->filter()->unique()->values();
 
-        if ($codes->count() !== 1) return $value;
-        if ($codes->first() === $this->normalizeRtmLabel($currentCode)) return $value;
+        if ($codes->count() !== 1) {
+            return $value;
+        }
+        if ($codes->first() === $this->normalizeRtmLabel($currentCode)) {
+            return $value;
+        }
 
         return preg_replace($pattern, trim($currentCode), $value) ?? $value;
     }
@@ -650,14 +666,19 @@ Pendukung:
     {
         $value = mb_strtolower(trim($value));
         $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+
         return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 
     private function filterWeeklyReferenceCodesForDisplay(string $value, int $entryCount): ?string
     {
-        if ($entryCount <= 0 || trim($value) === '') return null;
+        if ($entryCount <= 0 || trim($value) === '') {
+            return null;
+        }
         preg_match_all('/\[\s*(\d+)\s*\]/', $value, $matches);
-        if (($matches[1] ?? []) === []) return $value;
+        if (($matches[1] ?? []) === []) {
+            return $value;
+        }
 
         $codes = collect($matches[1])
             ->map(fn ($number) => (int) $number)
@@ -694,11 +715,13 @@ Pendukung:
 
             if (preg_match('/^(pustaka\s*)?utama\s*:?\s*$/i', $line)) {
                 $category = 'utama';
+
                 continue;
             }
 
             if (preg_match('/^(pendukung|tambahan)\s*:?\s*$/i', $line)) {
                 $category = 'pendukung';
+
                 continue;
             }
 
@@ -753,11 +776,13 @@ Pendukung:
 
             if (preg_match('/^(pustaka\s*)?utama\s*:?\s*$/i', $line)) {
                 $category = 'utama';
+
                 continue;
             }
 
             if (preg_match('/^(pendukung|tambahan)\s*:?\s*$/i', $line)) {
                 $category = 'pendukung';
+
                 continue;
             }
 
