@@ -386,9 +386,10 @@ class RpsAssessmentSyncService
                 continue;
             }
 
-            // Tidak ada fallback dari assessment_method pekanan. Detail
-            // Asesmen adalah sumber kebenaran bentuk/bukti penilaian. Jika belum
-            // ada asesmen induk, pekan tetap ditandai belum terhubung.
+            // assessment_method adalah Teknik Penilaian pekanan, bukan bukti
+            // keterhubungan asesmen. Bukti asesmen tetap wajib berasal dari Detail
+            // Asesmen/RTM melalui relasi assessment_owner dan tidak memakai teknik
+            // sebagai fallback.
             if ((int) ($expectedCents[$weekNumber] ?? 0) > 0) {
                 $missingEvidenceWeeks[] = $weekNumber;
             }
@@ -522,12 +523,9 @@ class RpsAssessmentSyncService
                     'updated_at' => now(),
                 ];
 
-                // Bentuk penilaian pekanan tidak lagi berdiri sendiri. Ia selalu
-                // mengikuti asesmen induk pada Detail Asesmen.
-                if (in_array($weekNumber, self::TEACHING_WEEKS, true)) {
-                    $ownerName = trim((string) $ownerNames->get($weekNumber, ''));
-                    $updates['assessment_method'] = $ownerName !== '' ? $ownerName : null;
-                }
+                // assessment_method menyimpan Teknik Penilaian pekanan dan merupakan
+                // isian akademik mandiri. Relasi Detail Asesmen disimpan terpisah melalui
+                // assessment_owner_* sehingga sinkronisasi tidak boleh menimpa teknik dosen.
 
                 DB::table('rps_weekly_plans')
                     ->where('rps_version_id', $versionId)
