@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/assessment-rtm-review-ux-v2
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
