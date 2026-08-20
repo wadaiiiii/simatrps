@@ -6,7 +6,6 @@ use App\Services\Rps\AiRpsProviderService;
 use App\Services\Rps\RpsAiContextService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RpsCpmkAiController extends RpsAiController
@@ -61,25 +60,40 @@ PROMPT;
             ->where('id', $rps)
             ->first(['current_version_id']);
 
-        $suggestionRow = $rpsRow
+        $rpsData = $rpsRow ? get_object_vars($rpsRow) : [];
+        $versionId = filled($rpsData['current_version_id'] ?? null)
+            ? (string) $rpsData['current_version_id']
+            : null;
+
+        $suggestionRow = $versionId
             ? DB::table('ai_suggestions')
                 ->where('id', $suggestion)
-                ->where('rps_version_id', $rpsRow->current_version_id)
+                ->where('rps_version_id', $versionId)
                 ->first(['suggestion_type', 'suggestion_payload'])
             : null;
 
         $changedTargets = [];
         $changesCpmkStructure = false;
+        $suggestionData = $suggestionRow ? get_object_vars($suggestionRow) : [];
 
-        if ($suggestionRow?->suggestion_type === 'cpmk_review') {
-            $payload = json_decode((string) $suggestionRow->suggestion_payload, true) ?: [];
-            $selected = collect($request->input('selected_indices', []))
-                ->map(fn ($index) => (int) $index)
-                ->unique()
-                ->values();
+        if (($suggestionData['suggestion_type'] ?? null) === 'cpmk_review') {
+            $decoded = json_decode((string) ($suggestionData['suggestion_payload'] ?? ''), true);
+            $payload = is_array($decoded) ? $decoded : [];
+            $rawSelected = $request->input('selected_indices', []);
+            $selected = [];
+
+            if (is_array($rawSelected)) {
+                foreach ($rawSelected as $index) {
+                    $selected[] = (int) $index;
+                }
+                $selected = array_values(array_unique($selected));
+            }
+
+            $recommendations = $payload['recommendations'] ?? [];
+            $recommendations = is_array($recommendations) ? $recommendations : [];
 
             foreach ($selected as $index) {
-                $item = $payload['recommendations'][$index] ?? null;
+                $item = $recommendations[$index] ?? null;
                 if (! is_array($item)) {
                     continue;
                 }
@@ -102,10 +116,10 @@ PROMPT;
 
         $response = parent::apply($request, $rps, $suggestion);
 
-        if ($changesCpmkStructure && $rpsRow) {
+        if ($changesCpmkStructure && $versionId !== null) {
             if ($changedTargets !== []) {
                 DB::table('rps_cpmks')
-                    ->where('rps_version_id', $rpsRow->current_version_id)
+                    ->where('rps_version_id', $versionId)
                     ->whereIn('code', array_values(array_unique($changedTargets)))
                     ->update([
                         'bloom_level' => null,
@@ -114,7 +128,7 @@ PROMPT;
             }
 
             $this->invalidateDownstreamAi(
-                (string) $rpsRow->current_version_id,
+                $versionId,
                 (string) $request->user()->id
             );
 
@@ -129,64 +143,120 @@ PROMPT;
 
     private function normalizeLatestCpmkReview(Request $request, string $rps): void
     {
-        $record = DB::table('rps')
+        $recordRow = DB::table('rps')
             ->where('id', $rps)
             ->first(['id', 'course_id', 'current_version_id']);
 
-        if (! $record) {
+        if (! $recordRow) {
             return;
         }
 
-        $row = DB::table('ai_suggestions')
-            ->where('rps_version_id', $record->current_version_id)
+        $record = get_object_vars($recordRow);
+        $versionId = (string) ($record['current_version_id'] ?? '');
+        $courseId = (string) ($record['course_id'] ?? '');
+
+        if ($versionId === '' || $courseId === '') {
+            return;
+        }
+
+        $rowObject = DB::table('ai_suggestions')
+            ->where('rps_version_id', $versionId)
             ->where('suggestion_type', 'cpmk_review')
             ->where('requested_by', $request->user()->id)
             ->whereIn('status', ['pending', 'accepted'])
             ->orderByDesc('created_at')
             ->first();
 
-        if (! $row) {
+        if (! $rowObject) {
             return;
         }
 
+        $row = get_object_vars($rowObject);
+
+        /** @var list<array{id:string, code:string, description:string}> $officialCpls */
         $officialCpls = DB::table('course_cpls')
             ->join('cpls', 'cpls.id', '=', 'course_cpls.cpl_id')
-            ->where('course_cpls.course_id', $record->course_id)
+            ->where('course_cpls.course_id', $courseId)
             ->orderBy('cpls.sequence_no')
-            ->get(['cpls.id', 'cpls.code', 'cpls.description']);
+            ->get(['cpls.id', 'cpls.code', 'cpls.description'])
+            ->map(static function (object $cpl): array {
+                $data = get_object_vars($cpl);
 
-        $officialByCode = $officialCpls->keyBy(
-            fn ($cpl) => strtoupper(trim((string) $cpl->code))
-        );
+                return [
+                    'id' => (string) ($data['id'] ?? ''),
+                    'code' => (string) ($data['code'] ?? ''),
+                    'description' => (string) ($data['description'] ?? ''),
+                ];
+            })
+            ->values()
+            ->all();
 
-        $current = DB::table('rps_cpmks')
-            ->where('rps_version_id', $record->current_version_id)
+        /** @var array<string, array{id:string, code:string, description:string}> $officialByCode */
+        $officialByCode = [];
+        foreach ($officialCpls as $cpl) {
+            $officialByCode[strtoupper(trim($cpl['code']))] = $cpl;
+        }
+
+        /** @var array<string, array{id:string, code:string, description:string, bloom_level:?string}> $current */
+        $current = [];
+        $currentRows = DB::table('rps_cpmks')
+            ->where('rps_version_id', $versionId)
             ->orderBy('sequence_no')
-            ->get(['id', 'code', 'description', 'bloom_level'])
-            ->keyBy(fn ($cpmk) => $this->normalizeCpmkCode((string) $cpmk->code));
+            ->get(['id', 'code', 'description', 'bloom_level']);
 
-        $payload = json_decode((string) $row->suggestion_payload, true) ?: [];
-        $providerItems = collect($payload['recommendations'] ?? [])
-            ->filter(fn ($item) => is_array($item));
+        foreach ($currentRows as $currentRow) {
+            $data = get_object_vars($currentRow);
+            $code = $this->normalizeCpmkCode((string) ($data['code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
 
-        $byTarget = $providerItems
-            ->filter(fn (array $item) => filled($item['target_code'] ?? null))
-            ->keyBy(fn (array $item) => $this->normalizeCpmkCode((string) $item['target_code']));
+            $current[$code] = [
+                'id' => (string) ($data['id'] ?? ''),
+                'code' => (string) ($data['code'] ?? $code),
+                'description' => (string) ($data['description'] ?? ''),
+                'bloom_level' => filled($data['bloom_level'] ?? null)
+                    ? (string) $data['bloom_level']
+                    : null,
+            ];
+        }
 
+        $decodedPayload = json_decode((string) ($row['suggestion_payload'] ?? ''), true);
+        /** @var array<string, mixed> $payload */
+        $payload = is_array($decodedPayload) ? $decodedPayload : [];
+
+        /** @var list<array<string, mixed>> $providerItems */
+        $providerItems = [];
+        $rawRecommendations = $payload['recommendations'] ?? [];
+        if (is_array($rawRecommendations)) {
+            foreach ($rawRecommendations as $candidate) {
+                if (is_array($candidate)) {
+                    $providerItems[] = $candidate;
+                }
+            }
+        }
+
+        /** @var array<string, array<string, mixed>> $byTarget */
+        $byTarget = [];
+        foreach ($providerItems as $item) {
+            $targetCode = $this->normalizeCpmkCode((string) ($item['target_code'] ?? ''));
+            if ($targetCode !== '') {
+                $byTarget[$targetCode] = $item;
+            }
+        }
+
+        /** @var list<array<string, mixed>> $normalized */
         $normalized = [];
 
         foreach ($current as $code => $existing) {
-            $item = $byTarget->get($code);
-            if (! is_array($item)) {
-                $item = [
-                    'action' => 'keep',
-                    'target_code' => $existing->code,
-                    'description' => $existing->description,
-                    'bloom_level' => $existing->bloom_level,
-                    'cpl_codes' => [],
-                    'rationale' => 'Tidak ada perubahan substantif yang diusulkan untuk CPMK ini.',
-                ];
-            }
+            $item = $byTarget[$code] ?? [
+                'action' => 'keep',
+                'target_code' => $existing['code'],
+                'description' => $existing['description'],
+                'bloom_level' => $existing['bloom_level'],
+                'cpl_codes' => [],
+                'rationale' => 'Tidak ada perubahan substantif yang diusulkan untuk CPMK ini.',
+            ];
 
             $action = strtolower(trim((string) ($item['action'] ?? 'keep')));
             if (! in_array($action, ['keep', 'adapt'], true)) {
@@ -194,59 +264,68 @@ PROMPT;
             }
 
             $item['action'] = $action;
-            $item['target_code'] = (string) $existing->code;
+            $item['target_code'] = $existing['code'];
             $item['description'] = $action === 'keep'
-                ? (string) $existing->description
-                : trim((string) ($item['description'] ?? $existing->description));
-            $item['bloom_level'] = $existing->bloom_level;
-            $item = $this->attachOfficialCplEvidence(
+                ? $existing['description']
+                : trim((string) ($item['description'] ?? $existing['description']));
+            $item['bloom_level'] = $existing['bloom_level'];
+            $normalized[] = $this->attachOfficialCplEvidence(
                 $item,
                 $existing,
                 $officialByCode,
                 $officialCpls
             );
-
-            $normalized[] = $item;
         }
 
         foreach ($providerItems as $item) {
-            if (! is_array($item) || strtolower(trim((string) ($item['action'] ?? 'keep'))) !== 'add') {
+            if (strtolower(trim((string) ($item['action'] ?? 'keep'))) !== 'add') {
                 continue;
             }
 
             $item['action'] = 'add';
             $item['target_code'] = null;
             $item['bloom_level'] = null;
-            $item = $this->attachOfficialCplEvidence(
+            $normalized[] = $this->attachOfficialCplEvidence(
                 $item,
                 null,
                 $officialByCode,
                 $officialCpls
             );
-            $normalized[] = $item;
         }
 
-        $counts = collect($normalized)->countBy(
-            fn (array $item) => strtolower((string) ($item['action'] ?? 'keep'))
-        );
+        $counts = ['keep' => 0, 'adapt' => 0, 'add' => 0];
+        foreach ($normalized as $item) {
+            $action = strtolower((string) ($item['action'] ?? 'keep'));
+            if (array_key_exists($action, $counts)) {
+                $counts[$action]++;
+            }
+        }
 
         $payload['summary'] = sprintf(
             'Telaah CPMK terhadap %d CPL master: %d dipertahankan, %d perlu perbaikan, %d usulan tambahan. Telaah ini tidak mengubah pemetaan CPMK-CPL maupun level Bloom.',
-            $officialCpls->count(),
-            (int) $counts->get('keep', 0),
-            (int) $counts->get('adapt', 0),
-            (int) $counts->get('add', 0),
+            count($officialCpls),
+            $counts['keep'],
+            $counts['adapt'],
+            $counts['add'],
         );
         $payload['recommendations'] = $normalized;
         $payload['_review_basis'] = [
             'policy_version' => self::POLICY_VERSION,
-            'curriculum_cpl_codes' => $officialCpls->pluck('code')->values()->all(),
-            'curriculum_cpl_count' => $officialCpls->count(),
+            'curriculum_cpl_codes' => array_values(array_map(
+                static fn (array $cpl): string => $cpl['code'],
+                $officialCpls
+            )),
+            'curriculum_cpl_count' => count($officialCpls),
         ];
 
-        $context = json_decode((string) $row->input_context, true) ?: [];
+        $decodedContext = json_decode((string) ($row['input_context'] ?? ''), true);
+        /** @var array<string, mixed> $context */
+        $context = is_array($decodedContext) ? $decodedContext : [];
         $context['policy_version'] = self::POLICY_VERSION;
-        $context['curriculum_cpl_codes'] = $officialCpls->pluck('code')->values()->all();
+        $context['curriculum_cpl_codes'] = array_values(array_map(
+            static fn (array $cpl): string => $cpl['code'],
+            $officialCpls
+        ));
 
         $updates = [
             'input_context' => json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -256,7 +335,7 @@ PROMPT;
 
         // Keep-only review tetap harus terlihat pada klik pertama. Status pending
         // berarti dosen dapat membaca hasilnya; tidak berarti data harus diubah.
-        if ($row->status === 'accepted') {
+        if (($row['status'] ?? null) === 'accepted') {
             $updates += [
                 'status' => 'pending',
                 'accepted_payload' => null,
@@ -265,46 +344,71 @@ PROMPT;
             ];
         }
 
-        DB::table('ai_suggestions')->where('id', $row->id)->update($updates);
+        DB::table('ai_suggestions')->where('id', (string) ($row['id'] ?? ''))->update($updates);
     }
 
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array{id:string, code:string, description:string, bloom_level:?string}|null  $existing
+     * @param  array<string, array{id:string, code:string, description:string}>  $officialByCode
+     * @param  list<array{id:string, code:string, description:string}>  $officialCpls
+     * @return array<string, mixed>
+     */
     private function attachOfficialCplEvidence(
         array $item,
-        ?object $existing,
-        Collection $officialByCode,
-        Collection $officialCpls
+        ?array $existing,
+        array $officialByCode,
+        array $officialCpls
     ): array {
-        $codes = collect($item['cpl_codes'] ?? [])
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->filter(fn (string $code) => $officialByCode->has($code))
-            ->unique()
-            ->values();
+        $codes = [];
+        $rawCodes = $item['cpl_codes'] ?? [];
 
-        if ($codes->isEmpty() && $existing) {
-            $codes = DB::table('rps_cpmk_cpls')
-                ->join('cpls', 'cpls.id', '=', 'rps_cpmk_cpls.cpl_id')
-                ->where('rps_cpmk_cpls.rps_cpmk_id', $existing->id)
-                ->whereIn('cpls.id', $officialCpls->pluck('id')->all())
-                ->orderBy('cpls.sequence_no')
-                ->pluck('cpls.code')
-                ->map(fn ($code) => strtoupper(trim((string) $code)))
-                ->unique()
-                ->values();
-        }
-
-        if ($codes->isEmpty()) {
-            $description = trim((string) ($item['description'] ?? ($existing->description ?? '')));
-            $inferred = $this->inferClosestOfficialCpl($description, $officialCpls);
-            if ($inferred !== null) {
-                $codes = collect([$inferred]);
+        if (is_array($rawCodes)) {
+            foreach ($rawCodes as $code) {
+                $normalizedCode = strtoupper(trim((string) $code));
+                if ($normalizedCode !== '' && isset($officialByCode[$normalizedCode])) {
+                    $codes[] = $normalizedCode;
+                }
             }
         }
 
-        $item['cpl_codes'] = $codes->all();
+        $codes = array_values(array_unique($codes));
+        $officialIds = array_values(array_filter(array_map(
+            static fn (array $cpl): string => $cpl['id'],
+            $officialCpls
+        )));
+
+        if ($codes === [] && $existing !== null && $existing['id'] !== '') {
+            $mapped = DB::table('rps_cpmk_cpls')
+                ->join('cpls', 'cpls.id', '=', 'rps_cpmk_cpls.cpl_id')
+                ->where('rps_cpmk_cpls.rps_cpmk_id', $existing['id'])
+                ->whereIn('cpls.id', $officialIds)
+                ->orderBy('cpls.sequence_no')
+                ->pluck('cpls.code')
+                ->all();
+
+            foreach ($mapped as $code) {
+                $normalizedCode = strtoupper(trim((string) $code));
+                if ($normalizedCode !== '' && isset($officialByCode[$normalizedCode])) {
+                    $codes[] = $normalizedCode;
+                }
+            }
+            $codes = array_values(array_unique($codes));
+        }
+
+        if ($codes === []) {
+            $description = trim((string) ($item['description'] ?? ($existing['description'] ?? '')));
+            $inferred = $this->inferClosestOfficialCpl($description, $officialCpls);
+            if ($inferred !== null) {
+                $codes = [$inferred];
+            }
+        }
+
+        $item['cpl_codes'] = $codes;
         $rationale = trim((string) ($item['rationale'] ?? ''));
 
-        if ($codes->isNotEmpty()) {
-            $basis = 'Acuan CPL master: '.$codes->implode(', ').'.';
+        if ($codes !== []) {
+            $basis = 'Acuan CPL master: '.implode(', ', $codes).'.';
             if (! str_contains(mb_strtolower($rationale), 'acuan cpl master')) {
                 $rationale = trim($basis.' '.$rationale);
             }
@@ -317,32 +421,33 @@ PROMPT;
         return $item;
     }
 
-    private function inferClosestOfficialCpl(string $description, Collection $officialCpls): ?string
+    /**
+     * @param  list<array{id:string, code:string, description:string}>  $officialCpls
+     */
+    private function inferClosestOfficialCpl(string $description, array $officialCpls): ?string
     {
         $target = $this->semanticTokens($description);
-        if ($target === [] || $officialCpls->isEmpty()) {
+        if ($target === [] || $officialCpls === []) {
             return null;
         }
 
-        $ranked = $officialCpls
-            ->map(function ($cpl) use ($target): array {
-                $tokens = $this->semanticTokens((string) $cpl->description);
+        $bestCode = null;
+        $bestScore = 0;
 
-                return [
-                    'code' => strtoupper(trim((string) $cpl->code)),
-                    'score' => count(array_intersect($target, $tokens)),
-                ];
-            })
-            ->sortByDesc('score')
-            ->values();
+        foreach ($officialCpls as $cpl) {
+            $tokens = $this->semanticTokens($cpl['description']);
+            $score = count(array_intersect($target, $tokens));
 
-        $best = $ranked->first();
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestCode = strtoupper(trim($cpl['code']));
+            }
+        }
 
-        return is_array($best) && (int) ($best['score'] ?? 0) > 0
-            ? (string) $best['code']
-            : null;
+        return $bestScore > 0 && $bestCode !== '' ? $bestCode : null;
     }
 
+    /** @return list<string> */
     private function semanticTokens(string $value): array
     {
         $stop = [
@@ -353,13 +458,18 @@ PROMPT;
 
         $value = mb_strtolower($value);
         $value = preg_replace('/[^\pL\pN]+/u', ' ', $value) ?? $value;
+        $parts = preg_split('/\s+/u', trim($value)) ?: [];
+        $tokens = [];
 
-        return collect(preg_split('/\s+/u', trim($value)) ?: [])
-            ->filter(fn ($token) => mb_strlen((string) $token) >= 4)
-            ->reject(fn ($token) => in_array((string) $token, $stop, true))
-            ->unique()
-            ->values()
-            ->all();
+        foreach ($parts as $token) {
+            $token = (string) $token;
+            if (mb_strlen($token) < 4 || in_array($token, $stop, true)) {
+                continue;
+            }
+            $tokens[$token] = true;
+        }
+
+        return array_values(array_keys($tokens));
     }
 
     private function normalizeCpmkCode(string $value): string
