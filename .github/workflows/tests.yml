@@ -103,3 +103,19 @@ jobs:
 
       - name: RPS recap feature tests
         run: php artisan test tests/Feature/Admin/RpsReportTest.php
+
+      - name: RTM sync PHP syntax
+        run: |
+          php -l app/Http/Controllers/RpsTaskController.php
+          php -l app/Http/Controllers/RpsController.php
+          php -l database/migrations/2026_08_20_081500_repair_duplicate_assessment_rtm.php
+          php -l tests/Feature/RpsTaskSyncTest.php
+
+      - name: RTM sync PHP formatting
+        run: vendor/bin/pint --test app/Http/Controllers/RpsTaskController.php app/Http/Controllers/RpsController.php database/migrations/2026_08_20_081500_repair_duplicate_assessment_rtm.php tests/Feature/RpsTaskSyncTest.php tests/Feature/Admin/RpsReviewTest.php
+
+      - name: RTM sync static analysis
+        run: vendor/bin/phpstan analyse app/Http/Controllers/RpsTaskController.php app/Http/Controllers/RpsController.php --no-progress
+
+      - name: RTM sync feature tests
+        run: php artisan test tests/Feature/RpsTaskSyncTest.php tests/Feature/Admin/RpsReviewTest.php
