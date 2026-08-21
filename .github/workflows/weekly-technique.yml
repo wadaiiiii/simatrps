@@ -32,16 +32,19 @@ jobs:
       - name: PHP syntax
         run: |
           php -l app/Services/Rps/WeeklyAssessmentTechniquePolicy.php
+          php -l app/Services/Rps/ComputerAssistedTechniqueGuard.php
           php -l app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php
           php -l app/Providers/WeeklyAssessmentAiServiceProvider.php
           php -l bootstrap/providers.php
           php -l tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
+          php -l tests/Unit/ComputerAssistedTechniqueGuardTest.php
+          php -l tests/Feature/WeeklyAiSingleClickRetryTest.php
 
       - name: PHP formatting
-        run: vendor/bin/pint --test app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php bootstrap/providers.php tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
+        run: vendor/bin/pint --test app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/ComputerAssistedTechniqueGuard.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php bootstrap/providers.php tests/Unit/WeeklyAssessmentTechniquePolicyTest.php tests/Unit/ComputerAssistedTechniqueGuardTest.php tests/Feature/WeeklyAiSingleClickRetryTest.php
 
       - name: Static analysis
-        run: vendor/bin/phpstan analyse app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php --no-progress
+        run: vendor/bin/phpstan analyse app/Services/Rps/WeeklyAssessmentTechniquePolicy.php app/Services/Rps/ComputerAssistedTechniqueGuard.php app/Services/Rps/WeeklyTechniqueAwareAiRpsProviderService.php app/Providers/WeeklyAssessmentAiServiceProvider.php --no-progress
 
-      - name: Unit regression tests
-        run: php artisan test tests/Unit/WeeklyAssessmentTechniquePolicyTest.php
+      - name: Regression tests
+        run: php artisan test tests/Unit/WeeklyAssessmentTechniquePolicyTest.php tests/Unit/ComputerAssistedTechniqueGuardTest.php tests/Feature/WeeklyAiSingleClickRetryTest.php
