@@ -100,7 +100,14 @@ Route::middleware(['auth', 'verified', EnsureUserIsAdmin::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function (): void {
-        Route::get('kurikulum', CurriculumController::class)->name('curriculum');
+        Route::get('kurikulum', [CurriculumController::class, 'index'])->name('curriculum');
+        Route::put('kurikulum', [CurriculumController::class, 'updateCurriculum'])->name('curriculum.update');
+        Route::put('kurikulum/cpl/{cpl}', [CurriculumController::class, 'updateCpl'])->name('curriculum.cpl.update');
+        Route::put('kurikulum/mata-kuliah/{course}', [CurriculumController::class, 'updateCourse'])->name('curriculum.course.update');
+        Route::put('kurikulum/mata-kuliah/{course}/cpl', [CurriculumController::class, 'updateCourseCpls'])->name('curriculum.course.cpl.update');
+        Route::post('kurikulum/mata-kuliah/{course}/cpmk', [CurriculumController::class, 'storeCpmk'])->name('curriculum.cpmk.store');
+        Route::put('kurikulum/mata-kuliah/{course}/cpmk/{cpmk}', [CurriculumController::class, 'updateCpmk'])->name('curriculum.cpmk.update');
+        Route::delete('kurikulum/mata-kuliah/{course}/cpmk/{cpmk}', [CurriculumController::class, 'destroyCpmk'])->name('curriculum.cpmk.destroy');
         Route::inertia('template-rps', 'admin/templates')->name('templates');
         Route::get('pengguna', [UserController::class, 'index'])->name('users');
         Route::get('pengguna/{user}/monitoring', [UserController::class, 'monitoring'])->name('users.monitoring');
