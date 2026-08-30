@@ -9,8 +9,8 @@ return [
     |
     | This file is for storing the credentials for third party services such
     | as Resend, Postmark, AWS, and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
+    | location for this type of information, allowing packages to have a
+    | conventional file to locate this type of information.
     |
     */
 
@@ -32,6 +32,15 @@ return [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
+        ],
+    ],
+
+    'sso' => [
+        'issuer' => env('SSO_ISSUER_URL', env('APP_URL', 'https://simatrps.vercel.app')),
+        'clients' => [
+            'sipandu' => [
+                'redirect_uri' => env('SSO_SIPANDU_REDIRECT_URI', 'https://sipandumath.vercel.app/sso/callback'),
+            ],
         ],
     ],
 
