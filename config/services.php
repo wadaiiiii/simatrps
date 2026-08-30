@@ -39,7 +39,12 @@ return [
         'issuer' => env('SSO_ISSUER_URL', env('APP_URL', 'https://simatrps.vercel.app')),
         'clients' => [
             'sipandu' => [
-                'redirect_uri' => env('SSO_SIPANDU_REDIRECT_URI', 'https://sipandumath.vercel.app/sso/callback'),
+                // Exact-match allowlist. Keep the Vercel callback during the
+                // migration window while the UNSULBAR subdirectory is enabled.
+                'redirect_uris' => array_values(array_unique(array_filter([
+                    env('SSO_SIPANDU_REDIRECT_URI', 'https://sipandumath.vercel.app/sso/callback'),
+                    env('SSO_SIPANDU_REDIRECT_URI_CAMPUS', 'https://matematika.unsulbar.ac.id/akademik/sipandu/sso/callback'),
+                ]))),
             ],
         ],
     ],

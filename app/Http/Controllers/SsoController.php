@@ -25,9 +25,7 @@ class SsoController extends Controller
         $client = config('services.sso.clients.'.$validated['client_id']);
 
         abort_unless(
-            is_array($client)
-            && isset($client['redirect_uri'])
-            && hash_equals((string) $client['redirect_uri'], (string) $validated['redirect_uri']),
+            is_array($client) && $this->redirectUriAllowed($client, (string) $validated['redirect_uri']),
             400,
             'SSO client atau redirect URI tidak valid.',
         );
@@ -110,5 +108,26 @@ class SsoController extends Controller
                 'is_active' => (bool) $user->is_active,
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $client
+     */
+    private function redirectUriAllowed(array $client, string $requestedUri): bool
+    {
+        $redirectUris = $client['redirect_uris'] ?? null;
+
+        if (! is_array($redirectUris)) {
+            $legacy = $client['redirect_uri'] ?? null;
+            $redirectUris = is_string($legacy) && $legacy !== '' ? [$legacy] : [];
+        }
+
+        foreach ($redirectUris as $redirectUri) {
+            if (is_string($redirectUri) && hash_equals($redirectUri, $requestedUri)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
