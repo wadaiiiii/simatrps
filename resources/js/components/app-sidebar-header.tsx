@@ -22,7 +22,10 @@ export function AppSidebarHeader({
     breadcrumbs?: BreadcrumbItemType[];
 }) {
     const page = usePage<SimatRpsHeaderPageProps>();
-    const isRpsDetail = /^\/rps\/(?!baru(?:\/|$))[^/?#]+(?:[?#].*)?$/.test(page.url);
+    const currentPath = page.url.split(/[?#]/, 1)[0].replace(/\/+$/, '');
+    // Inertia keeps the deployment prefix in page.url on cPanel, while local
+    // development exposes the same route as /rps/{id}.
+    const isRpsDetail = /\/rps\/(?!baru$)[^/]+$/.test(currentPath);
 
     const previewRps = async () => {
         const root = document.documentElement;
