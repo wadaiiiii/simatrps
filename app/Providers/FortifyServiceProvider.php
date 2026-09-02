@@ -51,10 +51,13 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureAuthentication(): void
     {
         Fortify::authenticateUsing(function (Request $request): ?User {
-            $email = strtolower(trim((string) $request->input(Fortify::username())));
+            $identifier = trim((string) $request->input(Fortify::username()));
 
             $user = User::query()
-                ->where('email', $email)
+                ->where(function ($query) use ($identifier): void {
+                    $query->where('email', strtolower($identifier))
+                        ->orWhere('nidn', $identifier);
+                })
                 ->first();
 
             if (! $user || ! Hash::check((string) $request->input('password'), $user->password)) {
