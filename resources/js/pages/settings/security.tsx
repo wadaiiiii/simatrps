@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/heading';
@@ -13,20 +13,22 @@ type Props = {
 };
 
 export default function Security(props: Props) {
+    const mustChangePassword = Boolean(usePage().props.auth.user.must_change_password);
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
     return (
         <>
-            <Head title="Security settings" />
+            <Head title="Keamanan akun" />
 
             <h1 className="sr-only">Security settings</h1>
 
             <div className="space-y-6">
+                {mustChangePassword && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><b>Wajib ganti kata sandi.</b> Anda sedang memakai kata sandi sementara. Simpan kata sandi pribadi sebelum membuka RPS atau melanjutkan SSO.</div>}
                 <Heading
                     variant="small"
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    title={mustChangePassword ? 'Buat kata sandi pribadi' : 'Ubah kata sandi'}
+                    description="Gunakan minimal 8 karakter dan jangan berikan kata sandi kepada orang lain."
                 />
 
                 <Form
@@ -55,7 +57,7 @@ export default function Security(props: Props) {
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="current_password">
-                                    Current password
+                                    Kata sandi saat ini
                                 </Label>
 
                                 <PasswordInput
@@ -64,14 +66,14 @@ export default function Security(props: Props) {
                                     name="current_password"
                                     className="mt-1 block w-full"
                                     autoComplete="current-password"
-                                    placeholder="Current password"
+                                    placeholder="Kata sandi sementara/saat ini"
                                 />
 
                                 <InputError message={errors.current_password} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="password">New password</Label>
+                                <Label htmlFor="password">Kata sandi baru</Label>
 
                                 <PasswordInput
                                     id="password"
@@ -79,7 +81,7 @@ export default function Security(props: Props) {
                                     name="password"
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
-                                    placeholder="New password"
+                                    placeholder="Kata sandi baru"
                                     passwordrules={props.passwordRules}
                                 />
 
@@ -88,7 +90,7 @@ export default function Security(props: Props) {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="password_confirmation">
-                                    Confirm password
+                                    Ulangi kata sandi baru
                                 </Label>
 
                                 <PasswordInput
@@ -96,7 +98,7 @@ export default function Security(props: Props) {
                                     name="password_confirmation"
                                     className="mt-1 block w-full"
                                     autoComplete="new-password"
-                                    placeholder="Confirm password"
+                                    placeholder="Ulangi kata sandi baru"
                                     passwordrules={props.passwordRules}
                                 />
 
@@ -110,7 +112,7 @@ export default function Security(props: Props) {
                                     disabled={processing}
                                     data-test="update-password-button"
                                 >
-                                    Save
+                                    Simpan dan lanjutkan
                                 </Button>
                             </div>
                         </>
