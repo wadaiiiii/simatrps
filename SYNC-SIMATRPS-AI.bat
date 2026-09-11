@@ -126,9 +126,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\validate-simatrps-b
 if errorlevel 1 goto :asset_failed
 
 git diff --quiet
-if errorlevel 1 goto :validation_changed_source
+if errorlevel 1 (
+    echo [BLOCKED] Proses validasi mengubah file source/lock yang terlacak.
+    goto :fail
+)
 git diff --cached --quiet
-if errorlevel 1 goto :validation_changed_source
+if errorlevel 1 (
+    echo [BLOCKED] Proses validasi mengubah staging area.
+    goto :fail
+)
 
 echo [PASS] Local validation gate lulus.
 echo [PRODUCTION] Menyiapkan branch lokal production...
@@ -178,7 +184,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\validate-simatrps-b
 if errorlevel 1 goto :merge_abort_asset
 
 git diff --quiet
-if errorlevel 1 goto :merge_abort_source_changed
+if errorlevel 1 (
+    git merge --abort >nul 2>&1
+    echo [BLOCKED] Build final mengubah file source/lock di luar merge.
+    goto :fail
+)
 
 git diff --cached --quiet
 if not errorlevel 1 goto :merge_abort_empty
