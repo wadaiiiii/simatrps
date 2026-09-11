@@ -52,6 +52,12 @@ if errorlevel 1 goto :not_repo
 git remote get-url "%REMOTE%" >nul 2>&1
 if errorlevel 1 goto :no_remote
 
+if exist "scripts\validate-simatrps-build.ps1" (
+    echo [RECOVER] Memeriksa sisa output generated dari build sebelumnya...
+    powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\validate-simatrps-build.ps1" -NormalizeWorkingTreeOnly
+    if errorlevel 1 goto :dirty_tree
+)
+
 set "DIRTY="
 for /f "delims=" %%S in ('git status --porcelain 2^>nul') do set "DIRTY=1"
 if defined DIRTY goto :dirty_tree
