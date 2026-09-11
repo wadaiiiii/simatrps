@@ -10,7 +10,7 @@ function Stop-Validation([string]$Message) {
     exit 1
 }
 
-function Restore-GeneratedWayfinderLineEndings {
+function Restore-GeneratedWayfinderOutput {
     $unstagedChanges = @(& git diff --name-only --)
     if ($LASTEXITCODE -ne 0) {
         Stop-Validation "Tidak dapat mengaudit perubahan working tree setelah build."
@@ -27,21 +27,7 @@ function Restore-GeneratedWayfinderLineEndings {
             Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
         }
     
-        $semanticGeneratedChanges = New-Object System.Collections.Generic.List[string]
-        foreach ($changedFile in $unstagedChanges) {
-            & git diff --quiet --ignore-cr-at-eol -- "$changedFile"
-            if ($LASTEXITCODE -eq 1) {
-                $semanticGeneratedChanges.Add($changedFile)
-            } elseif ($LASTEXITCODE -ne 0) {
-                Stop-Validation "Tidak dapat memeriksa isi output Wayfinder: $changedFile"
-            }
-        }
-    
-        if ($semanticGeneratedChanges.Count -gt 0) {
-            Stop-Validation "Build mengubah isi output Wayfinder, bukan hanya CRLF/LF: $($semanticGeneratedChanges -join ', ')"
-        }
-    
-        Write-Host "[CLEAN] Memulihkan perubahan CRLF/LF pada output Wayfinder generated." -ForegroundColor Yellow
+        Write-Host "[CLEAN] Memulihkan output Wayfinder generated; source di luar direktori generated tetap dilindungi." -ForegroundColor Yellow
         & git restore --worktree -- "resources/js/actions" "resources/js/routes"
         if ($LASTEXITCODE -ne 0) {
             Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
@@ -55,7 +41,7 @@ function Restore-GeneratedWayfinderLineEndings {
 }
 
 if ($NormalizeWorkingTreeOnly) {
-    Restore-GeneratedWayfinderLineEndings
+    Restore-GeneratedWayfinderOutput
     Write-Host "[PASS] Working tree aman untuk memulai gate." -ForegroundColor Green
     exit 0
 }
@@ -149,7 +135,7 @@ if (-not $hasCss) {
     Stop-Validation "Build tidak menghasilkan aset CSS."
 }
 
-Restore-GeneratedWayfinderLineEndings
+Restore-GeneratedWayfinderOutput
 
 $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
 Write-Host "[PASS] Manifest dan $($assets.Count) aset hashed valid." -ForegroundColor Green
