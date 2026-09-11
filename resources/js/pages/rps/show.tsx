@@ -81,7 +81,7 @@ function firstError(errors: Record<string, any>) {
     return friendlyAiError(message) ?? message;
 }
 
-function safeText(value: any, fallback = '-') {
+function safeText(value: any, fallback = '-'): string {
     if (value === null || value === undefined || value === '') return fallback;
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
     if (Array.isArray(value)) return value.map((item) => safeText(item, '')).filter(Boolean).join(', ') || fallback;
@@ -1425,7 +1425,6 @@ export default function RpsShow(props: any) {
                                                                                     : 'Hubungan RTM dipertahankan sebagai keputusan dosen.',
                                                                     () => router.reload({
                                                                         only: ['progress'],
-                                                                        preserveScroll: true,
                                                                         preserveState: true,
                                                                     }),
                                                                 ),
@@ -2354,9 +2353,9 @@ function AssessmentEvaluationSection({
         0,
     );
 
-    const subById = new Map(subCpmks.map((sub: any) => [sub.id, sub]));
-    const cpmkById = new Map(cpmks.map((cpmk: any) => [cpmk.id, cpmk]));
-    const cplById = new Map(cpls.map((cpl: any) => [cpl.id, cpl]));
+    const subById = new Map<string, any>(subCpmks.map((sub: any) => [String(sub.id), sub] as [string, any]));
+    const cpmkById = new Map<string, any>(cpmks.map((cpmk: any) => [String(cpmk.id), cpmk] as [string, any]));
+    const cplById = new Map<string, any>(cpls.map((cpl: any) => [String(cpl.id), cpl] as [string, any]));
 
     const totalWeeklyWeight = weeks.reduce(
         (sum: number, week: any) => sum + Number(week.assessment_weight || 0),
@@ -2657,9 +2656,9 @@ function RtmDocumentSection({
     bibliography,
     weeks,
 }: any) {
-    const assessmentById = new Map(assessments.map((item: any) => [item.id, item]));
-    const weekByNumber = new Map(weeks.map((item: any) => [Number(item.week_number), item]));
-    const subById = new Map(subCpmks.map((item: any) => [item.id, item]));
+    const assessmentById = new Map<string, any>(assessments.map((item: any) => [String(item.id), item] as [string, any]));
+    const weekByNumber = new Map<number, any>(weeks.map((item: any) => [Number(item.week_number), item] as [number, any]));
+    const subById = new Map<string, any>(subCpmks.map((item: any) => [String(item.id), item] as [string, any]));
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
     return (
@@ -4215,11 +4214,11 @@ function DocumentWeekRow({
             assessment_method: '',
             learning_form: '',
             learning_method: '',
-            face_to_face_sessions: 0,
+            face_to_face_sessions: '0',
             learning_activity: '',
-            independent_study_sessions: 0,
+            independent_study_sessions: '0',
             student_assignment: '',
-            structured_task_sessions: 0,
+            structured_task_sessions: '0',
             online_activity: '',
             material_text: '',
             reference_text: '',
@@ -4771,7 +4770,6 @@ function AssessmentCard({ rpsId, assessment, subCpmks, assessmentTotal }: any) {
 
                             router.reload({
                                 only: ['weeks', 'assessments', 'progress', 'simulationScores'],
-                                preserveScroll: true,
                                 preserveState: true,
                             });
                         },
@@ -4958,7 +4956,6 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                                             notify('success', `${task.code} berhasil dihapus.`);
                                             router.reload({
                                                 only: ['tasks', 'progress', 'weeks'],
-                                                preserveScroll: true,
                                                 preserveState: true,
                                             });
                                         },
@@ -5231,7 +5228,9 @@ function InlineWeekRow({
             structured_task_sessions: Number(data.structured_task_sessions || 0),
             independent_study_sessions: Number(data.independent_study_sessions || 0),
             time_estimate: `Tatap muka: ${Number(data.face_to_face_sessions || 0)} × (${c} × 50 menit); Tugas terstruktur: ${Number(data.structured_task_sessions || 0)} × (${c} × 60 menit); Belajar mandiri: ${Number(data.independent_study_sessions || 0)} × (${c} × 60 menit)`,
-        })).put(
+        }));
+
+        form.put(
             `/rps/${rpsId}/weeks/${week.week_number}`,
             actionOptions(`Pekan ${week.week_number} berhasil disimpan.`, () => setEditing(false)),
         );
@@ -5447,7 +5446,9 @@ function WeekEditor({ rpsId, week, subCpmks, credits, aiConfigured, aiBusy, onGe
                     structured_task_sessions: Number(data.structured_task_sessions || 0),
                     independent_study_sessions: Number(data.independent_study_sessions || 0),
                     time_estimate: `Tatap muka: ${Number(data.face_to_face_sessions || 0)} × (${c} × 50 menit); Tugas terstruktur: ${Number(data.structured_task_sessions || 0)} × (${c} × 60 menit); Belajar mandiri: ${Number(data.independent_study_sessions || 0)} × (${c} × 60 menit)`,
-                })).put(
+                }));
+
+                form.put(
                     `/rps/${rpsId}/weeks/${week.week_number}`,
                     actionOptions(`Pekan ${week.week_number} berhasil disimpan.`),
                 );
