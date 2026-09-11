@@ -129,11 +129,16 @@ class AiRpsProviderService
             ]);
         }
 
-        // Susun AI per pekan harus selesai jauh sebelum batas Vercel Function.
-        // Satu request hanya mencoba satu provider. Bila provider gagal, provider tersebut
-        // masuk cooldown dan klik berikutnya bergerak ke provider sehat berikutnya.
-        // Timeout HTTP per provider juga diperkecil khusus request pekanan.
-        $this->applyWeeklyTimeoutBudget(14);
+        // Gunakan dua provider per request secara default. Ini tetap menjaga
+        // request di bawah batas waktu shared hosting, tetapi kegagalan sementara
+        // provider utama tidak lagi memaksa dosen mengklik tombol berulang kali.
+        $maxAttempts = max(
+            1,
+            min(3, (int) config('simatrps-ai.weekly_max_attempts', 2))
+        );
+        $this->applyWeeklyTimeoutBudget(
+            max(5, min(18, (int) config('simatrps-ai.weekly_timeout_budget', 12)))
+        );
 
         return $this->generateAcrossProviders(
             fn ($service) => $service->generateWeeklyBatch(
@@ -141,7 +146,7 @@ class AiRpsProviderService
                 [$week],
                 $instruction
             ),
-            1
+            $maxAttempts
         );
     }
 
@@ -430,7 +435,20 @@ class AiRpsProviderService
 
     private function cooldownKey(string $provider): string
     {
-        return 'simatrps:ai:cooldown:'.strtolower($provider);
+        // Ikat cooldown ke fingerprint rahasia provider. Saat admin mengganti
+        // API key, kegagalan/cooldown key lama tidak ikut memblokir key baru.
+        $apiKey = (string) config(
+            'simatrps-ai.'.strtolower($provider).'.api_key',
+            ''
+        );
+        $fingerprint = $apiKey !== ''
+            ? substr(hash('sha256', $apiKey), 0, 12)
+            : 'none';
+
+        return 'simatrps:ai:cooldown:'
+            .strtolower($provider)
+            .':'
+            .$fingerprint;
     }
 
     private function shouldCooldown(string $message): bool
