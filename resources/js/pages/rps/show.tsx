@@ -1425,7 +1425,6 @@ export default function RpsShow(props: any) {
                                                                                     : 'Hubungan RTM dipertahankan sebagai keputusan dosen.',
                                                                     () => router.reload({
                                                                         only: ['progress'],
-                                                                        preserveState: true,
                                                                     }),
                                                                 ),
                                                             );
@@ -4770,7 +4769,6 @@ function AssessmentCard({ rpsId, assessment, subCpmks, assessmentTotal }: any) {
 
                             router.reload({
                                 only: ['weeks', 'assessments', 'progress', 'simulationScores'],
-                                preserveState: true,
                             });
                         },
                         onError: (errors: Record<string, any>) => {
@@ -4956,7 +4954,6 @@ function TaskCard({ rpsId, task, assessments, subCpmks, initialEditing = false, 
                                             notify('success', `${task.code} berhasil dihapus.`);
                                             router.reload({
                                                 only: ['tasks', 'progress', 'weeks'],
-                                                preserveState: true,
                                             });
                                         },
                                         onError: (errors: Record<string, any>) => {
