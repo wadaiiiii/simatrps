@@ -1,5 +1,6 @@
 param(
-    [string]$BuildDirectory = "public/build"
+    [string]$BuildDirectory = "public/build",
+    [switch]$NormalizeWorkingTreeOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -7,6 +8,56 @@ $ErrorActionPreference = "Stop"
 function Stop-Validation([string]$Message) {
     Write-Host "[ERROR] $Message" -ForegroundColor Red
     exit 1
+}
+
+function Restore-GeneratedWayfinderLineEndings {
+    $unstagedChanges = @(& git diff --name-only --)
+    if ($LASTEXITCODE -ne 0) {
+        Stop-Validation "Tidak dapat mengaudit perubahan working tree setelah build."
+    }
+    
+    if ($unstagedChanges.Count -gt 0) {
+        $unexpectedChanges = @(
+            $unstagedChanges | Where-Object {
+                $_ -notmatch "^(resources/js/actions/|resources/js/routes/)"
+            }
+        )
+    
+        if ($unexpectedChanges.Count -gt 0) {
+            Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
+        }
+    
+        $semanticGeneratedChanges = New-Object System.Collections.Generic.List[string]
+        foreach ($changedFile in $unstagedChanges) {
+            & git diff --quiet --ignore-cr-at-eol -- "$changedFile"
+            if ($LASTEXITCODE -eq 1) {
+                $semanticGeneratedChanges.Add($changedFile)
+            } elseif ($LASTEXITCODE -ne 0) {
+                Stop-Validation "Tidak dapat memeriksa isi output Wayfinder: $changedFile"
+            }
+        }
+    
+        if ($semanticGeneratedChanges.Count -gt 0) {
+            Stop-Validation "Build mengubah isi output Wayfinder, bukan hanya CRLF/LF: $($semanticGeneratedChanges -join ', ')"
+        }
+    
+        Write-Host "[CLEAN] Memulihkan perubahan CRLF/LF pada output Wayfinder generated." -ForegroundColor Yellow
+        & git restore --worktree -- "resources/js/actions" "resources/js/routes"
+        if ($LASTEXITCODE -ne 0) {
+            Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
+        }
+    
+        $remainingChanges = @(& git diff --name-only --)
+        if ($LASTEXITCODE -ne 0 -or $remainingChanges.Count -gt 0) {
+            Stop-Validation "Working tree belum bersih setelah pemulihan output generated."
+        }
+    }
+}
+
+if ($NormalizeWorkingTreeOnly) {
+    Restore-GeneratedWayfinderLineEndings
+    Write-Host "[PASS] Working tree aman untuk memulai gate." -ForegroundColor Green
+    exit 0
 }
 
 $manifestPath = Join-Path $BuildDirectory "manifest.json"
@@ -98,47 +149,7 @@ if (-not $hasCss) {
     Stop-Validation "Build tidak menghasilkan aset CSS."
 }
 
-$unstagedChanges = @(& git diff --name-only --)
-if ($LASTEXITCODE -ne 0) {
-    Stop-Validation "Tidak dapat mengaudit perubahan working tree setelah build."
-}
-
-if ($unstagedChanges.Count -gt 0) {
-    $unexpectedChanges = @(
-        $unstagedChanges | Where-Object {
-            $_ -notmatch "^(resources/js/actions/|resources/js/routes/)"
-        }
-    )
-
-    if ($unexpectedChanges.Count -gt 0) {
-        Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
-    }
-
-    $semanticGeneratedChanges = New-Object System.Collections.Generic.List[string]
-    foreach ($changedFile in $unstagedChanges) {
-        & git diff --quiet --ignore-cr-at-eol -- "$changedFile"
-        if ($LASTEXITCODE -eq 1) {
-            $semanticGeneratedChanges.Add($changedFile)
-        } elseif ($LASTEXITCODE -ne 0) {
-            Stop-Validation "Tidak dapat memeriksa isi output Wayfinder: $changedFile"
-        }
-    }
-
-    if ($semanticGeneratedChanges.Count -gt 0) {
-        Stop-Validation "Build mengubah isi output Wayfinder, bukan hanya CRLF/LF: $($semanticGeneratedChanges -join ', ')"
-    }
-
-    Write-Host "[CLEAN] Memulihkan perubahan CRLF/LF pada output Wayfinder generated." -ForegroundColor Yellow
-    & git restore --worktree -- "resources/js/actions" "resources/js/routes"
-    if ($LASTEXITCODE -ne 0) {
-        Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
-    }
-
-    $remainingChanges = @(& git diff --name-only --)
-    if ($LASTEXITCODE -ne 0 -or $remainingChanges.Count -gt 0) {
-        Stop-Validation "Working tree belum bersih setelah pemulihan output generated."
-    }
-}
+Restore-GeneratedWayfinderLineEndings
 
 $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
 Write-Host "[PASS] Manifest dan $($assets.Count) aset hashed valid." -ForegroundColor Green
