@@ -127,6 +127,10 @@ echo [BUILD] Menjalankan build validasi...
 call npm run build
 if errorlevel 1 goto :build_failed
 
+echo [TYPE] Memvalidasi ulang TypeScript setelah Wayfinder generate...
+call npm run types:check
+if errorlevel 1 goto :types_failed
+
 echo [ASSET] Memvalidasi manifest dan hashed assets...
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\validate-simatrps-build.ps1"
 if errorlevel 1 goto :asset_failed
@@ -185,6 +189,10 @@ if errorlevel 1 goto :merge_abort_types
 
 call npm run build
 if errorlevel 1 goto :merge_abort_build
+
+echo [TYPE] Memvalidasi ulang TypeScript setelah Wayfinder generate...
+call npm run types:check
+if errorlevel 1 goto :merge_abort_types
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\validate-simatrps-build.ps1"
 if errorlevel 1 goto :merge_abort_asset
