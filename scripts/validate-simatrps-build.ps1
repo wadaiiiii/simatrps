@@ -98,6 +98,34 @@ if (-not $hasCss) {
     Stop-Validation "Build tidak menghasilkan aset CSS."
 }
 
+$unstagedChanges = @(& git diff --name-only --)
+if ($LASTEXITCODE -ne 0) {
+    Stop-Validation "Tidak dapat mengaudit perubahan working tree setelah build."
+}
+
+if ($unstagedChanges.Count -gt 0) {
+    $unexpectedChanges = @(
+        $unstagedChanges | Where-Object {
+            $_ -notmatch "^(resources/js/actions/|resources/js/routes/)"
+        }
+    )
+
+    if ($unexpectedChanges.Count -gt 0) {
+        Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
+    }
+
+    Write-Host "[CLEAN] Memulihkan output Wayfinder generated setelah validasi build." -ForegroundColor Yellow
+    & git restore --worktree -- "resources/js/actions" "resources/js/routes"
+    if ($LASTEXITCODE -ne 0) {
+        Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
+    }
+
+    $remainingChanges = @(& git diff --name-only --)
+    if ($LASTEXITCODE -ne 0 -or $remainingChanges.Count -gt 0) {
+        Stop-Validation "Working tree belum bersih setelah pemulihan output generated."
+    }
+}
+
 $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
 Write-Host "[PASS] Manifest dan $($assets.Count) aset hashed valid." -ForegroundColor Green
 Write-Host "[PASS] SHA256 manifest: $manifestHash" -ForegroundColor Green
