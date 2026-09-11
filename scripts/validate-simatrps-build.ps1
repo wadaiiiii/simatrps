@@ -114,7 +114,21 @@ if ($unstagedChanges.Count -gt 0) {
         Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
     }
 
-    Write-Host "[CLEAN] Memulihkan output Wayfinder generated setelah validasi build." -ForegroundColor Yellow
+    $semanticGeneratedChanges = New-Object System.Collections.Generic.List[string]
+    foreach ($changedFile in $unstagedChanges) {
+        & git diff --quiet --ignore-cr-at-eol -- "$changedFile"
+        if ($LASTEXITCODE -eq 1) {
+            $semanticGeneratedChanges.Add($changedFile)
+        } elseif ($LASTEXITCODE -ne 0) {
+            Stop-Validation "Tidak dapat memeriksa isi output Wayfinder: $changedFile"
+        }
+    }
+
+    if ($semanticGeneratedChanges.Count -gt 0) {
+        Stop-Validation "Build mengubah isi output Wayfinder, bukan hanya CRLF/LF: $($semanticGeneratedChanges -join ', ')"
+    }
+
+    Write-Host "[CLEAN] Memulihkan perubahan CRLF/LF pada output Wayfinder generated." -ForegroundColor Yellow
     & git restore --worktree -- "resources/js/actions" "resources/js/routes"
     if ($LASTEXITCODE -ne 0) {
         Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
