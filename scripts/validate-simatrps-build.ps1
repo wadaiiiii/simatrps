@@ -1,0 +1,104 @@
+param(
+    [string]$BuildDirectory = "public/build"
+)
+
+$ErrorActionPreference = "Stop"
+
+function Stop-Validation([string]$Message) {
+    Write-Host "[ERROR] $Message" -ForegroundColor Red
+    exit 1
+}
+
+$manifestPath = Join-Path $BuildDirectory "manifest.json"
+if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    Stop-Validation "Manifest Vite tidak ditemukan: $manifestPath"
+}
+
+try {
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+} catch {
+    Stop-Validation "Manifest Vite bukan JSON valid: $($_.Exception.Message)"
+}
+
+$requiredEntries = @(
+    "resources/css/app.css",
+    "resources/js/app.tsx"
+)
+
+$entryNames = @($manifest.PSObject.Properties.Name)
+foreach ($entry in $requiredEntries) {
+    if ($entryNames -notcontains $entry) {
+        Stop-Validation "Entry wajib tidak ditemukan di manifest: $entry"
+    }
+}
+
+$assets = New-Object System.Collections.Generic.List[string]
+foreach ($property in $manifest.PSObject.Properties) {
+    $entry = $property.Value
+
+    if ($null -ne $entry.file -and -not [string]::IsNullOrWhiteSpace([string]$entry.file)) {
+        $assets.Add([string]$entry.file)
+    }
+
+    if ($null -ne $entry.css) {
+        foreach ($cssFile in @($entry.css)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$cssFile)) {
+                $assets.Add([string]$cssFile)
+            }
+        }
+    }
+
+    if ($null -ne $entry.assets) {
+        foreach ($assetFile in @($entry.assets)) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$assetFile)) {
+                $assets.Add([string]$assetFile)
+            }
+        }
+    }
+}
+
+$assets = @($assets | Sort-Object -Unique)
+if ($assets.Count -eq 0) {
+    Stop-Validation "Manifest tidak memuat aset hasil build."
+}
+
+$hasJavaScript = $false
+$hasCss = $false
+
+foreach ($asset in $assets) {
+    $normalized = $asset.Replace("\", "/")
+
+    if ($normalized.StartsWith("/") -or $normalized.Contains("..")) {
+        Stop-Validation "Path aset tidak aman di manifest: $asset"
+    }
+
+    if (-not $normalized.StartsWith("assets/")) {
+        Stop-Validation "Aset harus berada di folder assets/: $asset"
+    }
+
+    $fileName = [System.IO.Path]::GetFileName($normalized)
+    if ($fileName -notmatch "-[A-Za-z0-9_-]{6,}\.(js|mjs|css|woff2?|ttf|svg|png|jpe?g|webp)$") {
+        Stop-Validation "Nama aset tidak memakai hash Vite: $asset"
+    }
+
+    $assetPath = Join-Path $BuildDirectory ($normalized.Replace("/", [System.IO.Path]::DirectorySeparatorChar))
+    if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+        Stop-Validation "Aset yang tercantum di manifest tidak ditemukan: $assetPath"
+    }
+
+    if ($normalized -match "\.(js|mjs)$") { $hasJavaScript = $true }
+    if ($normalized -match "\.css$") { $hasCss = $true }
+}
+
+if (-not $hasJavaScript) {
+    Stop-Validation "Build tidak menghasilkan aset JavaScript."
+}
+
+if (-not $hasCss) {
+    Stop-Validation "Build tidak menghasilkan aset CSS."
+}
+
+$manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
+Write-Host "[PASS] Manifest dan $($assets.Count) aset hashed valid." -ForegroundColor Green
+Write-Host "[PASS] SHA256 manifest: $manifestHash" -ForegroundColor Green
+exit 0
