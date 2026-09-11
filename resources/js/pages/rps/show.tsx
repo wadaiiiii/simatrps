@@ -990,7 +990,7 @@ export default function RpsShow(props: any) {
                                                 <SectionAiButton
                                                     label="Telaah CPMK AI"
                                                     busy={aiBusyType === 'cpmk_review'}
-                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
+                                                    disabled={!ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('cpmk_review')}
                                                     suggestions={cpmkReviewSuggestions}
                                                     rpsId={rps.id}
@@ -998,7 +998,7 @@ export default function RpsShow(props: any) {
                                                 <SectionAiButton
                                                     label="Pemetaan Bloom AI"
                                                     busy={aiBusyType === 'bloom_mapping'}
-                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
+                                                    disabled={!ai.configured || cpmks.length === 0}
                                                     onClick={() => generateAi('bloom_mapping')}
                                                     suggestions={bloomMappingSuggestions}
                                                     rpsId={rps.id}
@@ -1006,7 +1006,7 @@ export default function RpsShow(props: any) {
                                                 <SectionAiButton
                                                     label="Pemetaan CPMK → CPL AI"
                                                     busy={aiBusyType === 'cpl_mapping'}
-                                                    disabled={!documentInfoReady || !ai.configured || cpmks.length === 0}
+                                                    disabled={!ai.configured || cpmks.length === 0 || cpls.length === 0}
                                                     onClick={() => generateAi('cpl_mapping')}
                                                     suggestions={cplMappingSuggestions}
                                                     rpsId={rps.id}
