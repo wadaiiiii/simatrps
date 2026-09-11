@@ -13,30 +13,46 @@ function Stop-Validation([string]$Message) {
 function Restore-GeneratedWayfinderOutput {
     $unstagedChanges = @(& git diff --name-only --)
     if ($LASTEXITCODE -ne 0) {
-        Stop-Validation "Tidak dapat mengaudit perubahan working tree setelah build."
+        Stop-Validation "Tidak dapat mengaudit perubahan tracked pada working tree."
     }
-    
-    if ($unstagedChanges.Count -gt 0) {
-        $unexpectedChanges = @(
-            $unstagedChanges | Where-Object {
-                $_ -notmatch "^(resources/js/actions/|resources/js/routes/)"
-            }
-        )
-    
-        if ($unexpectedChanges.Count -gt 0) {
-            Stop-Validation "Build mengubah file di luar output Wayfinder: $($unexpectedChanges -join ', ')"
+
+    $untrackedChanges = @(& git ls-files --others --exclude-standard --)
+    if ($LASTEXITCODE -ne 0) {
+        Stop-Validation "Tidak dapat mengaudit file untracked pada working tree."
+    }
+
+    $allChanges = @($unstagedChanges) + @($untrackedChanges)
+    $unexpectedChanges = @(
+        $allChanges | Sort-Object -Unique | Where-Object {
+            $_ -notmatch "^(resources/js/actions/|resources/js/routes/)"
         }
-    
-        Write-Host "[CLEAN] Memulihkan output Wayfinder generated; source di luar direktori generated tetap dilindungi." -ForegroundColor Yellow
+    )
+
+    if ($unexpectedChanges.Count -gt 0) {
+        Stop-Validation "Working tree memuat perubahan di luar output Wayfinder: $($unexpectedChanges -join ', ')"
+    }
+
+    if ($unstagedChanges.Count -gt 0) {
+        Write-Host "[CLEAN] Memulihkan file tracked Wayfinder hasil generate." -ForegroundColor Yellow
         & git restore --worktree -- "resources/js/actions" "resources/js/routes"
         if ($LASTEXITCODE -ne 0) {
-            Stop-Validation "Tidak dapat memulihkan output Wayfinder generated."
+            Stop-Validation "Tidak dapat memulihkan file tracked Wayfinder."
         }
-    
-        $remainingChanges = @(& git diff --name-only --)
-        if ($LASTEXITCODE -ne 0 -or $remainingChanges.Count -gt 0) {
-            Stop-Validation "Working tree belum bersih setelah pemulihan output generated."
+    }
+
+    if ($untrackedChanges.Count -gt 0) {
+        Write-Host "[CLEAN] Menghapus file untracked Wayfinder hasil generate." -ForegroundColor Yellow
+        foreach ($generatedFile in $untrackedChanges) {
+            if (Test-Path -LiteralPath $generatedFile -PathType Leaf) {
+                Remove-Item -LiteralPath $generatedFile -Force
+            }
         }
+    }
+
+    $remainingTracked = @(& git diff --name-only --)
+    $remainingUntracked = @(& git ls-files --others --exclude-standard --)
+    if ($LASTEXITCODE -ne 0 -or $remainingTracked.Count -gt 0 -or $remainingUntracked.Count -gt 0) {
+        Stop-Validation "Working tree belum bersih setelah pemulihan output generated."
     }
 }
 
