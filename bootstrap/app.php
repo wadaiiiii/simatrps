@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\NormalizeAiRpsOutput;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             NormalizeAiRpsOutput::class,
             HandleInertiaRequests::class,
+            EnsurePasswordChanged::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
     })

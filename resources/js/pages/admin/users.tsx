@@ -23,6 +23,7 @@ type UserRow = {
     email: string;
     role: string;
     is_active: boolean;
+    must_change_password: boolean;
     created_at?: string | null;
     rps_count: number;
 };
@@ -180,7 +181,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                                         placeholder="Contoh: M.Si."
                                     />
                                 </Field>
-                                <Field label="NIDN" error={createForm.errors.nidn}>
+                                <Field label="NIDN/NUPTK" error={createForm.errors.nidn}>
                                     <TextInput
                                         value={createForm.data.nidn}
                                         onChange={(value) => createForm.setData('nidn', value)}
@@ -218,7 +219,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                             </div>
 
                             <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                                Role otomatis <b>Dosen</b> dan status otomatis <b>Aktif</b>.
+                                Role otomatis <b>Dosen</b>, status <b>Aktif</b>, dan pengguna wajib mengganti password saat login pertama.
                             </div>
 
                             <button
@@ -260,7 +261,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                                 <thead>
                                     <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                         <th className="px-3 py-3">Pengguna</th>
-                                        <th className="px-3 py-3">NIDN</th>
+                                        <th className="px-3 py-3">NIDN/NUPTK</th>
                                         <th className="px-3 py-3">Email</th>
                                         <th className="px-3 py-3">RPS</th>
                                         <th className="px-3 py-3">Status</th>
@@ -302,6 +303,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                                                             <Ban className="size-3.5" /> Nonaktif
                                                         </span>
                                                     )}
+                                                    {user.must_change_password && <div className="mt-1 text-[10px] font-bold text-amber-700">Wajib ganti password</div>}
                                                 </td>
                                                 <td className="px-3 py-4">
                                                     {isAdmin ? (
@@ -363,7 +365,7 @@ export default function Page({ users }: { users: UserRow[] }) {
                             <Field label="Gelar akademik" error={editForm.errors.academic_title}>
                                 <TextInput value={editForm.data.academic_title} onChange={(value) => editForm.setData('academic_title', value)} />
                             </Field>
-                            <Field label="NIDN" error={editForm.errors.nidn}>
+                            <Field label="NIDN/NUPTK" error={editForm.errors.nidn}>
                                 <TextInput value={editForm.data.nidn} onChange={(value) => editForm.setData('nidn', value)} />
                             </Field>
                         </div>
@@ -385,7 +387,7 @@ export default function Page({ users }: { users: UserRow[] }) {
             {passwordUser && (
                 <Modal title={`Reset Password ${passwordUser.name}`} onClose={() => setPasswordUser(null)}>
                     <div className="mb-4 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-                        Setelah password diubah, semua sesi login dosen ini akan dihentikan dan dosen harus login kembali menggunakan password baru.
+                        Setelah reset, semua sesi dosen dihentikan. Password ini menjadi password sementara dan wajib diganti dosen saat login berikutnya.
                     </div>
                     <form onSubmit={submitPassword} className="space-y-4">
                         <Field label="Password baru" error={passwordForm.errors.password}>

@@ -28,6 +28,7 @@ class UserController extends Controller
                 'email',
                 'role',
                 'is_active',
+                'must_change_password',
                 'created_at',
             ])
             ->map(fn (User $user): array => [
@@ -38,6 +39,7 @@ class UserController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'is_active' => (bool) $user->is_active,
+                'must_change_password' => (bool) $user->must_change_password,
                 'created_at' => $user->created_at?->toIso8601String(),
                 'rps_count' => DB::table('rps')->where('owner_id', $user->id)->count(),
             ]);
@@ -229,6 +231,7 @@ class UserController extends Controller
         $user->password = $validated['password'];
         $user->role = 'dosen';
         $user->is_active = true;
+        $user->must_change_password = true;
         $user->email_verified_at = Carbon::now();
         $user->save();
 
@@ -291,6 +294,8 @@ class UserController extends Controller
         ]);
 
         $user->password = $validated['password'];
+        $user->must_change_password = true;
+        $user->password_changed_at = null;
         $user->save();
 
         DB::table('sessions')->where('user_id', $user->id)->delete();
